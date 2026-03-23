@@ -1,0 +1,74 @@
+{
+  "rules": {
+    "$city": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "users": {
+        ".indexOn": ["tipo"],
+        "$uid": {
+          ".read": "auth != null && (auth.uid == $uid || root.child($city).child('users').child(auth.uid).child('tipo').val() == 'Administrador')",
+          ".write": "auth != null && auth.uid == $uid"
+        }
+      },
+      "denuncias-procon": {
+        ".indexOn": ["userId"],
+        "$id": {
+          ".read": "auth != null && (data.child('userId').val() == auth.uid || root.child($city).child('users').child(auth.uid).child('tipo').val() == 'Administrador')",
+          ".write": "auth != null && (!data.exists() || data.child('userId').val() == auth.uid)"
+        }
+      },
+      "atendimento-juridico": {
+        ".indexOn": ["userId"],
+        "$id": {
+          ".read": "auth != null && (data.child('userId').val() == auth.uid || root.child($city).child('users').child(auth.uid).child('tipo').val() == 'Administrador')",
+          ".write": "auth != null && (!data.exists() || data.child('userId').val() == auth.uid)"
+        }
+      },
+      "balcao-cidadao": {
+        ".indexOn": ["userId"],
+        "$id": {
+          ".read": "auth != null && (data.child('userId').val() == auth.uid || root.child($city).child('users').child(auth.uid).child('tipo').val() == 'Administrador')",
+          ".write": "auth != null && (!data.exists() || data.child('userId').val() == auth.uid)"
+        }
+      },
+      "ouvidoria": {
+        ".indexOn": ["userId"],
+        "$id": {
+          ".read": "auth != null && (data.child('userId').val() == auth.uid || root.child($city).child('users').child(auth.uid).child('tipo').val() == 'Administrador')",
+          ".write": "auth != null && (!data.exists() || data.child('userId').val() == auth.uid || newData.child('userId').val() == auth.uid)"
+        }
+      },
+      "procuradoria-mulher": {
+        ".indexOn": ["userId"],
+        "$id": {
+          ".read": "auth != null && (data.child('userId').val() == auth.uid || root.child($city).child('users').child(auth.uid).child('tipo').val() == 'Administrador')",
+          ".write": "auth != null && (!data.exists() || data.child('userId').val() == auth.uid || newData.child('userId').val() == auth.uid)"
+        }
+      },
+      "solicitacoes-vereadores": {
+        ".indexOn": ["userId"],
+        "$id": {
+          ".read": "auth != null && (data.child('userId').val() == auth.uid || root.child($city).child('users').child(auth.uid).child('tipo').val() == 'Administrador')",
+          ".write": "auth != null && (!data.exists() || data.child('userId').val() == auth.uid)"
+        }
+      },
+      "notifications": {
+        ".indexOn": ["userId"],
+        "$id": {
+          ".read": "auth != null && (data.child('userId').val() == auth.uid || root.child($city).child('users').child(auth.uid).child('tipo').val() == 'Administrador')",
+          ".write": "auth != null" 
+        }
+      },
+      "panic-alerts": {
+        "$uid": {
+          ".read": "auth != null && (auth.uid == $uid || root.child($city).child('users').child(auth.uid).child('tipo').val() == 'Administrador')",
+          ".write": "auth != null && auth.uid == $uid"
+        }
+      },
+      "piel": {
+        ".read": true,
+        ".write": "auth != null && root.child($city).child('users').child(auth.uid).child('tipo').val() == 'Administrador'"
+      }
+    }
+  }
+}

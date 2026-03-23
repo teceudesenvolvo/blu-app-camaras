@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "CM Paraipaba",
-    "slug": "camara-paraipaba",
+    "slug": "cm-paraipaba",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -32,7 +32,9 @@
       }
     },
     "android": {
-      "package": "com.blutecnologias.camaraparaipaba",
+      "package": "com.lavoroservicos.camaraparaipaba",
+      "versionCode": 1.0,
+      "googleServicesFile": "./services/firebase/paraipaba/google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -48,6 +50,9 @@
       "expo-notifications"
     ],
     "extra": {
+      "eas": {
+        "projectId": "a4515ae1-c9e6-4aa1-a5f9-ae420ea3d93c"
+      },
       "name": "CM Paraipaba",
       "slug": "cm-paraipaba",
       "bundleIdentifier": "com.blutecnoligias.appcamara",

@@ -3,19 +3,16 @@ import { createContext, useEffect, useState } from 'react';
 
 import app from '../../services/firebaseConfig';
 
-// 🔐 Firebase Auth (Web)
+import { auth, db } from '../../services/firebaseConfig';
 import {
     createUserWithEmailAndPassword,
-    getAuth,
     onAuthStateChanged,
     signInWithEmailAndPassword,
     signOut,
     sendPasswordResetEmail
 } from 'firebase/auth';
 
-// 🔥 Firebase Database
 import {
-    getDatabase,
     onChildAdded,
     onValue,
     orderByChild,
@@ -40,9 +37,6 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
 
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-
     // 🔐 OBSERVADOR DE LOGIN
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (userState) => {
@@ -58,8 +52,8 @@ export const AuthProvider = ({ children }) => {
         Notifications.setNotificationHandler({
             handleNotification: async () => ({
                 shouldShowAlert: true,
-                shouldPlaySound: false,
-                shouldSetBadge: false,
+                shouldPlaySound: true,
+                shouldSetBadge: true,
             }),
         });
     }, []);
@@ -81,7 +75,9 @@ export const AuthProvider = ({ children }) => {
                     return;
                 }
 
-                const token = (await Notifications.getExpoPushTokenAsync()).data;
+                const token = (await Notifications.getExpoPushTokenAsync({
+                    projectId: Constants.expoConfig?.extra?.eas?.projectId || "a4515ae1-c9e6-4aa1-a5f9-ae420ea3d93c"
+                })).data;
 
                 await update(ref(db, `${flavorId}/users/${user.uid}`), {
                     pushToken: token,
@@ -111,8 +107,13 @@ export const AuthProvider = ({ children }) => {
         const unsubscribe = onChildAdded(q, async (snapshot) => {
             const notification = snapshot.val();
             
-            // Só dispara se a notificação for para este usuário e NÃO estiver lida
-            if (notification && notification.userId === user.uid && notification.read !== true) {
+            // Só dispara se a notificação for para este usuário (ID ou Email) e NÃO estiver lida
+            const isTargetUser = notification && (
+                notification.userId === user.uid || 
+                (notification.userEmail && String(notification.userEmail).toLowerCase() === String(user.email).toLowerCase())
+            );
+
+            if (isTargetUser && notification.read !== true) {
                 await Notifications.scheduleNotificationAsync({
                     content: {
                         title: notification.tituloNotification || 'Nova Notificação',
@@ -141,7 +142,10 @@ export const AuthProvider = ({ children }) => {
             if (snapshot.exists()) {
                 snapshot.forEach((child) => {
                     const notif = child.val();
-                    if (notif.userId === user.uid && notif.read !== true) {
+                    const isTargetUser = notif.userId === user.uid || 
+                        (notif.userEmail && String(notif.userEmail).toLowerCase() === String(user.email).toLowerCase());
+
+                    if (isTargetUser && notif.read !== true) {
                         count++;
                     }
                 });

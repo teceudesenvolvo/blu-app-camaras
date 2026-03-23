@@ -89,8 +89,12 @@ export default function NotificacoesScreen({ navigation }) {
         const updates = {};
         snapshot.forEach((child) => {
           const notification = child.val();
-          // Filtra apenas as notificações deste usuário
-          if (notification.userId === user.uid) {
+          
+          // Filtra por userId ou userEmail
+          const isTargetUser = notification.userId === user.uid || 
+              (notification.userEmail && String(notification.userEmail).toLowerCase() === String(user.email).toLowerCase());
+
+          if (isTargetUser) {
             data.push({
               id: child.key,
               ...notification

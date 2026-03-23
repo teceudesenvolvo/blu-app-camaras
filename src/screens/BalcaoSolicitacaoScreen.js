@@ -181,18 +181,12 @@ const documentsData = {
   'cin': {
     label: 'Carteira de Identidade Nacional (CIN)',
     requirements: [
-      'CPF regularizado é indispensável.',
-      'Solteiros: Certidão de Nascimento original (em bom estado, sem rasuras).',
-      'Casados/Divorciados/Viúvos: Certidão de Casamento original com as devidas averbações.',
-      'CPF: Impresso ou em formato digital.',
-      'Comprovante de Residência: Original com CEP atualizado.',
-      'Menores de 16 anos: Devem estar acompanhados por um responsável legal (pai, mãe, avós ou tios de 1º grau) portando RG original e cópia.',
+      'Certidão de Nascimento ou Casamento original (em bom estado, sem rasuras).',
+      'Identidade do responsável legal (necessário se for menor de idade ou se aplicável).',
     ],
     attachments: [
         { key: 'cin_certidao', label: 'Certidão de Nascimento/Casamento' },
-        { key: 'cin_cpf', label: 'Documento CPF' },
-        { key: 'cin_residencia', label: 'Comprovante de Residência' },
-        { key: 'cin_rg_responsavel', label: 'RG do Responsável (se menor)' },
+        { key: 'cin_rg_responsavel', label: 'RG do Responsável (se aplicável)' },
     ]
   },
   'cpf': {
@@ -208,41 +202,6 @@ const documentsData = {
         { key: 'cpf_estado_civil', label: 'Comprovante de Estado Civil' },
         { key: 'cpf_residencia', label: 'Comprovante de Residência' },
         { key: 'cpf_selfie', label: 'Selfie com Documento' },
-    ]
-  },
-  'ctps': {
-    label: 'Carteira de Trabalho Digital',
-    requirements: [
-      'O acesso é feito pela conta Gov.br (nível Prata ou Ouro).',
-      'Para atendimento no balcão para auxílio com o app, leve RG e CPF originais.',
-      'A versão física não é mais emitida na maioria dos casos.',
-    ],
-    attachments: []
-  },
-  'antecedentes': {
-    label: 'Antecedentes Criminais',
-    requirements: [
-      'Documento principal para emissão no balcão: RG Original.',
-      'Dados necessários: Nome completo, RG (número, data de emissão, órgão expedidor), CPF, nome do pai e da mãe.',
-      'Pode ser emitido online no site da Polícia Federal ou SSP do seu estado.',
-    ],
-    attachments: [
-        { key: 'ant_rg', label: 'RG Original' }
-    ]
-  },
-  'titulo': {
-    label: 'Título de Eleitor (Consulta ou Atualização)',
-    requirements: [
-      'Identidade: RG ou Certidão de Nascimento/Casamento (CNH sozinha não é aceita para o primeiro título).',
-      'Comprovante de Residência: Conta de luz, água ou telefone.',
-      'Quitação Militar: Apenas para homens que completam 19 anos no ano.',
-      'Para atendimento online (TítuloNet): Anexar fotos do documento (frente/verso) e uma selfie segurando o documento.',
-    ],
-    attachments: [
-        { key: 'titulo_identidade', label: 'Documento de Identidade (Frente e Verso)' },
-        { key: 'titulo_residencia', label: 'Comprovante de Residência' },
-        { key: 'titulo_quitacao', label: 'Quitação Militar (se aplicável)' },
-        { key: 'titulo_selfie', label: 'Selfie com Documento' },
     ]
   }
 };

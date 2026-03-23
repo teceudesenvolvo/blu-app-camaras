@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useContext } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import styled from 'styled-components/native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { getDatabase, ref, set, onValue, serverTimestamp } from 'firebase/database';
+import app from '../../services/firebaseConfig';
+import { AuthContext } from '../context/AuthContext';
+
+const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const db = getDatabase(app);
 
 const Container = styled.View`
   flex: 1;
@@ -84,8 +90,59 @@ const SaveButtonText = styled.Text`
 `;
 
 export default function ContatoConfiancaScreen({ navigation }) {
-    const [email, setEmail] = useState('leo@teste.com');
-    const [phone, setPhone] = useState('8599998733');
+    const { user } = useContext(AuthContext);
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (!user) return;
+
+        const contactRef = ref(db, `${flavorId}/users/${user.uid}/contatoConfianca`);
+        const unsubscribe = onValue(contactRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                setEmail(data.email || '');
+                setPhone(data.phone || '');
+            }
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [user]);
+
+    const handleSave = async () => {
+        if (!email && !phone) {
+            Alert.alert('Erro', 'Preencha pelo menos um meio de contato (E-mail ou Telefone).');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const contactRef = ref(db, `${flavorId}/users/${user.uid}/contatoConfianca`);
+            await set(contactRef, {
+                email,
+                phone,
+                updatedAt: serverTimestamp()
+            });
+            Alert.alert('Sucesso', 'Contato de confiança salvo com sucesso!');
+            navigation.goBack();
+        } catch (error) {
+            console.error(error);
+            Alert.alert('Erro', 'Não foi possível salvar o contato.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#a21caf" />
+            </View>
+        );
+    }
 
     return (
         <KeyboardAvoidingView
@@ -103,7 +160,7 @@ export default function ContatoConfiancaScreen({ navigation }) {
                 <Content>
                     <Card>
                         <InfoText>
-                            Este contato receberá um alerta quando você acionar o Botão do Pânico.
+                            Este contato receberá um alerta via E-mail e Notificação Push quando você acionar o Botão do Pânico.
                         </InfoText>
 
                         <Label>E-mail do Contato</Label>
@@ -123,8 +180,12 @@ export default function ContatoConfiancaScreen({ navigation }) {
                             keyboardType="phone-pad"
                         />
 
-                        <SaveButton activeOpacity={0.8} onPress={() => navigation.goBack()}>
-                            <SaveButtonText>Salvar Contato</SaveButtonText>
+                        <SaveButton activeOpacity={0.8} onPress={handleSave} disabled={saving}>
+                            {saving ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <SaveButtonText>Salvar Contato</SaveButtonText>
+                            )}
                         </SaveButton>
                     </Card>
                 </Content>

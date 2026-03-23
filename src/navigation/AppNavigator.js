@@ -33,6 +33,7 @@ import NoticiaDetalheScreen from '../screens/NoticiaDetalheScreen';
 import OuvidoriaDetalheScreen from '../screens/OuvidoriaDetalheScreen';
 import BalcaoDetalheScreen from '../screens/BalcaoDetalheScreen';
 import ProcuradoriaDetalheScreen from '../screens/ProcuradoriaDetalheScreen';
+import PanicLocationScreen from '../screens/PanicLocationScreen';
 
 import { AuthProvider, AuthContext } from '../context/AuthContext';
 
@@ -146,6 +147,7 @@ function NavigationContent() {
                     <Stack.Screen name="OuvidoriaDetalhe" component={OuvidoriaDetalheScreen} />
                     <Stack.Screen name="BalcaoDetalhe" component={BalcaoDetalheScreen} />
                     <Stack.Screen name="ProcuradoriaDetalhe" component={ProcuradoriaDetalheScreen} />
+                    <Stack.Screen name="PanicLocation" component={PanicLocationScreen} />
                 </>
             )}
         </Stack.Navigator>

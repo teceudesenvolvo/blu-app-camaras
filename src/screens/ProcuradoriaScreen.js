@@ -1,8 +1,15 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
-import styled from 'styled-components/native';
-import Constants from 'expo-constants';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
+import * as Location from 'expo-location';
+import { getDatabase, push, ref, serverTimestamp } from 'firebase/database';
+import { useContext, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import styled from 'styled-components/native';
+import app from '../../services/firebaseConfig';
+import { AuthContext } from '../context/AuthContext';
+
+const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const db = getDatabase(app);
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
@@ -119,6 +126,64 @@ const FAB = styled.TouchableOpacity`
 `;
 
 export default function ProcuradoriaScreen({ navigation }) {
+  const { user } = useContext(AuthContext);
+  const [panicLoading, setPanicLoading] = useState(false);
+
+  const handlePanic = async () => {
+    Alert.alert(
+      "CONFIRMAR ALERTA",
+      "Você tem certeza que deseja acionar o botão do pânico? Isso enviará sua localização para o seu contato de confiança.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "SIM, ENVIAR",
+          onPress: async () => {
+            setPanicLoading(true);
+            try {
+              // 1. Pedir permissão de localização
+              let { status } = await Location.requestForegroundPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert("Erro", "Permissão de localização negada. O alerta não pôde ser enviado.");
+                return;
+              }
+
+              // 2. Obter posição atual
+              let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+
+              // 3. (Opcional) Reverse Geocode para endereço amigável
+              let address = "Localização via GPS";
+              try {
+                let reverse = await Location.reverseGeocodeAsync({
+                  latitude: location.coords.latitude,
+                  longitude: location.coords.longitude
+                });
+                if (reverse && reverse.length > 0) {
+                  const item = reverse[0];
+                  address = `${item.street}, ${item.name} - ${item.subregion}`;
+                }
+              } catch (e) { console.log('Erro reverse geocode', e); }
+
+              // 4. Salvar no Firebase para disparar a Cloud Function
+              const panicRef = ref(db, `${flavorId}/panic-alerts/${user.uid}`);
+              await push(panicRef, {
+                lat: location.coords.latitude,
+                lng: location.coords.longitude,
+                address: address,
+                timestamp: serverTimestamp()
+              });
+
+              Alert.alert("ENVIADO", "Seu pedido de socorro foi enviado com sucesso para o seu contato de confiança.");
+            } catch (error) {
+              console.error(error);
+              Alert.alert("Erro", "Houve um problema ao acionar o pânico. Tente novamente.");
+            } finally {
+              setPanicLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
   return (
     <Container>
       <Header>
@@ -126,9 +191,15 @@ export default function ProcuradoriaScreen({ navigation }) {
       </Header>
 
       <ContentContainer showsVerticalScrollIndicator={false}>
-        <ButtonPanic activeOpacity={0.8}>
-          <MaterialCommunityIcons name="shield-alert-outline" size={24} color="#fff" />
-          <ButtonPanicText>Botão do Pânico</ButtonPanicText>
+        <ButtonPanic activeOpacity={0.8} onPress={handlePanic} disabled={panicLoading}>
+          {panicLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="shield-alert-outline" size={24} color="#fff" />
+              <ButtonPanicText>Botão do Pânico</ButtonPanicText>
+            </>
+          )}
         </ButtonPanic>
 
         <ButtonPink activeOpacity={0.8} onPress={() => navigation.navigate('ContatoConfianca')}>
