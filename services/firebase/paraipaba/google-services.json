@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1070248841383",
+    "firebase_url": "https://blu-app-camara-default-rtdb.firebaseio.com",
+    "project_id": "blu-app-camara",
+    "storage_bucket": "blu-app-camara.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1070248841383:android:3ac61da07ee422776bcb82",
+        "android_client_info": {
+          "package_name": "com.blutecnologias.appcamara"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAs8gcVK-jr3Ij-UW_v8Oi0BhMdRKjRjKI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

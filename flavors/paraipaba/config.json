@@ -1,0 +1,12 @@
+{
+    "name": "CM Paraipaba",
+    "slug": "cm-paraipaba",
+    "bundleIdentifier": "com.blutecnologias.cmparaipaba",
+    "flavorId": "paraipaba",
+    "theme": {
+        "primary": "#025AA1",
+        "secondary": "#f9c204",
+        "background": "#f8fafc",
+        "text": "#0f172a"
+    }
+}
