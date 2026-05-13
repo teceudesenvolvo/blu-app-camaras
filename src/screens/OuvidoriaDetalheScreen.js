@@ -1,11 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import React, { useState, useEffect, useContext } from 'react';
-import { ScrollView, View, Text, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import styled from 'styled-components/native';
-import { 
-  getDatabase, ref, onValue, push, set, serverTimestamp 
+import {
+    getDatabase,
+    onValue, push,
+    ref,
+    serverTimestamp,
+    set
 } from 'firebase/database';
+import { useContext, useEffect, useState } from 'react';
+import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import styled from 'styled-components/native';
 import app from '../../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
 
@@ -309,9 +313,9 @@ export default function OuvidoriaDetalheScreen({ route, navigation }) {
                             <Text style={{ color: '#888', textAlign: 'center', marginVertical: 20 }}>Nenhuma mensagem trocada.</Text>
                         )}
                     </View>
-                    
+
                     <InputRow>
-                        <ChatInput 
+                        <ChatInput
                             placeholder="Digite sua mensagem..."
                             value={newMessage}
                             onChangeText={setNewMessage}
@@ -328,16 +332,16 @@ export default function OuvidoriaDetalheScreen({ route, navigation }) {
                         <SectionTitle>Anexos</SectionTitle>
                         <AttachmentContainer>
                             {anexos.map((anexo, index) => (
-                                <AttachmentImage 
-                                    key={index} 
-                                    source={{ uri: anexo.data || anexo.uri }} 
+                                <AttachmentImage
+                                    key={index}
+                                    source={{ uri: anexo.data || anexo.uri }}
                                     resizeMode="cover"
                                 />
                             ))}
                         </AttachmentContainer>
                     </Section>
                 )}
-                
+
                 <View style={{ height: 40 }} />
             </Content>
         </Container>

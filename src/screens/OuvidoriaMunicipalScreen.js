@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
-import { push, ref, serverTimestamp } from 'firebase/database';
-import { useContext, useState } from 'react';
+import { onValue, push, ref, serverTimestamp } from 'firebase/database';
+import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Text, View } from 'react-native';
 import styled from 'styled-components/native';
 import { AuthContext } from '../context/AuthContext';

@@ -16,7 +16,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.blutecnoligias.appcamara",
+      "bundleIdentifier": "com.lavoroservicos.cmparaipaba",
       "googleServicesFile": "./services/firebase/paraipaba/GoogleService-Info.plist",
       "entitlements": {
         "aps-environment": "development"
@@ -32,18 +32,18 @@
       }
     },
     "android": {
-      "package": "com.lavoroservicos.camaraparaipaba",
+      "package": "com.blutecnologias.appcamara",
       "versionCode": 1.0,
       "googleServicesFile": "./services/firebase/paraipaba/google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#ECECEC",
+        "foregroundImage": "./assets/icon.png",
+        "backgroundImage": "./assets/icon.png",
+        "monochromeImage": "./assets/icon.png"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "@react-native-community/datetimepicker",
