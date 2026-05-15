@@ -1,16 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import {
-    getDatabase,
-    onValue, push,
-    ref,
-    serverTimestamp,
-    set
-} from 'firebase/database';
+import * as ImagePicker from 'expo-image-picker';
+import { doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
-import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
-import app from '../../services/firebaseConfig';
+import { firestore } from '../../services/firebaseConfig';
+import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
@@ -106,15 +102,46 @@ const AttachmentContainer = styled.View`
   flex-direction: row;
   flex-wrap: wrap;
   margin-top: 10px;
+  margin-bottom: 5px;
+`;
+
+const FileCard = styled.View`
+  background-color: #f9fafb;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+  border-width: 1px;
+  border-color: #e5e7eb;
+`;
+
+const FileCardTitle = styled.Text`
+  font-size: 13px;
+  color: #4b5563;
+  font-weight: bold;
+  margin-bottom: 5px;
+`;
+
+const UploadButton = styled.TouchableOpacity`
+  flex-direction: row;
+  align-items: center;
+  background-color: #e5e7eb;
+  padding: 6px 12px;
+  border-radius: 6px;
+  align-self: flex-start;
+  margin-top: 8px;
+`;
+
+const UploadButtonText = styled.Text`
+  font-size: 12px;
+  color: #374151;
+  margin-left: 5px;
 `;
 
 const AttachmentImage = styled.Image`
-  width: 100px;
-  height: 100px;
+  width: 100%;
+  height: 200px;
   border-radius: 8px;
-  margin-right: 10px;
   margin-bottom: 10px;
-  background-color: #eee;
 `;
 
 // Estilos para Chat
@@ -159,35 +186,66 @@ const ChatInput = styled.TextInput`
 export default function OuvidoriaDetalheScreen({ route, navigation }) {
     const { user } = useContext(AuthContext);
     const { item } = route.params;
-    const { dadosManifestacao, dadosUsuario, dataManifestacao: initialData, status: initialStatus, id: solicitacaoId } = item;
-
-    // Anexos podem estar no topo (antigo) ou dentro de dadosManifestacao (novo)
-    const anexos = dadosManifestacao?.anexos || item.anexos || [];
+    const { dadosManifestacao: initialDados, dadosUsuario, dataManifestacao: initialData, status: initialStatus, id: solicitacaoId } = item;
 
     const [status, setStatus] = useState(initialStatus);
+    const [dadosManifestacao, setDadosManifestacao] = useState(initialDados || {});
+    const [rootAnexos, setRootAnexos] = useState(item.anexos || null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
+    const [uploading, setUploading] = useState(false);
 
-    const db = getDatabase(app);
+    const FIELD_LABELS = {
+        arquivos_adicionais: "Arquivos Adicionais",
+        evidencias: "Evidências",
+        documentos: "Documentos",
+        anexos: "Anexos"
+    };
+
+
 
     useEffect(() => {
-        const statusRef = ref(db, `${flavorId}/ouvidoria/${solicitacaoId}/status`);
-        const messagesRef = ref(db, `${flavorId}/ouvidoria/${solicitacaoId}/messages`);
+        const docRef = doc(firestore, 'ouvidoria', solicitacaoId);
 
-        const unsubStatus = onValue(statusRef, (snap) => {
-            if (snap.exists()) setStatus(snap.val());
-        });
+        const unsubStatus = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setStatus(data.status);
+                setDadosManifestacao(data.dadosManifestacao || {});
+                if (data.anexos) {
+                    setRootAnexos(data.anexos);
+                }
 
-        const unsubMessages = onValue(messagesRef, (snap) => {
-            if (snap.exists()) {
-                const msgsList = Object.values(snap.val()).sort((a, b) => a.timestamp - b.timestamp);
-                setMessages(msgsList);
+                // Carregar mensagens do mapa 'messages' dentro do documento (padrão web)
+                if (data.messages) {
+                    let msgsList = [];
+                    if (Array.isArray(data.messages)) {
+                        msgsList = data.messages.map((m, i) => ({ id: i.toString(), ...m }));
+                    } else {
+                        msgsList = Object.entries(data.messages).map(([id, msg]) => ({
+                            id,
+                            ...msg
+                        }));
+                    }
+
+                    msgsList.sort((a, b) => {
+                        const getTime = (obj) => {
+                            const ts = obj.timestamp || obj.createdAt || obj.data;
+                            if (!ts) return Date.now();
+                            if (ts.toMillis) return ts.toMillis();
+                            if (ts.seconds) return ts.seconds * 1000;
+                            const d = new Date(typeof ts === 'number' ? ts : ts).getTime();
+                            return isNaN(d) ? 0 : d;
+                        };
+                        return getTime(a) - getTime(b);
+                    });
+                    setMessages(msgsList);
+                }
             }
         });
 
         return () => {
             unsubStatus();
-            unsubMessages();
         };
     }, [solicitacaoId]);
 
@@ -195,18 +253,85 @@ export default function OuvidoriaDetalheScreen({ route, navigation }) {
         if (!newMessage.trim()) return;
 
         try {
-            const messagesRef = ref(db, `${flavorId}/ouvidoria/${solicitacaoId}/messages`);
-            const newMsgRef = push(messagesRef);
-            await set(newMsgRef, {
-                text: newMessage,
-                sender: 'user',
-                timestamp: serverTimestamp(),
-                userId: user?.uid || 'anonimo'
+            const docRef = doc(firestore, 'ouvidoria', solicitacaoId);
+            const msgId = Date.now().toString();
+
+            const docSnap = await getDoc(docRef); // Verifica se o documento existe
+            if (!docSnap.exists()) {
+                Alert.alert("Erro", "A manifestação não foi encontrada ou foi removida. Não é possível enviar a mensagem.");
+                return;
+            }
+
+            await updateDoc(docRef, {
+                [`messages.${msgId}`]: {
+                    text: newMessage,
+                    sender: 'user',
+                    timestamp: new Date().toISOString(), // Padrão ISO igual ao web
+                    userId: user?.uid || 'anonimo'
+                }
             });
             setNewMessage('');
         } catch (error) {
             console.error(error);
             Alert.alert("Erro", "Não foi possível enviar a mensagem.");
+        }
+    };
+
+    const handleFileUpdate = async (fieldKey) => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: false,
+            quality: 0.5,
+        });
+
+        if (!result.canceled) {
+            setUploading(true);
+            try {
+                const asset = result.assets[0];
+                const folderPath = `${flavorId}/ouvidoria/${user.uid}/anexos`;
+                const downloadUrl = await uploadFileToStorage(asset.uri, folderPath);
+
+                const newFile = {
+                    name: asset.uri.split('/').pop(),
+                    type: asset.type || 'image/jpeg',
+                    url: downloadUrl,
+                    data: downloadUrl,
+                    uri: downloadUrl
+                };
+
+                const fsDocRef = doc(firestore, 'ouvidoria', solicitacaoId);
+                const currentDoc = await getDoc(fsDocRef);
+                const currentData = currentDoc.data();
+                const currentAnexos = currentData.dadosManifestacao?.anexos || currentData.anexos || {};
+
+                let updatedFieldFiles = [newFile];
+
+                // Tratar se anexos antigos forem array
+                if (Array.isArray(currentAnexos)) {
+                    updatedFieldFiles = [...currentAnexos, newFile];
+                    await updateDoc(fsDocRef, {
+                        anexos: updatedFieldFiles,
+                        ultimaAtualizacao: firestoreTimestamp(),
+                        status: 'Manifestação Atualizada'
+                    });
+                } else {
+                    if (fieldKey === 'arquivos_adicionais' || currentAnexos[fieldKey]) {
+                        updatedFieldFiles = [...(currentAnexos[fieldKey] || []), newFile];
+                    }
+                    await updateDoc(fsDocRef, {
+                        [`dadosManifestacao.anexos.${fieldKey}`]: updatedFieldFiles,
+                        ultimaAtualizacao: firestoreTimestamp(),
+                        status: 'Manifestação Atualizada'
+                    });
+                }
+
+                Alert.alert("Sucesso", "Arquivo enviado com sucesso!");
+            } catch (error) {
+                console.error("Erro ao fazer upload:", error);
+                Alert.alert("Erro", "Falha ao enviar arquivo.");
+            } finally {
+                setUploading(false);
+            }
         }
     };
 
@@ -222,7 +347,19 @@ export default function OuvidoriaDetalheScreen({ route, navigation }) {
 
     const formatDate = (ts) => {
         if (!ts) return 'N/A';
-        return new Date(ts).toLocaleString('pt-BR');
+        let date;
+        if (typeof ts === 'object' && ts.toDate) {
+            date = ts.toDate();
+        } else if (typeof ts === 'object' && ts.seconds) {
+            date = new Date(ts.seconds * 1000);
+        } else if (typeof ts === 'number' || (typeof ts === 'string' && !isNaN(Number(ts)))) {
+            // Trata timestamps numéricos (ms) vindos do RTDB/Migração
+            date = new Date(Number(ts));
+        } else {
+            date = new Date(ts);
+        }
+        if (isNaN(date.getTime())) return 'N/A';
+        return date.toLocaleString('pt-BR');
     };
 
     return (
@@ -302,10 +439,10 @@ export default function OuvidoriaDetalheScreen({ route, navigation }) {
                     <View style={{ minHeight: 100 }}>
                         {messages.length > 0 ? (
                             messages.map((msg, index) => (
-                                <MessageBubble key={index} isUser={msg.sender === 'user'}>
-                                    <MessageText isUser={msg.sender === 'user'}>{msg.text}</MessageText>
+                                <MessageBubble key={msg.id || index} isUser={msg.sender === 'user'}>
+                                    <MessageText isUser={msg.sender === 'user'}>{msg.text || msg.message || msg.msg || ''}</MessageText>
                                     <MessageTime isUser={msg.sender === 'user'}>
-                                        {new Date(msg.timestamp).toLocaleString('pt-BR')}
+                                        {formatDate(msg.timestamp || msg.createdAt || msg.data)}
                                     </MessageTime>
                                 </MessageBubble>
                             ))
@@ -327,18 +464,53 @@ export default function OuvidoriaDetalheScreen({ route, navigation }) {
                     </InputRow>
                 </Section>
 
-                {anexos && anexos.length > 0 && (
+                {((dadosManifestacao?.anexos && Object.keys(dadosManifestacao.anexos).length > 0) || (rootAnexos && (Array.isArray(rootAnexos) ? rootAnexos.length > 0 : Object.keys(rootAnexos).length > 0))) && (
                     <Section>
-                        <SectionTitle>Anexos</SectionTitle>
-                        <AttachmentContainer>
-                            {anexos.map((anexo, index) => (
-                                <AttachmentImage
-                                    key={index}
-                                    source={{ uri: anexo.data || anexo.uri }}
-                                    resizeMode="cover"
-                                />
-                            ))}
-                        </AttachmentContainer>
+                        <SectionTitle>Documentação e Anexos</SectionTitle>
+                        {Object.entries(
+                            dadosManifestacao?.anexos ||
+                            (Array.isArray(rootAnexos) ? { anexos: rootAnexos } : rootAnexos) || {}
+                        ).map(([field, files]) => {
+                            const filesArray = Array.isArray(files) ? files : [files];
+                            return (
+                                <FileCard key={field}>
+                                    <FileCardTitle>{FIELD_LABELS[field] || field}:</FileCardTitle>
+                                    {filesArray.map((anexo, idx) => {
+                                        if (!anexo) return null;
+
+                                        const uri = typeof anexo === 'string' ? anexo : (anexo.url || anexo.data || anexo.uri);
+                                        const fileName = typeof anexo === 'string' ? 'Arquivo' : (anexo.name || 'Arquivo Anexado');
+
+                                        if (!uri) return <Text key={idx} style={{ color: 'red' }}>Erro: URI inválida</Text>;
+
+                                        return (
+                                            <View key={idx}>
+                                                <AttachmentImage
+                                                    source={{ uri }}
+                                                    resizeMode="contain"
+                                                />
+                                                <Text style={{ fontSize: 12, color: '#2563eb', marginBottom: 5 }}>
+                                                    <Ionicons name="document-attach" /> {fileName}
+                                                </Text>
+                                            </View>
+                                        );
+                                    })}
+                                    <UploadButton onPress={() => handleFileUpdate(field)} disabled={uploading}>
+                                        {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="cloud-upload-outline" size={16} color="#374151" />}
+                                        <UploadButtonText>{uploading ? 'Enviando...' : 'Substituir Arquivo'}</UploadButtonText>
+                                    </UploadButton>
+                                </FileCard>
+                            );
+                        })}
+                    </Section>
+                )}
+
+                {(!(dadosManifestacao?.anexos?.arquivos_adicionais || (rootAnexos && !Array.isArray(rootAnexos) && rootAnexos.arquivos_adicionais))) && (
+                    <Section>
+                        <UploadButton onPress={() => handleFileUpdate('arquivos_adicionais')} disabled={uploading} style={{ backgroundColor: '#e5e7eb', padding: 12, borderRadius: 8, width: '100%', justifyContent: 'center' }}>
+                            {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="add-circle-outline" size={20} color="#374151" />}
+                            <UploadButtonText style={{ fontSize: 14 }}>{uploading ? 'Enviando...' : 'Anexar Outros Arquivos'}</UploadButtonText>
+                        </UploadButton>
                     </Section>
                 )}
 

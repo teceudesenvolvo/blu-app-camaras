@@ -1,15 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
-import {
-    get,
-    getDatabase,
-    onValue, push,
-    ref,
-    serverTimestamp,
-    set,
-    update
-} from 'firebase/database';
+import * as ImagePicker from 'expo-image-picker';
+import { doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -20,7 +13,8 @@ import {
     View
 } from 'react-native';
 import styled from 'styled-components/native';
-import app from '../../services/firebaseConfig';
+import { firestore } from '../../services/firebaseConfig';
+import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
@@ -118,13 +112,43 @@ const AttachmentContainer = styled.View`
   margin-top: 10px;
 `;
 
-const AttachmentImage = styled.Image`
-  width: 100px;
-  height: 100px;
+const FileCard = styled.View`
+  background-color: #f9fafb;
   border-radius: 8px;
-  margin-right: 10px;
+  padding: 10px;
+  margin-bottom: 12px;
+  border-width: 1px;
+  border-color: #e5e7eb;
+`;
+
+const FileCardTitle = styled.Text`
+  font-size: 13px;
+  color: #4b5563;
+  font-weight: bold;
+  margin-bottom: 5px;
+`;
+
+const UploadButton = styled.TouchableOpacity`
+  flex-direction: row;
+  align-items: center;
+  background-color: #e5e7eb;
+  padding: 6px 12px;
+  border-radius: 6px;
+  align-self: flex-start;
+  margin-top: 8px;
+`;
+
+const UploadButtonText = styled.Text`
+  font-size: 12px;
+  color: #374151;
+  margin-left: 5px;
+`;
+
+const AttachmentImage = styled.Image`
+  width: 100%;
+  height: 200px;
+  border-radius: 8px;
   margin-bottom: 10px;
-  background-color: #eee;
 `;
 
 // Estilos para Chat
@@ -192,9 +216,11 @@ const SlotText = styled.Text`
 export default function BalcaoDetalheScreen({ route, navigation }) {
     const { user } = useContext(AuthContext);
     const { item } = route.params;
-    const { dadosSolicitacao, userName, userPhone, tipo, status: currentStatus, createdAt, id: solicitacaoId } = item;
+    const { userName, userPhone, tipo, status: currentStatus, createdAt, id: solicitacaoId } = item;
 
     const [status, setStatus] = useState(currentStatus);
+    const [dadosSolicitacao, setDadosSolicitacao] = useState(item.dadosSolicitacao || {});
+    const [rootAnexos, setRootAnexos] = useState(item.anexos || null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
 
@@ -208,28 +234,60 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
     const [availableTimes, setAvailableTimes] = useState([]);
     const [loadingConfig, setLoadingConfig] = useState(false);
     const [scheduling, setScheduling] = useState(false);
+    const [uploading, setUploading] = useState(false);
 
-    const db = getDatabase(app);
+    const FIELD_LABELS = {
+        cin_certidao: "Certidão de Nascimento/Casamento",
+        cin_responsavel: "Documento do Responsável",
+        cpf_identidade: "Documento de Identidade (RG/CNH)",
+        cpf_estado_civil: "Comprovante de Estado Civil",
+        cpf_selfie: "Selfie com Documento",
+        cpf_residencia: "Comprovante de Residência",
+        arquivos_adicionais: "Arquivos Adicionais"
+    };
 
-    // 1. Escutar mensagens e status em tempo real
     useEffect(() => {
-        const statusRef = ref(db, `${flavorId}/balcao-cidadao/${solicitacaoId}/status`);
-        const messagesRef = ref(db, `${flavorId}/balcao-cidadao/${solicitacaoId}/messages`);
+        const docRef = doc(firestore, 'balcao-cidadao', solicitacaoId);
 
-        const unsubStatus = onValue(statusRef, (snap) => {
-            if (snap.exists()) setStatus(snap.val());
-        });
+        const unsubStatus = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setStatus(data.status);
+                setDadosSolicitacao(data.dadosSolicitacao || {});
+                if (data.anexos) {
+                    setRootAnexos(data.anexos);
+                }
 
-        const unsubMessages = onValue(messagesRef, (snap) => {
-            if (snap.exists()) {
-                const msgsList = Object.values(snap.val()).sort((a, b) => a.timestamp - b.timestamp);
-                setMessages(msgsList);
+                // Carregar mensagens do mapa 'messages' dentro do documento (padrão web)
+                if (data.messages) {
+                    let msgsList = [];
+                    if (Array.isArray(data.messages)) {
+                        msgsList = data.messages.map((m, i) => ({ id: i.toString(), ...m }));
+                    } else {
+                        msgsList = Object.entries(data.messages).map(([id, msg]) => ({
+                            id,
+                            ...msg
+                        }));
+                    }
+
+                    msgsList.sort((a, b) => {
+                        const getTime = (obj) => {
+                            const ts = obj.timestamp || obj.createdAt || obj.data;
+                            if (!ts) return Date.now();
+                            if (ts.toMillis) return ts.toMillis();
+                            if (ts.seconds) return ts.seconds * 1000;
+                            const d = new Date(typeof ts === 'number' ? ts : ts).getTime();
+                            return isNaN(d) ? 0 : d;
+                        };
+                        return getTime(a) - getTime(b);
+                    });
+                    setMessages(msgsList);
+                }
             }
         });
 
         return () => {
             unsubStatus();
-            unsubMessages();
         };
     }, [solicitacaoId]);
 
@@ -243,19 +301,22 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
     const fetchAgendamentoConfig = async () => {
         setLoadingConfig(true);
         try {
-            const availRef = ref(db, `${flavorId}/balcao-config/availability`);
-            const bookedRef = ref(db, `${flavorId}/balcao-config/bookedSlots`);
-            const blockedRef = ref(db, `${flavorId}/balcao-config/blockedDates`);
+            const availabilityRef = doc(firestore, 'balcao-config', 'availability');
+            const bookedSlotsRef = doc(firestore, 'balcao-config', 'bookedSlots');
+            const blockedDatesRef = doc(firestore, 'balcao-config', 'blockedDates');
 
             const [availSnap, bookedSnap, blockedSnap] = await Promise.all([
-                get(availRef), get(bookedRef), get(blockedRef)
+                getDoc(availabilityRef), getDoc(bookedSlotsRef), getDoc(blockedDatesRef)
             ]);
 
-            if (availSnap.exists()) setAvailability(availSnap.val());
-            if (bookedSnap.exists()) setBookedSlots(bookedSnap.val());
+            if (availSnap.exists()) setAvailability(availSnap.data());
+            if (bookedSnap.exists()) setBookedSlots(bookedSnap.data());
 
             let manualBlocked = [];
-            if (blockedSnap.exists()) manualBlocked = blockedSnap.val() || [];
+            if (blockedSnap.exists()) {
+                const data = blockedSnap.data();
+                manualBlocked = data.dates || data.blockedDates || [];
+            }
 
             // BrasilAPI Holidays
             const currentYear = new Date().getFullYear();
@@ -301,8 +362,10 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
     const updateAvailableTimes = (date) => {
         if (!availability) return;
 
-        const dateBR = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-        const dateISO = date.toISOString().split('T')[0];
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const dateISO = `${date.getFullYear()}-${month}-${day}`;
+        const dateBR = `${day}/${month}/${date.getFullYear()}`;
 
         if (blockedDates.includes(dateBR)) {
             setAvailableTimes([]);
@@ -310,9 +373,12 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
             return;
         }
 
+        // Dia da semana em inglês para bater com o portal web
         const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-        const allSlots = availability[dayOfWeek] ? Object.values(availability[dayOfWeek]) : [];
-        const booked = bookedSlots[dateISO] || [];
+        
+        const allSlots = availability[dayOfWeek] || [];
+        const bookedObj = bookedSlots[dateISO] || [];
+        const booked = Array.isArray(bookedObj) ? bookedObj : Object.keys(bookedObj);
 
         const freeSlots = allSlots.filter(s => !booked.includes(s));
         setAvailableTimes(freeSlots);
@@ -328,13 +394,19 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
 
         setScheduling(true);
         try {
-            const dateISO = appointmentDate.toISOString().split('T')[0];
-            const solicitacaoRef = ref(db, `${flavorId}/balcao-cidadao/${solicitacaoId}`);
-            const bookedSlotRef = ref(db, `${flavorId}/balcao-config/bookedSlots/${dateISO}`);
+            const day = String(appointmentDate.getDate()).padStart(2, '0');
+            const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
+            const dateISO = `${appointmentDate.getFullYear()}-${month}-${day}`;
+            const configRef = doc(firestore, 'balcao-config', 'bookedSlots');
 
             // Check race condition
-            const snap = await get(bookedSlotRef);
-            const existing = snap.val() || [];
+            const configSnap = await getDoc(configRef);
+            let existing = [];
+            if (configSnap.exists()) {
+                const data = configSnap.data();
+                existing = Array.isArray(data[dateISO]) ? data[dateISO] : (data[dateISO] ? Object.keys(data[dateISO]) : []);
+            }
+
             if (existing.includes(appointmentTime)) {
                 Alert.alert("Erro", "Este horário acaba de ser ocupado. Por favor, escolha outro.");
                 setScheduling(false);
@@ -342,12 +414,18 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                 return;
             }
 
-            await update(solicitacaoRef, {
+            // Update Config usando array como o portal web
+            await updateDoc(configRef, {
+                [dateISO]: [...existing, appointmentTime]
+            });
+
+            // Update Document
+            const fsDocRef = doc(firestore, 'balcao-cidadao', solicitacaoId);
+            await updateDoc(fsDocRef, {
                 status: 'Agendado',
                 appointmentDate: appointmentDate.toLocaleDateString('pt-BR'),
                 appointmentTime: appointmentTime
             });
-            await set(bookedSlotRef, [...existing, appointmentTime]);
 
             Alert.alert("Sucesso", "Agendamento confirmado!");
         } catch (error) {
@@ -363,18 +441,76 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
         if (!newMessage.trim()) return;
 
         try {
-            const messagesRef = ref(db, `${flavorId}/balcao-cidadao/${solicitacaoId}/messages`);
-            const newMsgRef = push(messagesRef);
-            await set(newMsgRef, {
-                text: newMessage,
-                sender: 'user',
-                timestamp: serverTimestamp(),
-                userId: user.uid
+            const docRef = doc(firestore, 'balcao-cidadao', solicitacaoId);
+            const msgId = Date.now().toString();
+
+            const docSnap = await getDoc(docRef); // Verifica se o documento existe
+            if (!docSnap.exists()) {
+                Alert.alert("Erro", "A solicitação não foi encontrada ou foi removida. Não é possível enviar a mensagem.");
+                return;
+            }
+
+            await updateDoc(docRef, {
+                [`messages.${msgId}`]: {
+                    text: newMessage,
+                    sender: 'user',
+                    timestamp: new Date().toISOString(), // Padrão ISO igual ao web
+                    userId: user?.uid || 'anonimo'
+                }
             });
             setNewMessage('');
         } catch (error) {
             console.error(error);
             Alert.alert("Erro", "Não foi possível enviar a mensagem.");
+        }
+    };
+
+
+    const handleFileUpdate = async (fieldKey) => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: false,
+            quality: 0.5,
+        });
+
+        if (!result.canceled) {
+            setUploading(true);
+            try {
+                const asset = result.assets[0];
+                const folderPath = `${flavorId}/balcao-cidadao/${user.uid}/anexos`;
+                const downloadUrl = await uploadFileToStorage(asset.uri, folderPath);
+
+                const newFile = {
+                    name: asset.uri.split('/').pop(),
+                    type: asset.type || 'image/jpeg',
+                    url: downloadUrl,
+                    data: downloadUrl,
+                    uri: downloadUrl
+                };
+
+                const fsDocRef = doc(firestore, 'balcao-cidadao', solicitacaoId);
+                const currentDoc = await getDoc(fsDocRef);
+                const currentAnexos = currentDoc.data().dadosSolicitacao?.anexos || {};
+
+                let updatedFieldFiles = [newFile];
+                if (fieldKey === 'arquivos_adicionais') {
+                    updatedFieldFiles = [...(currentAnexos.arquivos_adicionais || []), newFile];
+                }
+
+                await updateDoc(fsDocRef, {
+                    [`dadosSolicitacao.anexos.${fieldKey}`]: updatedFieldFiles,
+                    ultimaAtualizacao: firestoreTimestamp(),
+                    status: 'Documentação Reenviada',
+                    deletionTimestamp: null
+                });
+
+                Alert.alert("Sucesso", "Arquivo atualizado com sucesso!");
+            } catch (error) {
+                console.error("Erro ao fazer upload:", error);
+                Alert.alert("Erro", "Falha ao enviar arquivo.");
+            } finally {
+                setUploading(false);
+            }
         }
     };
 
@@ -391,7 +527,19 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
 
     const formatDate = (ts) => {
         if (!ts) return 'N/A';
-        return new Date(ts).toLocaleString('pt-BR');
+        let date;
+        if (typeof ts === 'object' && ts.toDate) {
+            date = ts.toDate();
+        } else if (typeof ts === 'object' && ts.seconds) {
+            date = new Date(ts.seconds * 1000);
+        } else if (typeof ts === 'number' || (typeof ts === 'string' && !isNaN(Number(ts)))) {
+            // Trata timestamps numéricos (ms) vindos do RTDB/Migração
+            date = new Date(Number(ts));
+        } else {
+            date = new Date(ts);
+        }
+        if (isNaN(date.getTime())) return 'N/A';
+        return date.toLocaleString('pt-BR');
     };
 
     return (
@@ -492,6 +640,26 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                     </Section>
                 )}
 
+                {item.dadosBeneficiario && (
+                    <Section>
+                        <SectionTitle>Beneficiário do Atendimento</SectionTitle>
+                        <InfoRow>
+                            <Label>Nome</Label>
+                            <Value>{item.dadosBeneficiario.name || 'N/A'}</Value>
+                        </InfoRow>
+                        <InfoRow>
+                            <Label>Grau de Parentesco</Label>
+                            <Value>{item.dadosBeneficiario.parentesco || 'N/A'}</Value>
+                        </InfoRow>
+                        {item.dadosBeneficiario.cpf && (
+                            <InfoRow>
+                                <Label>CPF</Label>
+                                <Value>{item.dadosBeneficiario.cpf}</Value>
+                            </InfoRow>
+                        )}
+                    </Section>
+                )}
+
                 <Section>
                     <SectionTitle>Dados do Serviço</SectionTitle>
                     <InfoRow>
@@ -523,10 +691,10 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                     <View style={{ minHeight: 100 }}>
                         {messages.length > 0 ? (
                             messages.map((msg, index) => (
-                                <MessageBubble key={index} isUser={msg.sender === 'user'}>
-                                    <MessageText isUser={msg.sender === 'user'}>{msg.text}</MessageText>
+                                <MessageBubble key={msg.id || index} isUser={msg.sender === 'user'}>
+                                    <MessageText isUser={msg.sender === 'user'}>{msg.text || msg.message || msg.msg || ''}</MessageText>
                                     <MessageTime isUser={msg.sender === 'user'}>
-                                        {new Date(msg.timestamp).toLocaleString('pt-BR')}
+                                        {formatDate(msg.timestamp || msg.createdAt || msg.data)}
                                     </MessageTime>
                                 </MessageBubble>
                             ))
@@ -547,22 +715,55 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                         </TouchableOpacity>
                     </InputRow>
                 </Section>
-
-                {item.dadosSolicitacao?.anexos && (
+                {(!(dadosSolicitacao?.anexos?.arquivos_adicionais || rootAnexos?.arquivos_adicionais)) && (
                     <Section>
-                        <SectionTitle>Anexos</SectionTitle>
-                        <AttachmentContainer>
-                            {/* Flattening attachments logic */}
-                            {Object.values(item.dadosSolicitacao.anexos).flat().map((anexo, index) => (
-                                <AttachmentImage
-                                    key={index}
-                                    source={{ uri: anexo.data || anexo.uri }}
-                                    resizeMode="cover"
-                                />
-                            ))}
-                        </AttachmentContainer>
+                        <UploadButton onPress={() => handleFileUpdate('arquivos_adicionais')} disabled={uploading} style={{ backgroundColor: '#e5e7eb', padding: 12, borderRadius: 8, width: '100%', justifyContent: 'center' }}>
+                            {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="add-circle-outline" size={20} color="#374151" />}
+                            <UploadButtonText style={{ fontSize: 14 }}>{uploading ? 'Enviando...' : 'Anexar Outros Arquivos'}</UploadButtonText>
+                        </UploadButton>
                     </Section>
                 )}
+
+                {((dadosSolicitacao?.anexos && Object.keys(dadosSolicitacao.anexos).length > 0) || rootAnexos) && (
+                    <Section>
+                        <SectionTitle>Documentação e Anexos</SectionTitle>
+                        {Object.entries(dadosSolicitacao?.anexos || rootAnexos || {}).map(([field, files]) => {
+                            // files pode ser um array de arquivos ou um único arquivo em dados legados
+                            const filesArray = Array.isArray(files) ? files : [files];
+                            return (
+                                <FileCard key={field}>
+                                    <FileCardTitle>{FIELD_LABELS[field] || field}:</FileCardTitle>
+                                    {filesArray.map((anexo, idx) => {
+                                        if (!anexo) return null;
+
+                                        const uri = typeof anexo === 'string' ? anexo : (anexo.url || anexo.data || anexo.uri);
+                                        const fileName = typeof anexo === 'string' ? 'Arquivo' : (anexo.name || 'Arquivo Anexado');
+
+                                        if (!uri) return <Text key={idx} style={{ color: 'red' }}>Erro: URI inválida</Text>;
+
+                                        return (
+                                            <View key={idx}>
+                                                <AttachmentImage
+                                                    source={{ uri }}
+                                                    resizeMode="contain"
+                                                />
+                                                <Text style={{ fontSize: 12, color: '#2563eb', marginBottom: 5 }}>
+                                                    <Ionicons name="document-attach" /> {fileName}
+                                                </Text>
+                                            </View>
+                                        );
+                                    })}
+                                    <UploadButton onPress={() => handleFileUpdate(field)} disabled={uploading}>
+                                        {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="cloud-upload-outline" size={16} color="#374151" />}
+                                        <UploadButtonText>{uploading ? 'Enviando...' : 'Substituir Arquivo'}</UploadButtonText>
+                                    </UploadButton>
+                                </FileCard>
+                            );
+                        })}
+                    </Section>
+                )}
+
+
 
                 <View style={{ height: 40 }} />
             </Content>

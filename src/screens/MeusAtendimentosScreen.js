@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import styled from 'styled-components/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { AuthContext } from '../context/AuthContext';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
-import { getDatabase, ref, query, orderByChild, equalTo, onValue } from 'firebase/database';
-import app from '../../services/firebaseConfig';
+import { collection, doc, getDoc, onSnapshot, query, runTransaction, where } from 'firebase/firestore';
+import { useContext, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import styled from 'styled-components/native';
+import { firestore } from '../../services/firebaseConfig';
+import { AuthContext } from '../context/AuthContext';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
@@ -99,6 +100,257 @@ const StatusText = styled.Text`
   text-transform: uppercase;
 `;
 
+const FormContainer = styled.View`
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top-width: 1px;
+  border-color: #eee;
+`;
+
+const Label = styled.Text`
+  font-size: 13px;
+  font-weight: bold;
+  color: #444;
+  margin-bottom: 8px;
+`;
+
+const SlotContainer = styled.View`
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin-top: 5px;
+  margin-bottom: 15px;
+`;
+
+const SlotButton = styled.TouchableOpacity`
+  padding: 8px 12px;
+  border-radius: 20px;
+  background-color: ${props => props.selected ? primaryColor : '#f5f5f5'};
+  margin-right: 8px;
+  margin-bottom: 8px;
+  border-width: 1px;
+  border-color: ${props => props.selected ? primaryColor : '#ddd'};
+`;
+
+const SlotText = styled.Text`
+  color: ${props => props.selected ? '#fff' : '#666'};
+  font-size: 12px;
+  font-weight: 600;
+`;
+
+const SubmitBtn = styled.TouchableOpacity`
+  background-color: ${primaryColor};
+  padding: 10px;
+  border-radius: 8px;
+  align-items: center;
+`;
+
+const SubmitBtnText = styled.Text`
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+`;
+
+const AgendamentoInlineForm = ({ solicitacaoId }) => {
+    const [appointmentDate, setAppointmentDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [appointmentTime, setAppointmentTime] = useState('');
+    const [availability, setAvailability] = useState(null);
+    const [bookedSlots, setBookedSlots] = useState({});
+    const [blockedDates, setBlockedDates] = useState([]);
+    const [availableTimes, setAvailableTimes] = useState([]);
+    const [loadingConfig, setLoadingConfig] = useState(true);
+    const [scheduling, setScheduling] = useState(false);
+
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const availabilityRef = doc(firestore, 'balcao-config', 'availability');
+                const bookedSlotsRef = doc(firestore, 'balcao-config', 'bookedSlots');
+                const blockedDatesRef = doc(firestore, 'balcao-config', 'blockedDates');
+
+                const [availSnap, bookedSnap, blockedSnap] = await Promise.all([
+                    getDoc(availabilityRef), getDoc(bookedSlotsRef), getDoc(blockedDatesRef)
+                ]);
+
+                if (availSnap.exists()) setAvailability(availSnap.data());
+                if (bookedSnap.exists()) setBookedSlots(bookedSnap.data());
+
+                let manualBlocked = [];
+                if (blockedSnap.exists()) {
+                    const data = blockedSnap.data();
+                    manualBlocked = data.dates || data.blockedDates || [];
+                }
+
+                    const currentYear = new Date().getFullYear();
+                    const years = [currentYear, currentYear + 1];
+                    let holidays = [];
+
+                    await Promise.all(years.map(async (year) => {
+                        // Feriados Locais Fixos (Exemplo)
+                        holidays.push(`05/02/${year}`);
+                        holidays.push(`01/11/${year}`);
+                        holidays.push(`19/03/${year}`);
+                        try {
+                            const res = await fetch(`https://brasilapi.com.br/api/feriados/v1/${year}`);
+                            if (res.ok) {
+                                const hData = await res.json();
+                                const formatted = hData.map(h => {
+                                    const [y, m, d] = h.date.split('-');
+                                    return `${d}/${m}/${y}`;
+                                });
+                                holidays = [...holidays, ...formatted];
+                            }
+                        } catch (error) {
+                            console.log("Erro ao buscar feriados", error);
+                        }
+                    }));
+
+                    const allBlockedDates = [...new Set([...manualBlocked, ...holidays])];
+                    setBlockedDates(allBlockedDates);
+            } catch (error) {
+                console.error("Erro ao carregar configurações de agenda", error);
+            } finally {
+                setLoadingConfig(false);
+            }
+        };
+
+        fetchConfig();
+    }, []);
+
+    useEffect(() => {
+        if (!availability) return;
+
+        // Formata data para bater com o padrão Web (YYYY-MM-DD para chaves e DD/MM/YYYY para bloqueios)
+        const day = String(appointmentDate.getDate()).padStart(2, '0');
+        const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
+        const dateISO = `${appointmentDate.getFullYear()}-${month}-${day}`;
+        const dateBR = `${day}/${month}/${appointmentDate.getFullYear()}`;
+
+        if (blockedDates.includes(dateBR)) {
+            setAvailableTimes([]);
+            setAppointmentTime('');
+            return;
+        }
+
+        // Obtém o dia da semana em inglês para bater com o mapa 'availability'
+        const dayOfWeek = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+        
+        const allSlotsForDay = availability[dayOfWeek] || [];
+        
+        const existingObj = bookedSlots[dateISO] || [];
+        // O portal web armazena bookedSlots como arrays de horários
+        const existingBookings = Array.isArray(existingObj) ? existingObj : Object.keys(existingObj);
+
+        const freeSlots = allSlotsForDay.filter(slot => !existingBookings.includes(slot));
+        setAvailableTimes(freeSlots);
+        setAppointmentTime('');
+    }, [appointmentDate, availability, bookedSlots, blockedDates]);
+
+    const onDateChange = (event, selectedDate) => {
+        setShowDatePicker(false);
+        if (selectedDate) {
+            setAppointmentDate(selectedDate);
+        }
+    };
+
+    const handleSchedule = async () => {
+        if (!appointmentTime) return;
+        setScheduling(true);
+        const day = String(appointmentDate.getDate()).padStart(2, '0');
+        const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
+        const dateISO = `${appointmentDate.getFullYear()}-${month}-${day}`;
+
+        try {
+            const bookedSlotRef = doc(firestore, 'balcao-config', 'bookedSlots');
+            const solicitacaoRef = doc(firestore, 'balcao-cidadao', solicitacaoId);
+
+            await runTransaction(firestore, async (transaction) => {
+                const configSnap = await transaction.get(bookedSlotRef);
+                
+                let existing = [];
+                if (configSnap.exists()) {
+                    const data = configSnap.data();
+                    existing = Array.isArray(data[dateISO]) ? data[dateISO] : (data[dateISO] ? Object.keys(data[dateISO]) : []);
+                }
+
+                if (existing.includes(appointmentTime)) {
+                    throw new Error("Este horário acabou de ser ocupado. Por favor, escolha outro.");
+                }
+
+                transaction.update(solicitacaoRef, {
+                    status: 'Agendado',
+                    appointmentDate: appointmentDate.toLocaleDateString('pt-BR'),
+                    appointmentTime: appointmentTime
+                });
+
+                transaction.set(bookedSlotRef, {
+                    [dateISO]: [...existing, appointmentTime]
+                }, { merge: true });
+            });
+
+            alert('Agendamento confirmado com sucesso!');
+        } catch (error) {
+            alert(error.message || 'Erro ao agendar horário.');
+        } finally {
+            setScheduling(false);
+        }
+    };
+
+    if (loadingConfig) {
+        return (
+            <FormContainer>
+                <ActivityIndicator size="small" color={primaryColor} />
+            </FormContainer>
+        );
+    }
+
+    return (
+        <FormContainer>
+            <Label>Escolha a Data</Label>
+            <TouchableOpacity
+                onPress={() => setShowDatePicker(true)}
+                style={{ padding: 10, backgroundColor: '#f5f5f5', borderRadius: 8, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between', borderWidth: 1, borderColor: '#eee' }}
+            >
+                <Text style={{color: '#333'}}>{appointmentDate.toLocaleDateString('pt-BR')}</Text>
+                <Ionicons name="calendar" size={18} color={primaryColor} />
+            </TouchableOpacity>
+
+            {showDatePicker && (
+                <DateTimePicker
+                    value={appointmentDate}
+                    mode="date"
+                    display="default"
+                    onChange={onDateChange}
+                    minimumDate={new Date()}
+                />
+            )}
+
+            <Label>Horários Disponíveis</Label>
+            <SlotContainer>
+                {availableTimes.length > 0 ? (
+                    availableTimes.map(time => (
+                        <SlotButton
+                            key={time}
+                            selected={appointmentTime === time}
+                            onPress={() => setAppointmentTime(time)}
+                        >
+                            <SlotText selected={appointmentTime === time}>{time}</SlotText>
+                        </SlotButton>
+                    ))
+                ) : (
+                    <Text style={{ color: '#888', fontStyle: 'italic', fontSize: 12 }}>
+                        Nenhum horário disponível para esta data.
+                    </Text>
+                )}
+            </SlotContainer>
+
+            <SubmitBtn disabled={!appointmentTime || scheduling} onPress={handleSchedule} style={{ opacity: (!appointmentTime || scheduling) ? 0.5 : 1 }}>
+                {scheduling ? <ActivityIndicator size="small" color="#fff" /> : <SubmitBtnText>Confirmar Agendamento</SubmitBtnText>}
+            </SubmitBtn>
+        </FormContainer>
+    );
+};
+
 export default function MeusAtendimentosScreen({ navigation, route }) {
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
@@ -118,27 +370,31 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
     }
 
     const refPath = `${flavorId}/${basePath}`;
-    const db = getDatabase(app);
     const requestsQuery = query(
-      ref(db, refPath),
-      orderByChild('userId'),
-      equalTo(user.uid)
+      collection(firestore, basePath),
+      where('userId', '==', user.uid)
     );
 
-    const unsubscribe = onValue(
+    const unsubscribe = onSnapshot(
       requestsQuery,
       (snapshot) => {
         const data = [];
-        if (snapshot.exists()) {
-          snapshot.forEach(childSnapshot => {
+        snapshot.forEach(docSnap => {
+          const item = docSnap.data();
+          // Filter by flavorId locally to avoid needing a composite index
+          if (item.flavorId === flavorId || !item.flavorId) {
             data.push({
-              ...childSnapshot.val(),
-              id: childSnapshot.key,
+              ...item,
+              id: docSnap.id,
+              originCollection: basePath,
+              // Handle Firestore timestamps
+              createdAt: item.createdAt?.toMillis ? item.createdAt.toMillis() : item.createdAt,
+              dataManifestacao: item.dataManifestacao?.toMillis ? item.dataManifestacao.toMillis() : item.dataManifestacao
             });
-          });
-        }
-        // RTDB doesn't sort by createdAt on server effectively with orderByChild on another field
-        // So we sort locally for 'desc' order
+          }
+        });
+        
+        // Sort locally for 'desc' order
         data.sort((a, b) => (b.dataManifestacao || b.createdAt || 0) - (a.dataManifestacao || a.createdAt || 0));
 
         setRequests(data);
@@ -153,11 +409,15 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
     return () => unsubscribe();
   }, [user, source]);
 
-  const getStatusInfo = (status) => {
+    const getStatusInfo = (status) => {
     switch (status) {
       case 'Concluído': return { color: '#2e7d32', label: 'Concluído' };
+      case 'Agendado': return { color: '#2e7d32', label: 'Agendado' };
+      case 'Agendamento Liberado': return { color: '#004a99', label: 'Agendar Agora' };
       case 'Pendente': return { color: '#f9c204', label: 'Em Análise' };
       case 'Recebida': return { color: '#004a99', label: 'Recebida' };
+      case 'Documentação Reenviada': return { color: '#004a99', label: 'Doc. Enviada' };
+      case 'Manifestação Atualizada': return { color: '#004a99', label: 'Atualizada' };
       case 'Cancelado': return { color: '#dc2626', label: 'Cancelado' };
       default: return { color: '#a21caf', label: status || 'Aguardando' };
     }
@@ -174,17 +434,13 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
     const timestamp = item.dataManifestacao || item.createdAt;
     const dateStr = timestamp ? new Date(timestamp).toLocaleString('pt-BR') : 'Recentemente';
     
-    // Se for Ouvidoria ou Procuradoria, o título principal é o Assunto
-    const isOuvidoria = source === 'ouvidoria' || item.source === 'ouvidoria' || item.dadosManifestacao !== undefined;
-    const isProcuradoria = source === 'procuradoria-mulher' || item.source === 'procuradoria-mulher' || item.dadosSolicitacao !== undefined;
-
     const titleDisplay = item.dadosManifestacao?.assunto || item.dadosSolicitacao?.assunto || item.tipo || 'Atendimento';
     const subTypeDisplay = item.dadosManifestacao?.tipoManifestacao || item.dadosSolicitacao?.tipoAtendimento || '';
 
     const handlePress = () => {
       let destination = 'BalcaoDetalhe';
-      if (isOuvidoria) destination = 'OuvidoriaDetalhe';
-      if (isProcuradoria) destination = 'ProcuradoriaDetalhe';
+      if (item.originCollection === 'ouvidoria') destination = 'OuvidoriaDetalhe';
+      if (item.originCollection === 'procuradoria-mulher') destination = 'ProcuradoriaDetalhe';
       
       navigation.navigate(destination, { item });
     };
@@ -205,6 +461,13 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
           </InfoSection>
           <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </RequestCard>
+        {item.status === 'Agendamento Liberado' && (
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 15, marginTop: -10, marginBottom: 15, marginHorizontal: 0, elevation: 1 }}>
+             <Text style={{ fontSize: 14, fontWeight: 'bold', color: primaryColor, marginBottom: 5 }}>Realizar Agendamento</Text>
+             <Text style={{ fontSize: 12, color: '#666' }}>Sua documentação foi aprovada. Por favor, escolha um horário para o atendimento presencial.</Text>
+             <AgendamentoInlineForm solicitacaoId={item.id} />
+          </View>
+        )}
       </TouchableOpacity>
     );
   };

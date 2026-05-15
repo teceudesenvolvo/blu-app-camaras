@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, FlatList, ActivityIndicator } from 'react-native';
-import styled from 'styled-components/native';
-import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
-import { getDatabase, ref, onValue, update } from 'firebase/database';
-import app from '../../services/firebaseConfig';
+import Constants from 'expo-constants';
+import { collection, doc, onSnapshot, query, writeBatch } from 'firebase/firestore';
+import { useContext, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Text } from 'react-native';
+import styled from 'styled-components/native';
+import { firestore } from '../../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
 
 const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
@@ -80,41 +80,54 @@ export default function NotificacoesScreen({ navigation }) {
   useEffect(() => {
     if (!user) return;
 
-    const db = getDatabase(app);
-    const notificationsRef = ref(db, `${flavorId}/notifications`);
+    const q = query(collection(firestore, 'notifications'));
 
-    const unsubscribe = onValue(notificationsRef, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const data = [];
-      if (snapshot.exists()) {
-        const updates = {};
-        snapshot.forEach((child) => {
-          const notification = child.val();
-          
-          // Filtra por userId ou userEmail
-          const isTargetUser = notification.userId === user.uid || 
-              (notification.userEmail && String(notification.userEmail).toLowerCase() === String(user.email).toLowerCase());
+      const batch = writeBatch(firestore);
+      let hasUpdates = false;
 
-          if (isTargetUser) {
-            data.push({
-              id: child.key,
-              ...notification
-            });
+      snapshot.forEach((docSnap) => {
+        const notification = docSnap.data();
+        const notificationEmail = notification.userEmail ? String(notification.userEmail).toLowerCase() : '';
+        const userEmail = user?.email ? String(user.email).toLowerCase() : '';
+        const isTargetUser = notification.userId === user.uid ||
+          notification.targetUserId === user.uid ||
+          (notificationEmail && notificationEmail === userEmail);
 
-            // Se ainda não foi lida, prepara para marcar como lida
-            if (notification.read !== true) {
-              updates[`${flavorId}/notifications/${child.key}/read`] = true;
-            }
+        const isRead = notification.read === true || notification.isRead === true;
+        // Firestore timestamps podem ser objetos ou números.
+        const createdAt = notification.createdAt?.toMillis
+          ? notification.createdAt.toMillis()
+          : (notification.createdAt || notification.timestamp || (notification.migratedAt ? new Date(notification.migratedAt).getTime() : 0));
+
+        if (isTargetUser) {
+          data.push({
+            id: docSnap.id,
+            ...notification,
+            createdAt
+          });
+
+          // Se ainda não foi lida, prepara para marcar como lida
+          if (!isRead) {
+            const notifRef = doc(firestore, 'notifications', docSnap.id);
+            batch.update(notifRef, { read: true, isRead: true });
+            hasUpdates = true;
           }
-        });
-
-        // Executa as atualizações de leitura em massa, se houver
-        if (Object.keys(updates).length > 0) {
-          update(ref(db), updates);
         }
+      });
 
-        // Ordena por data (mais recente primeiro)
-        data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      if (hasUpdates) {
+        try {
+          await batch.commit();
+        } catch (err) {
+          console.error("Erro ao atualizar status de leitura:", err);
+        }
       }
+
+      // Ordena por data (mais recente primeiro)
+      data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
       setNotifications(data);
       setLoading(false);
     });

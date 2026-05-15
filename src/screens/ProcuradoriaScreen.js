@@ -1,15 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
-import { getDatabase, push, ref, serverTimestamp } from 'firebase/database';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useContext, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Text, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
-import app from '../../services/firebaseConfig';
+import { firestore } from '../../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
 
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
-const db = getDatabase(app);
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
@@ -164,8 +163,9 @@ export default function ProcuradoriaScreen({ navigation }) {
               } catch (e) { console.log('Erro reverse geocode', e); }
 
               // 4. Salvar no Firebase para disparar a Cloud Function
-              const panicRef = ref(db, `${flavorId}/panic-alerts/${user.uid}`);
-              await push(panicRef, {
+              await addDoc(collection(firestore, 'panic-alerts'), {
+                flavorId,
+                userId: user.uid,
                 lat: location.coords.latitude,
                 lng: location.coords.longitude,
                 address: address,

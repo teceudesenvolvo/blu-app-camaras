@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Text, View } from 'react-native';
 import styled from 'styled-components/native';
 
-import { getDatabase, ref, onValue, off } from 'firebase/database';
-import app from '../../services/firebaseConfig';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { firestore } from '../../services/firebaseConfig';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
@@ -13,6 +13,13 @@ const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 const Container = styled.View`
   flex: 1;
   background-color: ${props => props.theme.background || '#f4f4f5'};
+`;
+
+const RetryButton = styled.TouchableOpacity`
+  margin-top: 15px;
+  padding: 10px 20px;
+  background-color: ${primaryColor};
+  border-radius: 8px;
 `;
 
 const Header = styled.View`
@@ -103,27 +110,43 @@ const DateText = styled.Text`
 export default function PielScreen({ navigation }) {
   const [informativos, setInformativos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [errorState, setErrorState] = useState(null);
+  const [retryTrigger, setRetryTrigger] = useState(0);
 
   useEffect(() => {
-    const db = getDatabase(app);
-    const informativosRef = ref(db, `${flavorId}/piel`);
+    setLoading(true);
+    const pielCollectionRef = collection(firestore, 'piel');
 
-    onValue(informativosRef, (snapshot) => {
-      const data = snapshot.val();
+    // Busca todos os informativos da collection
+    // Ordenação local conforme padrão Web
+    const unsubscribe = onSnapshot(pielCollectionRef, (snapshot) => {
+      setErrorState(null);
+      const fetchedInformativos = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        
+        // Normalização de data conforme a versão Web: 
+        // Prioriza Timestamp do Firestore, depois strings de data, e por fim o campo 'migratedAt'.
+        const timestamp = data.createdAt?.toMillis 
+          ? data.createdAt.toMillis() 
+          : (data.createdAt ? new Date(data.createdAt).getTime() : (data.migratedAt ? new Date(data.migratedAt).getTime() : 0));
 
-      const fetchedInformativos = data
-        ? Object.keys(data)
-          .map(key => ({ id: key, ...data[key] }))
-          .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-        : [];
+        return {
+          id: docSnap.id,
+          ...data,
+          timestamp
+        };
+      }).sort((a, b) => b.timestamp - a.timestamp); // Ordenação local por data descrescente
 
       setInformativos(fetchedInformativos);
       setLoading(false);
+    }, (err) => {
+      console.error("Error fetching PIEL data from Firestore:", err);
+      setErrorState("Não foi possível carregar os informativos. Verifique a configuração do banco de dados.");
+      setLoading(false);
     });
 
-    // cleanup (IMPORTANTE)
-    return () => off(informativosRef);
-  }, []);
+    return () => unsubscribe();
+  }, [retryTrigger]);
 
   const renderItem = ({ item }) => (
     <Card>
@@ -131,10 +154,10 @@ export default function PielScreen({ navigation }) {
         <CardTitle>{item.title}</CardTitle>
       </CardHeader>
       <CardBody>{item.content}</CardBody>
-      {/* Exibe a data se houver */}
-      {item.createdAt && (
+      {/* Exibe a data baseada no timestamp normalizado conforme padrão web */}
+      {item.timestamp > 0 && (
         <DateText>
-          Publicado em: {new Date(item.createdAt).toLocaleDateString('pt-BR')}
+          Publicado em: {new Date(item.timestamp).toLocaleDateString('pt-BR')}
         </DateText>
       )}
     </Card>
@@ -160,14 +183,23 @@ export default function PielScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 40 }}
           ListHeaderComponent={
-            <HeroSection>
-              <HeroTitle>Ponto de Inclusão Eleitoral</HeroTitle>
-              <HeroSubtitle>Consulte informativos sobre seu título de eleitor, local de votação e mais.</HeroSubtitle>
-            </HeroSection>
+            (!errorState || informativos.length > 0) && (
+              <HeroSection>
+                <HeroTitle>Ponto de Inclusão Eleitoral</HeroTitle>
+                <HeroSubtitle>Consulte informativos sobre seu título de eleitor, local de votação e mais.</HeroSubtitle>
+              </HeroSection>
+            )
           }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', padding: 40 }}>
-              <Text style={{ color: '#888' }}>Nenhum informativo disponível no momento.</Text>
+              <Text style={{ color: errorState ? '#dc2626' : '#888', textAlign: 'center' }}>
+                {errorState || "Nenhum informativo disponível no momento."}
+              </Text>
+              {errorState && (
+                <RetryButton onPress={() => setRetryTrigger(prev => prev + 1)}>
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>Tentar Novamente</Text>
+                </RetryButton>
+              )}
             </View>
           }
         />

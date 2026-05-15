@@ -1,7 +1,7 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const axios = require('axios');
-const nodemailer = require('nodemailer');
+const nodemailer = require('nodemailer'); // Keep nodemailer for email sending
 
 admin.initializeApp();
 
@@ -13,6 +13,64 @@ const transporter = nodemailer.createTransport({
         pass: 'tbqx ljgd lhot vjek'
     }
 });
+
+// --- Helper to send push notifications ---
+async function sendPushNotificationToUser(userId, title, body, data) {
+    try {
+        const userDoc = await admin.firestore().collection('users').doc(userId).get();
+        if (!userDoc.exists) {
+            console.log(`User ${userId} not found for push notification.`);
+            return;
+        }
+        const userData = userDoc.data();
+        const pushToken = userData.pushToken;
+
+        if (!pushToken) {
+            console.log(`No pushToken found for user ${userId}.`);
+            return;
+        }
+
+        const message = {
+            to: pushToken,
+            sound: 'default',
+            priority: 'high',
+            title: title,
+            body: body,
+            data: {
+                screen: 'Notificacoes', // Default screen for general notifications
+                ...data
+            },
+            _displayInForeground: true,
+        };
+
+        const response = await axios.post('https://exp.host/--/api/v2/push/send', message, {
+            headers: {
+                'Accept': 'application/json',
+                'Accept-encoding': 'gzip, deflate',
+                'Content-Type': 'application/json',
+            },
+        });
+
+        console.log(`Push notification sent to ${userId}:`, response.data);
+    } catch (error) {
+        console.error(`Error sending push notification to user ${userId}:`, error);
+    }
+}
+
+// --- Helper to add a notification to Firestore (which will then trigger the push) ---
+async function addFirestoreNotification(userId, flavorId, title, body, data) {
+    await admin.firestore().collection('notifications').add({
+        userId: userId,
+        flavorId: flavorId,
+        tituloNotification: title,
+        descricaoNotification: body,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        read: false,
+        isRead: false,
+        ...data
+    });
+    console.log(`Notification added to Firestore for user ${userId}.`);
+}
 
 /**
  * Triggered when a new panic alert is added to /{flavorId}/panic-alerts/{userId}/{alertId}

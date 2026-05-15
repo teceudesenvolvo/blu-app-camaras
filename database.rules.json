@@ -53,7 +53,7 @@
         }
       },
       "notifications": {
-        ".indexOn": ["userId"],
+        ".indexOn": ["userId", "createdAt"],
         "$id": {
           ".read": "auth != null && (data.child('userId').val() == auth.uid || root.child($city).child('users').child(auth.uid).child('tipo').val() == 'Administrador')",
           ".write": "auth != null" 

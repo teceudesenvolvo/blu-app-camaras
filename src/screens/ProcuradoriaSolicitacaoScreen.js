@@ -1,16 +1,20 @@
-import React, { useState, useContext, useEffect } from 'react';
-import { 
-  View, Text, TouchableOpacity, ScrollView, TextInput, 
-  Alert, ActivityIndicator, Modal, Image 
+import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
+import * as ImagePicker from 'expo-image-picker';
+import { collection, addDoc, doc, onSnapshot, serverTimestamp as firestoreTimestamp } from 'firebase/firestore';
+import { useContext, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Modal,
+    ScrollView,
+    Text,
+    View
 } from 'react-native';
 import styled from 'styled-components/native';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { firestore } from '../../services/firebaseConfig';
+import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
-import Constants from 'expo-constants';
-import { getDatabase, ref, push, set, serverTimestamp, onValue } from 'firebase/database';
-import app from '../../services/firebaseConfig';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 const primaryColor = '#a21caf'; // Purple
 const backgroundColor = '#fcf4f8';
@@ -184,7 +188,7 @@ const IDENTIFICACAO_TYPES = [
 const RELACAO_VITIMA_TYPES = ['Sou eu', 'Meu familiar', 'Minha amiga', 'Minha mãe', 'Outro'];
 
 export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
-    const { user, db } = useContext(AuthContext);
+    const { user } = useContext(AuthContext);
     const [loading, setLoading] = useState(false);
     const [profileData, setProfileData] = useState(null);
 
@@ -212,9 +216,9 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
 
     useEffect(() => {
         if (!user) return;
-        const userRef = ref(db, `${flavorId}/users/${user.uid}`);
-        const unsubscribe = onValue(userRef, (snapshot) => {
-            if (snapshot.exists()) setProfileData(snapshot.val());
+        const userRef = doc(firestore, 'users', user.uid);
+        const unsubscribe = onSnapshot(userRef, (snapshot) => {
+            if (snapshot.exists()) setProfileData(snapshot.data());
         });
         return () => unsubscribe();
     }, [user]);
@@ -248,10 +252,25 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
         setLoading(true);
 
         try {
-            const procuradoriaRef = ref(db, `${flavorId}/procuradoria-mulher`);
             const isAnonimo = identificacao === 'anonimo';
+            const userId = isAnonimo ? 'anonimo' : (user?.uid || 'anonimo');
+
+            // Upload anexos para Storage
+            const uploadedAnexos = [];
+            for (const anexo of anexos) {
+                try {
+                    const downloadUrl = await uploadFileToStorage(
+                        anexo.uri,
+                        `${flavorId}/procuradoria-mulher/${userId}/anexos`
+                    );
+                    uploadedAnexos.push({ name: anexo.name, type: anexo.type, url: downloadUrl });
+                } catch (uploadError) {
+                    console.error('Erro ao fazer upload do anexo:', uploadError);
+                }
+            }
 
             const payload = {
+                flavorId,
                 dadosSolicitacao: {
                     tipoAtendimento,
                     tipoViolencia,
@@ -264,7 +283,7 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
                     relacaoVitima: isAnonimo ? relacaoVitima : '',
                     enderecoAcontecimento: isAnonimo ? enderecoAcontecimento : '',
                     pontoReferencia: isAnonimo ? pontoReferencia : '',
-                    anexos: anexos.map(a => ({ name: a.name, type: a.type, data: a.data }))
+                    anexos: uploadedAnexos
                 },
                 dadosUsuario: {
                     identificacao: isAnonimo ? 'Anônimo' : 'Identificado',
@@ -274,12 +293,12 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
                     cpf: isAnonimo ? 'Não informado' : (profileData?.cpf || 'Não informado'),
                     phone: isAnonimo ? 'Não informado' : (profileData?.phone || profileData?.celular || 'Não informado')
                 },
-                userId: isAnonimo ? 'anonimo' : (user?.uid || 'anonimo'),
+                userId: userId,
                 status: 'Recebida',
-                dataSolicitacao: serverTimestamp()
+                dataSolicitacao: firestoreTimestamp()
             };
 
-            await push(procuradoriaRef, payload);
+            await addDoc(collection(firestore, 'procuradoria-mulher'), payload);
 
             Alert.alert('Sucesso', 'Sua solicitação foi enviada com sucesso e será tratada com sigilo e urgência.', [
                 { text: 'OK', onPress: () => navigation.goBack() }

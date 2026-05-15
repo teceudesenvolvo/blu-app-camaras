@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
-import { onValue, push, ref, serverTimestamp } from 'firebase/database';
+import { collection, addDoc, doc, onSnapshot, serverTimestamp as firestoreTimestamp, setDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Text, View } from 'react-native';
 import styled from 'styled-components/native';
+import { firestore } from '../../services/firebaseConfig';
+import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
@@ -187,7 +189,7 @@ const MANIFESTATION_TYPES = ['Elogio', 'Reclamação', 'Sugestão', 'Denúncia',
 const IDENTIFICATION_TYPES = ['Identificar-se', 'Anônimo'];
 
 export default function OuvidoriaMunicipalScreen({ navigation }) {
-    const { user, db } = useContext(AuthContext);
+    const { user } = useContext(AuthContext);
     const [loading, setLoading] = useState(false);
     const [profileData, setProfileData] = useState(null);
     
@@ -206,10 +208,10 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
     // 👤 Buscar dados do perfil do usuário para o dadosUsuario
     useEffect(() => {
         if (!user) return;
-        const userRef = ref(db, `${flavorId}/users/${user.uid}`);
-        const unsubscribe = onValue(userRef, (snapshot) => {
+        const userRef = doc(firestore, 'users', user.uid);
+        const unsubscribe = onSnapshot(userRef, (snapshot) => {
             if (snapshot.exists()) {
-                setProfileData(snapshot.val());
+                setProfileData(snapshot.data());
             }
         });
         return () => unsubscribe();
@@ -247,11 +249,28 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
         setLoading(true);
 
         try {
-            const ouvidoriaRef = ref(db, `${flavorId}/ouvidoria`);
-            
             const isAnonimo = identificacao === 'Anônimo';
 
+            // Upload de anexos para Storage
+            const uploadedAnexos = [];
+            for (const anexo of anexos) {
+                try {
+                    const downloadUrl = await uploadFileToStorage(
+                        anexo.uri,
+                        `${flavorId}/ouvidoria/${user.uid}/anexos`
+                    );
+                    uploadedAnexos.push({
+                        name: anexo.name,
+                        type: anexo.type,
+                        url: downloadUrl
+                    });
+                } catch (uploadError) {
+                    console.error('Erro ao fazer upload de anexo:', uploadError);
+                }
+            }
+
             const payload = {
+                flavorId,
                 dadosManifestacao: {
                     tipoManifestacao: tipo,
                     identificacao: isAnonimo ? 'anonimo' : 'identificado',
@@ -260,11 +279,7 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
                     localFato,
                     dataFato,
                     envolvidos,
-                    anexos: anexos.map(a => ({
-                        name: a.name,
-                        type: a.type,
-                        data: a.data
-                    }))
+                    anexos: uploadedAnexos
                 },
                 dadosUsuario: {
                     identificacao: isAnonimo ? 'Anônimo' : 'Identificado',
@@ -276,10 +291,12 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
                 },
                 userId: isAnonimo ? 'anonimo' : (user?.uid || 'anonimo'),
                 status: 'Recebida',
-                dataManifestacao: serverTimestamp()
+                dataManifestacao: firestoreTimestamp()
             };
 
-            await push(ouvidoriaRef, payload);
+            const docRef = await addDoc(collection(firestore, 'ouvidoria'), payload);
+            // Salvar o próprio ID no documento, como era feito no dual-write
+            await setDoc(docRef, { id: docRef.id }, { merge: true });
 
             Alert.alert('Sucesso', 'Sua manifestação foi enviada com sucesso!', [
                 { text: 'OK', onPress: () => navigation.goBack() }
@@ -290,7 +307,7 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
         } finally {
             setLoading(false);
         }
-    };
+    };;
 
     return (
         <Container showsVerticalScrollIndicator={false}>

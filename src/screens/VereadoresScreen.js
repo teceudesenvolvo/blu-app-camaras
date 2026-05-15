@@ -5,12 +5,12 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import styled from 'styled-components/native';
 
-import { get, getDatabase, ref } from 'firebase/database';
-import app from '../../services/firebaseConfig';
-
+import { collection, getDocs } from 'firebase/firestore';
+import { getDownloadURL, ref as storageRef } from 'firebase/storage';
+import { firestore, storage } from '../../services/firebaseConfig';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'default';
+const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
 const Container = styled.View`
   flex: 1;
@@ -135,7 +135,29 @@ const BiographyText = styled.Text`
   text-align: justify;
 `;
 
+const getAvatarSource = (source) => {
+  if (!source) return require('../../assets/logo.png');
+  if (typeof source === 'string') {
+    return { uri: source };
+  }
+  return source;
+};
 
+const resolveAvatarUrl = async (avatarUrl) => {
+  if (!avatarUrl) return null;
+  if (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:image')) {
+    return avatarUrl;
+  }
+
+  try {
+    const avatarRef = storageRef(storage, avatarUrl);
+    const downloadUrl = await getDownloadURL(avatarRef);
+    return downloadUrl;
+  } catch (error) {
+    console.warn('Unable to resolve avatar URL from Storage:', avatarUrl, error);
+    return avatarUrl;
+  }
+};
 
 export default function VereadoresScreen({ navigation }) {
   const [vereadores, setVereadores] = useState([]);
@@ -145,32 +167,43 @@ export default function VereadoresScreen({ navigation }) {
   useEffect(() => {
     const fetchVereadores = async () => {
       try {
-        const db = getDatabase(app);
-        const vereadoresRef = ref(db, `${flavorId}/vereadores`);
+        console.log('📱 Buscando vereadores do Firestore...');
+        const vereadoresRef = collection(firestore, 'vereadores');
 
-        const snapshot = await get(vereadoresRef);
+        // Busca todos os vereadores da collection
+        const querySnapshot = await getDocs(vereadoresRef);
+        console.log('📊 Total de documentos encontrados:', querySnapshot.size);
 
-        if (snapshot.exists()) {
-          const data = [];
-          snapshot.forEach(child => {
-            data.push({
-              id: child.key,
-              ...child.val()
-            });
-          });
+        if (!querySnapshot.empty) {
+          const data = await Promise.all(querySnapshot.docs.map(async (doc) => {
+            const docData = doc.data();
+            const resolvedAvatarUrl = await resolveAvatarUrl(docData.avatarUrl || docData.avatarBase64);
+            return {
+              id: doc.id,
+              ...docData,
+              resolvedAvatarUrl,
+            };
+          }));
 
-          setVereadores(data);
-          setSelectedId(data[0]?.id);
+          const sortedData = data.sort((a, b) => (a.name || '').localeCompare(b.name || '')); // Ordenação local
+
+          setVereadores(sortedData);
+          setSelectedId(sortedData[0]?.id);
         } else {
           throw new Error('No database data');
         }
 
       } catch (error) {
-        console.warn('Error fetching vereadores (fallback):', error);
+        if (error.message?.includes('requires an index')) {
+          console.error("⚠️ Faltando índice no Firestore para Vereadores. Verifique o link no console do terminal.");
+        } else {
+          console.warn('Error fetching vereadores (fallback):', error);
+          console.warn('💡 Dica: Verifique se há documentos na collection "vereadores" ou se o campo "flavorId" existe.');
+        }
 
         const fallback = [
-          { id: '1', nome: 'FELIPE DE SOUSA RODRIGUES', cargo: 'PRESIDENTE', dataNascimento: '1994-10-20', partido: 'REPUBLICANOS', avatarBase64: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200', biografia: 'Biografia do vereador...' },
-          { id: '2', nome: 'DR. CLEBER', cargo: 'VEREADOR', dataNascimento: '1980-01-01', partido: 'PT', avatarBase64: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200', biografia: 'Biografia do vereador...' }
+          { id: '1', name: 'FELIPE DE SOUSA RODRIGUES', cargo: 'PRESIDENTE', dataNascimento: '1994-10-20', partido: 'REPUBLICANOS', avatarBase64: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200', biografia: 'Biografia do vereador...' },
+          { id: '2', name: 'DR. CLEBER', cargo: 'VEREADOR', dataNascimento: '1980-01-01', partido: 'PT', avatarBase64: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200', biografia: 'Biografia do vereador...' }
         ];
 
         setVereadores(fallback);
@@ -205,7 +238,7 @@ export default function VereadoresScreen({ navigation }) {
             {vereadores.map((v) => (
               <AvatarContainer key={v.id} onPress={() => setSelectedId(v.id)}>
                 <AvatarRing selected={selectedId === v.id}>
-                  <AvatarPhoto source={{ uri: v.avatarBase64 || 'https://via.placeholder.com/60' }} />
+                  <AvatarPhoto source={getAvatarSource(v.resolvedAvatarUrl || v.avatarUrl || v.avatarBase64)} />
                 </AvatarRing>
                 <AvatarName selected={selectedId === v.id} numberOfLines={2}>
                   {v.name ? v.name.split(' ')[0] : 'Vereador'}
@@ -218,7 +251,7 @@ export default function VereadoresScreen({ navigation }) {
           {selectedVereador && (
             <DetailsContainer showsVerticalScrollIndicator={false}>
               <GlassCard intensity={80} tint="default">
-                <ProfileImage source={{ uri: selectedVereador.avatarBase64 || 'https://via.placeholder.com/100' }} />
+                <ProfileImage source={getAvatarSource(selectedVereador.resolvedAvatarUrl || selectedVereador.avatarUrl || selectedVereador.avatarBase64)} />
                 <ProfileInfo>
                   <ProfileName>{selectedVereador.name}</ProfileName>
                   <ProfileDetail><Text style={{ fontWeight: 'bold' }}>Cargo:</Text> {selectedVereador.cargo || 'Vereador'}</ProfileDetail>

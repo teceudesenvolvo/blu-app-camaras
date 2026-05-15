@@ -7,17 +7,16 @@ import styled from 'styled-components/native';
 import { AuthContext } from '../context/AuthContext';
 
 // ✅ Firebase Web
-import { getDatabase, onValue, ref, update } from 'firebase/database';
-import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
-import app from '../../services/firebaseConfig';
-import { Modal, TextInput, View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { EmailAuthProvider, getAuth, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { Modal, TouchableOpacity } from 'react-native';
+import app, { firestore } from '../../services/firebaseConfig';
+import { uploadFileToStorage } from '../../services/storageService';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
-
-const db = getDatabase(app);
 
 const Container = styled.View`
   flex: 1;
@@ -210,11 +209,9 @@ export default function PerfilScreen() {
   useEffect(() => {
     if (!user) return;
 
-    const userRef = ref(db, `${flavorId}/users/${user.uid}`);
-
-    const unsubscribe = onValue(userRef, (snapshot) => {
+    const unsubscribe = onSnapshot(doc(firestore, 'users', user.uid), (snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.val();
+        const data = snapshot.data();
         setUserData(data);
 
         if (!isEditing) {
@@ -242,12 +239,11 @@ export default function PerfilScreen() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.5,
-        base64: true,
       });
 
-      if (!result.canceled && result.assets[0].base64) {
-        const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
-        setForm(prev => ({ ...prev, avatarBase64: base64Image }));
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        setForm(prev => ({ ...prev, avatarUri: asset.uri }));
       }
     } catch {
       Alert.alert('Erro', 'Não foi possível selecionar a imagem.');
@@ -257,7 +253,21 @@ export default function PerfilScreen() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await update(ref(db, `${flavorId}/users/${user.uid}`), form);
+      const dataToSave = { ...form };
+
+      // Se houver uma nova imagem local, faz upload para o Storage
+      if (dataToSave.avatarUri && !dataToSave.avatarUri.startsWith('http')) {
+        const downloadUrl = await uploadFileToStorage(dataToSave.avatarUri, `${flavorId}/perfil/${user.uid}/avatar`);
+        dataToSave.avatarBase64 = downloadUrl; // Mantém o nome do campo para compatibilidade
+        delete dataToSave.avatarUri;
+      }
+
+      try {
+        await updateDoc(doc(firestore, 'users', user.uid), dataToSave);
+      } catch (fsError) {
+        console.error("Erro ao atualizar perfil no Firestore:", fsError);
+        throw fsError;
+      }
 
       setIsEditing(false);
       Alert.alert('Sucesso', 'Perfil atualizado com sucesso!');
@@ -350,11 +360,13 @@ export default function PerfilScreen() {
           <AvatarBox>
             <AvatarImage
               source={
-                form.avatarBase64
-                  ? { uri: form.avatarBase64 }
-                  : userData?.avatarBase64
-                    ? { uri: userData.avatarBase64 }
-                    : require('../../assets/logo.png')
+                form.avatarUri
+                  ? { uri: form.avatarUri }
+                  : form.avatarBase64
+                    ? { uri: form.avatarBase64 }
+                    : userData?.avatarBase64
+                      ? { uri: userData.avatarBase64 }
+                      : require('../../assets/logo.png')
               }
             />
           </AvatarBox>

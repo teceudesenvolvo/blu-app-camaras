@@ -1,28 +1,17 @@
 import Constants from 'expo-constants';
 import { createContext, useEffect, useState } from 'react';
 
-import app from '../../services/firebaseConfig';
 
-import { auth, db } from '../../services/firebaseConfig';
 import {
     createUserWithEmailAndPassword,
     onAuthStateChanged,
+    sendPasswordResetEmail,
     signInWithEmailAndPassword,
-    signOut,
-    sendPasswordResetEmail
+    signOut
 } from 'firebase/auth';
-
-import {
-    onChildAdded,
-    onValue,
-    orderByChild,
-    query,
-    ref,
-    serverTimestamp,
-    set,
-    startAt,
-    update
-} from 'firebase/database';
+import { auth } from '../../services/firebaseConfig';
+import { doc, serverTimestamp as firestoreTimestamp, setDoc, updateDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { firestore } from '../../services/firebaseConfig';
 
 // 🔔 Expo Notifications
 import * as Device from 'expo-device';
@@ -79,10 +68,14 @@ export const AuthProvider = ({ children }) => {
                     projectId: Constants.expoConfig?.extra?.eas?.projectId || "a4515ae1-c9e6-4aa1-a5f9-ae420ea3d93c"
                 })).data;
 
-                await update(ref(db, `${flavorId}/users/${user.uid}`), {
-                    pushToken: token,
-                    updatedAt: serverTimestamp()
-                });
+                try {
+                    await updateDoc(doc(firestore, 'users', user.uid), {
+                        pushToken: token,
+                        updatedAt: firestoreTimestamp()
+                    });
+                } catch (fsError) {
+                    console.error("Erro ao atualizar pushToken no Firestore:", fsError);
+                }
 
                 console.log('Push token salvo:', token);
 
@@ -99,31 +92,40 @@ export const AuthProvider = ({ children }) => {
         if (!user) return;
 
         // Começamos a ouvir apenas notificações criadas a partir de agora
-        // para evitar disparar notificações antigas ao abrir o app
         const now = Date.now();
-        const notificationsRef = ref(db, `${flavorId}/notifications`);
-        const q = query(notificationsRef, orderByChild('createdAt'), startAt(now));
+        const q = query(collection(firestore, 'notifications'), where('flavorId', '==', flavorId));
 
-        const unsubscribe = onChildAdded(q, async (snapshot) => {
-            const notification = snapshot.val();
-            
-            // Só dispara se a notificação for para este usuário (ID ou Email) e NÃO estiver lida
-            const isTargetUser = notification && (
-                notification.userId === user.uid || 
-                (notification.userEmail && String(notification.userEmail).toLowerCase() === String(user.email).toLowerCase())
-            );
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            snapshot.docChanges().forEach(async (change) => {
+                if (change.type === 'added') {
+                    const notification = change.doc.data();
+                    
+                    // Firestore timestamps podem ser objetos ou números.
+                    const createdAt = notification.createdAt?.toMillis 
+                        ? notification.createdAt.toMillis() 
+                        : (notification.createdAt || 0);
 
-            if (isTargetUser && notification.read !== true) {
-                await Notifications.scheduleNotificationAsync({
-                    content: {
-                        title: notification.tituloNotification || 'Nova Notificação',
-                        body: notification.descricaoNotification || 'Você recebeu uma atualização.',
-                        data: { screen: 'Notificacoes' },
-                        sound: true,
-                    },
-                    trigger: null, // Exibir imediatamente
-                });
-            }
+                    // Só dispara se foi criada agora
+                    if (createdAt < now) return;
+
+                    const isTargetUser = notification && (
+                        notification.userId === user.uid || 
+                        (notification.userEmail && String(notification.userEmail).toLowerCase() === String(user.email).toLowerCase())
+                    );
+
+                    if (isTargetUser && notification.read !== true && notification.isRead !== true) {
+                        await Notifications.scheduleNotificationAsync({
+                            content: {
+                                title: notification.tituloNotification || 'Nova Notificação',
+                                body: notification.descricaoNotification || 'Você recebeu uma atualização.',
+                                data: { screen: 'Notificacoes' },
+                                sound: true,
+                            },
+                            trigger: null,
+                        });
+                    }
+                }
+            });
         });
 
         return () => unsubscribe();
@@ -136,20 +138,18 @@ export const AuthProvider = ({ children }) => {
             return;
         }
 
-        const notificationsRef = ref(db, `${flavorId}/notifications`);
-        const unsubscribe = onValue(notificationsRef, (snapshot) => {
+        const q = query(collection(firestore, 'notifications'), where('flavorId', '==', flavorId));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             let count = 0;
-            if (snapshot.exists()) {
-                snapshot.forEach((child) => {
-                    const notif = child.val();
-                    const isTargetUser = notif.userId === user.uid || 
-                        (notif.userEmail && String(notif.userEmail).toLowerCase() === String(user.email).toLowerCase());
+            snapshot.forEach((docSnap) => {
+                const notif = docSnap.data();
+                const isTargetUser = notif.userId === user.uid || 
+                    (notif.userEmail && String(notif.userEmail).toLowerCase() === String(user.email).toLowerCase());
 
-                    if (isTargetUser && notif.read !== true) {
-                        count++;
-                    }
-                });
-            }
+                if (isTargetUser && notif.read !== true && notif.isRead !== true) {
+                    count++;
+                }
+            });
             setUnreadCount(count);
         });
 
@@ -171,11 +171,18 @@ export const AuthProvider = ({ children }) => {
         try {
             const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
 
-            await set(ref(db, `${flavorId}/users/${newUser.uid}`), {
+            const userData = {
                 ...extraData,
                 email,
-                createdAt: serverTimestamp(),
-            });
+                createdAt: firestoreTimestamp(),
+                flavorId: flavorId
+            };
+
+            try {
+                await setDoc(doc(firestore, 'users', newUser.uid), userData);
+            } catch (fsError) {
+                console.error("Erro ao salvar usuário no Firestore:", fsError);
+            }
 
         } catch (error) {
             console.error('Erro register:', error);
@@ -203,7 +210,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, resetPassword, unreadCount, db }}>
+        <AuthContext.Provider value={{ user, loading, login, register, logout, resetPassword, unreadCount }}>
             {children}
         </AuthContext.Provider>
     );

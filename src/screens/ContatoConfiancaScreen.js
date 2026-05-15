@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
-import styled from 'styled-components/native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { getDatabase, ref, set, onValue, serverTimestamp } from 'firebase/database';
-import app from '../../services/firebaseConfig';
+import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { useContext, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
+import styled from 'styled-components/native';
+import { firestore } from '../../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
 
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
-const db = getDatabase(app);
+
 
 const Container = styled.View`
   flex: 1;
@@ -92,19 +92,19 @@ const SaveButtonText = styled.Text`
 export default function ContatoConfiancaScreen({ navigation }) {
     const { user } = useContext(AuthContext);
     const [email, setEmail] = useState('');
-    const [phone, setPhone] = useState('');
+    const [telefone, setTelefone] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (!user) return;
 
-        const contactRef = ref(db, `${flavorId}/users/${user.uid}/contatoConfianca`);
-        const unsubscribe = onValue(contactRef, (snapshot) => {
+        const configRef = doc(firestore, 'procuradoria-mulher-btn-panico', user.uid);
+        const unsubscribe = onSnapshot(configRef, (snapshot) => {
             if (snapshot.exists()) {
-                const data = snapshot.val();
+                const data = snapshot.data();
                 setEmail(data.email || '');
-                setPhone(data.phone || '');
+                setTelefone(data.telefone || '');
             }
             setLoading(false);
         });
@@ -113,20 +113,20 @@ export default function ContatoConfiancaScreen({ navigation }) {
     }, [user]);
 
     const handleSave = async () => {
-        if (!email && !phone) {
-            Alert.alert('Erro', 'Preencha pelo menos um meio de contato (E-mail ou Telefone).');
+        if (!telefone) {
+            Alert.alert('Erro', 'O campo Telefone de Confiança é obrigatório.');
             return;
         }
 
         setSaving(true);
         try {
-            const contactRef = ref(db, `${flavorId}/users/${user.uid}/contatoConfianca`);
-            await set(contactRef, {
+            const configRef = doc(firestore, 'procuradoria-mulher-btn-panico', user.uid);
+            await setDoc(configRef, {
                 email,
-                phone,
+                telefone,
                 updatedAt: serverTimestamp()
             });
-            Alert.alert('Sucesso', 'Contato de confiança salvo com sucesso!');
+            Alert.alert('Sucesso', 'Contato de emergência salvo com sucesso!');
             navigation.goBack();
         } catch (error) {
             console.error(error);
@@ -160,7 +160,7 @@ export default function ContatoConfiancaScreen({ navigation }) {
                 <Content>
                     <Card>
                         <InfoText>
-                            Este contato receberá um alerta via E-mail e Notificação Push quando você acionar o Botão do Pânico.
+                            Cadastre um número de telefone e um e-mail de uma pessoa de sua confiança. Ao acionar o botão de pânico, uma mensagem de ajuda com sua localização será preparada para ser enviada para este contato.
                         </InfoText>
 
                         <Label>E-mail do Contato</Label>
@@ -174,8 +174,8 @@ export default function ContatoConfiancaScreen({ navigation }) {
 
                         <Label>Telefone do Contato</Label>
                         <Input
-                            value={phone}
-                            onChangeText={setPhone}
+                            value={telefone}
+                            onChangeText={setTelefone}
                             placeholder="Digite o telefone"
                             keyboardType="phone-pad"
                         />
