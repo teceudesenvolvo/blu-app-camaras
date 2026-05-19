@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { collection, doc, onSnapshot, query, writeBatch } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Text } from 'react-native';
 import styled from 'styled-components/native';
@@ -80,7 +80,11 @@ export default function NotificacoesScreen({ navigation }) {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(collection(firestore, 'notifications'));
+    // Busca apenas notificações desta câmara (flavor)
+    const q = query(
+      collection(firestore, 'notifications'),
+      where('flavorId', '==', flavorId)
+    );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const data = [];

@@ -16,7 +16,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.lavoroservicos.cmparaipaba",
+      "bundleIdentifier": "com.bluappcmparaipaba",
       "googleServicesFile": "./services/firebase/paraipaba/GoogleService-Info.plist",
       "entitlements": {
         "aps-environment": "development"
@@ -24,16 +24,19 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Precisamos de acesso à câmera para que você possa anexar fotos às suas solicitações de Ouvidoria e Procuradoria.",
         "NSPhotoLibraryUsageDescription": "Precisamos de acesso à sua galeria para que você possa selecionar fotos para anexar às suas solicitações.",
+        "NSMicrophoneUsageDescription": "Precisamos de acesso ao microfone para permitir que você grave vídeos ou áudios em suas solicitações e denúncias.",
         "NSPhotoLibraryAddUsageDescription": "Precisamos de permissão para salvar fotos em sua galeria quando necessário.",
         "NSLocationWhenInUseUsageDescription": "Precisamos da sua localização para identificar com precisão o endereço de ocorrências em denúncias e ouvidorias.",
         "LSApplicationQueriesSchemes": [
+          "itms-apps",
           "itms-apps"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.blutecnologias.appcamara",
-      "versionCode": 1.0,
+      "versionCode": 1,
       "googleServicesFile": "./services/firebase/paraipaba/google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#ECECEC",

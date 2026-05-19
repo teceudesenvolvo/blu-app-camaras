@@ -16,6 +16,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "paraipabacamara5@gmail.com",
+        "ascAppId": "6769832252",
+        "appleTeamId": "8696VZUUR7"
+      }
+    }
   }
 }

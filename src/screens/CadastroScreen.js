@@ -1,21 +1,20 @@
-import React, { useState, useContext } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
+import { useContext, useState } from 'react';
 import {
-    View,
-    Text,
-    TouchableOpacity,
-    TextInput,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
     ActivityIndicator,
     Alert,
-    StyleSheet
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import styled from 'styled-components/native';
 import { AuthContext } from '../context/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 
 const primaryColor = '#e7e7e7';
 const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
@@ -91,6 +90,36 @@ const NextButtonText = styled.Text`
   font-weight: 800;
 `;
 
+const SelectPlaceholder = styled.TouchableOpacity`
+  background-color: #f5f5f5;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 20px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const ModalOverlay = styled.TouchableOpacity`
+  flex: 1;
+  background-color: rgba(0,0,0,0.5);
+  justify-content: center;
+  align-items: center;
+`;
+
+const ModalContent = styled.View`
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  width: 80%;
+`;
+
+const ModalItem = styled.TouchableOpacity`
+  padding: 15px;
+  border-bottom-width: 1px;
+  border-bottom-color: #eee;
+`;
+
 export default function CadastroScreen({ navigation }) {
     const [nome, setNome] = useState('');
     const [sexo, setSexo] = useState('');
@@ -101,6 +130,7 @@ export default function CadastroScreen({ navigation }) {
     const [showSenha, setShowSenha] = useState(false);
     const [showConfSenha, setShowConfSenha] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [modalSexoVisible, setModalSexoVisible] = useState(false);
 
     const { register } = useContext(AuthContext);
 
@@ -159,11 +189,10 @@ export default function CadastroScreen({ navigation }) {
                         />
 
                         <Label>Sexo</Label>
-                        <Input
-                            value={sexo}
-                            onChangeText={setSexo}
-                            placeholder="Selecione seu sexo"
-                        />
+                        <SelectPlaceholder onPress={() => setModalSexoVisible(true)}>
+                            <Text style={{ color: sexo ? '#333' : '#999', fontSize: 16 }}>{sexo || 'Selecione seu sexo'}</Text>
+                            <Ionicons name="chevron-down" size={20} color="#888" />
+                        </SelectPlaceholder>
 
                         <Label>Telefone</Label>
                         <Input
@@ -227,6 +256,21 @@ export default function CadastroScreen({ navigation }) {
                         <View style={{ height: 40 }} />
                     </ScrollView>
                 </FormSection>
+
+                <Modal visible={modalSexoVisible} transparent animationType="fade">
+                    <ModalOverlay onPress={() => setModalSexoVisible(false)}>
+                        <ModalContent>
+                            {['Masculino', 'Feminino', 'Outro', 'Prefiro não dizer'].map((opção) => (
+                                <ModalItem key={opção} onPress={() => {
+                                    setSexo(opção);
+                                    setModalSexoVisible(false);
+                                }}>
+                                    <Text style={{ fontSize: 16 }}>{opção}</Text>
+                                </ModalItem>
+                            ))}
+                        </ModalContent>
+                    </ModalOverlay>
+                </Modal>
             </Container>
         </KeyboardAvoidingView>
     );

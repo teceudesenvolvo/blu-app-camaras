@@ -9,9 +9,8 @@ import {
     signInWithEmailAndPassword,
     signOut
 } from 'firebase/auth';
-import { auth } from '../../services/firebaseConfig';
-import { doc, serverTimestamp as firestoreTimestamp, setDoc, updateDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
-import { firestore } from '../../services/firebaseConfig';
+import { collection, doc, serverTimestamp as firestoreTimestamp, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { auth, firestore } from '../../services/firebaseConfig';
 
 // 🔔 Expo Notifications
 import * as Device from 'expo-device';
@@ -138,13 +137,19 @@ export const AuthProvider = ({ children }) => {
             return;
         }
 
-        const q = query(collection(firestore, 'notifications'), where('flavorId', '==', flavorId));
+        // Filtramos por flavorId para performance, o restante filtramos no JS para cobrir userId ou Email
+        const q = query(
+            collection(firestore, 'notifications'), 
+            where('flavorId', '==', flavorId)
+        );
+
         const unsubscribe = onSnapshot(q, (snapshot) => {
             let count = 0;
             snapshot.forEach((docSnap) => {
                 const notif = docSnap.data();
+                const userEmail = user?.email ? String(user.email).toLowerCase() : '';
                 const isTargetUser = notif.userId === user.uid || 
-                    (notif.userEmail && String(notif.userEmail).toLowerCase() === String(user.email).toLowerCase());
+                    (notif.userEmail && String(notif.userEmail).toLowerCase() === userEmail);
 
                 if (isTargetUser && notif.read !== true && notif.isRead !== true) {
                     count++;
