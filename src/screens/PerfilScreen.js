@@ -9,7 +9,7 @@ import { AuthContext } from '../context/AuthContext';
 // ✅ Firebase Web
 import { Ionicons } from '@expo/vector-icons';
 import { EmailAuthProvider, getAuth, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { Modal, TouchableOpacity } from 'react-native';
 import app, { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
@@ -379,9 +379,18 @@ export default function PerfilScreen() {
           </EditIconCircle>
         </AvatarWrapper>
 
-        <ProfileName>
-          {form.name || userData?.name || user?.displayName || 'Usuário'}
-        </ProfileName>
+        {isEditing ? (
+          <EditableInput
+            value={form.name}
+            onChangeText={(text) => setForm({ ...form, name: text })}
+            placeholder="Nome Completo"
+            style={{ fontSize: 22, textAlign: 'center', width: '80%' }}
+          />
+        ) : (
+          <ProfileName>
+            {userData?.name || user?.displayName || 'Usuário'}
+          </ProfileName>
+        )}
         <Text>{form.tipo || userData?.tipo || 'Não informado'}</Text>
 
         <ChangePasswordButton onPress={() => setIsPasswordModalVisible(true)}>
@@ -469,47 +478,123 @@ export default function PerfilScreen() {
       <InfoList>
         <InfoField>
           <Label>CPF</Label>
-          <Value>{userData?.cpf || 'Não informado'}</Value>
+          {isEditing ? (
+            <EditableInput
+              value={form.cpf}
+              onChangeText={(text) => setForm({ ...form, cpf: text })}
+              placeholder="000.000.000-00"
+              keyboardType="numeric"
+            />
+          ) : (
+            <Value>{userData?.cpf || 'Não informado'}</Value>
+          )}
         </InfoField>
 
         <InfoField>
           <Label>Sexo</Label>
-          <Value>{userData?.sexo || 'Não informado'}</Value>
+          {isEditing ? (
+            <EditableInput
+              value={form.sexo}
+              onChangeText={(text) => setForm({ ...form, sexo: text })}
+              placeholder="Masculino/Feminino"
+            />
+          ) : (
+            <Value>{userData?.sexo || 'Não informado'}</Value>
+          )}
         </InfoField>
 
         <InfoField>
           <Label>Estado Civil</Label>
-          <Value>{userData?.estadoCivil || 'Não informado'}</Value>
+          {isEditing ? (
+            <EditableInput
+              value={form.estadoCivil}
+              onChangeText={(text) => setForm({ ...form, estadoCivil: text })}
+              placeholder="Solteiro(a), Casado(a)..."
+            />
+          ) : (
+            <Value>{userData?.estadoCivil || 'Não informado'}</Value>
+          )}
         </InfoField>
 
         <InfoField>
           <Label>Endereço</Label>
-          <Value>{userData?.address || 'Não informado'}</Value>
+          {isEditing ? (
+            <EditableInput
+              value={form.address}
+              onChangeText={(text) => setForm({ ...form, address: text })}
+              placeholder="Rua, Av..."
+            />
+          ) : (
+            <Value>{userData?.address || 'Não informado'}</Value>
+          )}
         </InfoField>
 
         <InfoField>
           <Label>Bairro</Label>
-          <Value>{userData?.neighborhood || 'Não informado'}</Value>
+          {isEditing ? (
+            <EditableInput
+              value={form.neighborhood}
+              onChangeText={(text) => setForm({ ...form, neighborhood: text })}
+              placeholder="Bairro"
+            />
+          ) : (
+            <Value>{userData?.neighborhood || 'Não informado'}</Value>
+          )}
         </InfoField>
 
         <InfoField>
           <Label>Cidade</Label>
-          <Value>{userData?.city || 'Não informado'}</Value>
+          {isEditing ? (
+            <EditableInput
+              value={form.city}
+              onChangeText={(text) => setForm({ ...form, city: text })}
+              placeholder="Cidade"
+            />
+          ) : (
+            <Value>{userData?.city || 'Não informado'}</Value>
+          )}
         </InfoField>
 
         <InfoField>
           <Label>Estado</Label>
-          <Value>{userData?.state || 'Não informado'}</Value>
+          {isEditing ? (
+            <EditableInput
+              value={form.state}
+              onChangeText={(text) => setForm({ ...form, state: text })}
+              placeholder="UF"
+              maxLength={2}
+              autoCapitalize="characters"
+            />
+          ) : (
+            <Value>{userData?.state || 'Não informado'}</Value>
+          )}
         </InfoField>
 
         <InfoField>
           <Label>Número</Label>
-          <Value>{userData?.numero || 'Não informado'}</Value>
+          {isEditing ? (
+            <EditableInput
+              value={form.numero}
+              onChangeText={(text) => setForm({ ...form, numero: text })}
+              placeholder="Nº"
+              keyboardType="numeric"
+            />
+          ) : (
+            <Value>{userData?.numero || 'Não informado'}</Value>
+          )}
         </InfoField>
 
         <InfoField>
           <Label>Complemento</Label>
-          <Value>{userData?.complemento || 'Não informado'}</Value>
+          {isEditing ? (
+            <EditableInput
+              value={form.complemento}
+              onChangeText={(text) => setForm({ ...form, complemento: text })}
+              placeholder="Apt, Bloco..."
+            />
+          ) : (
+            <Value>{userData?.complemento || 'Não informado'}</Value>
+          )}
         </InfoField>
       </InfoList>
     </Container>
