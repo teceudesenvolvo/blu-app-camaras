@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
-import { View, Text, Image, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
-import styled from 'styled-components/native';
-import Constants from 'expo-constants';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { useContext, useEffect, useState } from 'react';
+import { ActivityIndicator, Dimensions, Image, TouchableOpacity, View } from 'react-native';
+import styled from 'styled-components/native';
+import { firestore } from '../../services/firebaseConfig';
+import { AuthContext } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const primaryColor = Constants.expoConfig.extra?.theme?.primary || '#004a99';
@@ -165,9 +167,10 @@ const HomeScreen = ({ navigation }) => {
   useEffect(() => {
     const fetchNews = async () => {
       try {
-        // Adicionado _embed para incluir mídias (imagens destacadas)
-        const response = await fetch('https://camaraparaipaba.ce.gov.br/wp-json/wp/v2/posts?per_page=6&_embed');
-        const data = await response.json();
+        const newsRef = collection(firestore, 'noticias');
+        const newsQuery = query(newsRef, orderBy('createdAt', 'desc'), limit(6));
+        const snapshot = await getDocs(newsQuery);
+        const data = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
         setNews(data);
       } catch (error) {
         console.error("Falha ao buscar notícias:", error);
@@ -223,14 +226,14 @@ const HomeScreen = ({ navigation }) => {
       ) : (
         <NewsGrid>
           {news.map((item) => {
-            // Pega a URL da imagem destacada, se existir
-            const imageUrl = item._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://via.placeholder.com/400x200.png?text=Sem+Imagem';
+            const imageUrl = item.capaUrl || item._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://via.placeholder.com/400x200.png?text=Sem+Imagem';
+            const titleText = item.titulo || item.title?.rendered || 'Notícia';
             
             return (
-              <NewsCard key={item.id} activeOpacity={0.9} onPress={() => navigation.navigate('NoticiaDetalhe', { news: item })}>
+              <NewsCard key={item.id} activeOpacity={0.9} onPress={() => navigation.navigate('NoticiaDetalhe', { news: item, id: item.id })}>
                 <NewsImage source={{ uri: imageUrl }} />
                 <NewsContent>
-                  <NewsTitle numberOfLines={3}>{item.title.rendered}</NewsTitle>
+                  <NewsTitle numberOfLines={3}>{titleText}</NewsTitle>
                 </NewsContent>
               </NewsCard>
             );

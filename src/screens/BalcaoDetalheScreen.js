@@ -235,6 +235,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
     const [loadingConfig, setLoadingConfig] = useState(false);
     const [scheduling, setScheduling] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const isCancelled = status === 'Cancelado';
 
     const FIELD_LABELS = {
         cin_certidao: "Certidão de Nascimento/Casamento",
@@ -467,6 +468,11 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
 
 
     const handleFileUpdate = async (fieldKey) => {
+        if (isCancelled) {
+            Alert.alert("Atenção", "Não é possível reenviar documentos em uma solicitação cancelada.");
+            return;
+        }
+
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: false,
@@ -715,9 +721,9 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                         </TouchableOpacity>
                     </InputRow>
                 </Section>
-                {(!(dadosSolicitacao?.anexos?.arquivos_adicionais || rootAnexos?.arquivos_adicionais)) && (
+                {(!isCancelled && !(dadosSolicitacao?.anexos?.arquivos_adicionais || rootAnexos?.arquivos_adicionais)) && (
                     <Section>
-                        <UploadButton onPress={() => handleFileUpdate('arquivos_adicionais')} disabled={uploading} style={{ backgroundColor: '#e5e7eb', padding: 12, borderRadius: 8, width: '100%', justifyContent: 'center' }}>
+                        <UploadButton onPress={() => handleFileUpdate('arquivos_adicionais')} disabled={uploading || isCancelled} style={{ backgroundColor: '#e5e7eb', padding: 12, borderRadius: 8, width: '100%', justifyContent: 'center', opacity: (uploading || isCancelled) ? 0.6 : 1 }}>
                             {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="add-circle-outline" size={20} color="#374151" />}
                             <UploadButtonText style={{ fontSize: 14 }}>{uploading ? 'Enviando...' : 'Anexar Outros Arquivos'}</UploadButtonText>
                         </UploadButton>
@@ -753,10 +759,12 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                                             </View>
                                         );
                                     })}
-                                    <UploadButton onPress={() => handleFileUpdate(field)} disabled={uploading}>
-                                        {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="cloud-upload-outline" size={16} color="#374151" />}
-                                        <UploadButtonText>{uploading ? 'Enviando...' : 'Substituir Arquivo'}</UploadButtonText>
-                                    </UploadButton>
+                                    {!isCancelled && (
+                                        <UploadButton onPress={() => handleFileUpdate(field)} disabled={uploading || isCancelled} style={{ opacity: (uploading || isCancelled) ? 0.6 : 1 }}>
+                                            {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="cloud-upload-outline" size={16} color="#374151" />}
+                                            <UploadButtonText>{uploading ? 'Enviando...' : 'Substituir Arquivo'}</UploadButtonText>
+                                        </UploadButton>
+                                    )}
                                 </FileCard>
                             );
                         })}

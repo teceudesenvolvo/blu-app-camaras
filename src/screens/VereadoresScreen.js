@@ -2,7 +2,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Constants from 'expo-constants';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View, useWindowDimensions } from 'react-native';
+import RenderHtml from 'react-native-render-html';
 import styled from 'styled-components/native';
 
 import { collection, getDocs } from 'firebase/firestore';
@@ -163,6 +164,19 @@ export default function VereadoresScreen({ navigation }) {
   const [vereadores, setVereadores] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { width } = useWindowDimensions();
+
+  const tagsStyles = {
+    p: { fontSize: 15, lineHeight: 24, color: '#555', textAlign: 'justify', marginBottom: 10 },
+    strong: { fontWeight: 'bold', color: '#333' },
+    a: { color: primaryColor, textDecorationLine: 'underline' }
+  };
+
+  // Função para retornar um texto genérico baseado no ID do vereador
+  const getGenericBio = (id) => {
+    const hash = (id || '0').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return GENERIC_BIOGRAPHIES[hash % GENERIC_BIOGRAPHIES.length];
+  };
 
   useEffect(() => {
     const fetchVereadores = async () => {
@@ -202,8 +216,8 @@ export default function VereadoresScreen({ navigation }) {
         }
 
         const fallback = [
-          { id: '1', name: 'FELIPE DE SOUSA RODRIGUES', cargo: 'PRESIDENTE', dataNascimento: '1994-10-20', partido: 'REPUBLICANOS', avatarBase64: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200', biografia: 'Biografia do vereador...' },
-          { id: '2', name: 'DR. CLEBER', cargo: 'VEREADOR', dataNascimento: '1980-01-01', partido: 'PT', avatarBase64: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200', biografia: 'Biografia do vereador...' }
+          { id: '1', name: 'FELIPE DE SOUSA RODRIGUES', cargo: 'PRESIDENTE', dataNascimento: '1994-10-20', partido: 'REPUBLICANOS', avatarBase64: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200', biografia: '' },
+          { id: '2', name: 'DR. CLEBER', cargo: 'VEREADOR', dataNascimento: '1980-01-01', partido: 'PT', avatarBase64: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200', biografia: '' }
         ];
 
         setVereadores(fallback);
@@ -261,7 +275,16 @@ export default function VereadoresScreen({ navigation }) {
               </GlassCard>
 
               <SectionTitle>Biografia</SectionTitle>
-              <BiographyText>{selectedVereador.biografia || 'Informações biográficas não disponíveis no momento.'}</BiographyText>
+              {selectedVereador.biografia && selectedVereador.biografia.trim() !== "" ? (
+                <RenderHtml
+                  contentWidth={width - 40}
+                  source={{ html: selectedVereador.biografia }}
+                  tagsStyles={tagsStyles}
+                  baseStyle={{ color: '#555' }}
+                />
+              ) : (
+                <BiographyText>{getGenericBio(selectedVereador.id)}</BiographyText>
+              )}
 
               <View style={{ height: 100 }} />
             </DetailsContainer>

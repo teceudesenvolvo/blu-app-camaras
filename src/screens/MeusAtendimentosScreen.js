@@ -1,9 +1,9 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
-import { collection, doc, getDoc, onSnapshot, query, runTransaction, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, onSnapshot, query, runTransaction, where } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
@@ -355,6 +355,7 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState([]);
+  const [deletingId, setDeletingId] = useState(null);
   const { source } = route.params || {};
 
   useEffect(() => {
@@ -429,6 +430,30 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
     return 'message-text-outline';
   };
 
+  const deleteRequest = async (item) => {
+    if (!item?.id) return;
+    setDeletingId(item.id);
+    try {
+      await deleteDoc(doc(firestore, item.originCollection || 'balcao-cidadao', item.id));
+    } catch (error) {
+      console.error('Erro ao excluir solicitação cancelada:', error);
+      Alert.alert('Erro', 'Não foi possível excluir a solicitação. Por favor, tente novamente.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const confirmDeleteRequest = (item) => {
+    Alert.alert(
+      'Excluir solicitação',
+      'Tem certeza que deseja excluir esta solicitação cancelada?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Excluir', style: 'destructive', onPress: () => deleteRequest(item) }
+      ]
+    );
+  };
+
   const renderItem = ({ item }) => {
     const statusInfo = getStatusInfo(item.status);
     const timestamp = item.dataManifestacao || item.createdAt;
@@ -466,6 +491,27 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
              <Text style={{ fontSize: 14, fontWeight: 'bold', color: primaryColor, marginBottom: 5 }}>Realizar Agendamento</Text>
              <Text style={{ fontSize: 12, color: '#666' }}>Sua documentação foi aprovada. Por favor, escolha um horário para o atendimento presencial.</Text>
              <AgendamentoInlineForm solicitacaoId={item.id} />
+          </View>
+        )}
+        {item.status === 'Cancelado' && (
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 15, marginTop: 10, marginBottom: 15, elevation: 1 }}>
+            <TouchableOpacity
+              onPress={() => confirmDeleteRequest(item)}
+              disabled={deletingId === item.id}
+              style={{
+                backgroundColor: '#dc2626',
+                padding: 12,
+                borderRadius: 8,
+                alignItems: 'center',
+                opacity: deletingId === item.id ? 0.6 : 1
+              }}
+            >
+              {deletingId === item.id ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Excluir Solicitação</Text>
+              )}
+            </TouchableOpacity>
           </View>
         )}
       </TouchableOpacity>

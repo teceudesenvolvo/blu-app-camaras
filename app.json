@@ -12,7 +12,7 @@
       "backgroundColor": "#ECECEC"
     },
     "updates": {
-      "url": "https://u.expo.dev/12112121212121212121212121212121"
+      "url": "https://u.expo.dev/a4515ae1-c9e6-4aa1-a5f9-ae420ea3d93c"
     },
     "ios": {
       "supportsTablet": true,
@@ -28,6 +28,8 @@
         "NSPhotoLibraryAddUsageDescription": "Precisamos de permissão para salvar fotos em sua galeria quando necessário.",
         "NSLocationWhenInUseUsageDescription": "Precisamos da sua localização para identificar com precisão o endereço de ocorrências em denúncias e ouvidorias.",
         "LSApplicationQueriesSchemes": [
+          "itms-apps",
+          "itms-apps",
           "itms-apps",
           "itms-apps"
         ],
@@ -66,6 +68,9 @@
         "background": "#f8fafc",
         "text": "#0f172a"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }

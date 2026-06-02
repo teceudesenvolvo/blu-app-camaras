@@ -1,9 +1,11 @@
-import React from 'react';
-import { View, ScrollView, Text, Image, TouchableOpacity, Share, useWindowDimensions, Linking } from 'react-native';
-import styled from 'styled-components/native';
-import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
+import { doc, getDoc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, Share, Text, useWindowDimensions } from 'react-native';
 import RenderHtml from 'react-native-render-html';
+import styled from 'styled-components/native';
+import { firestore } from '../../services/firebaseConfig';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 
@@ -108,24 +110,71 @@ const LinkButtonText = styled.Text`
 `;
 
 export default function NoticiaDetalheScreen({ route, navigation }) {
-    const { news } = route.params;
+    const { news: initialNews, id } = route.params || {};
+    const [news, setNews] = useState(initialNews || null);
+    const [loading, setLoading] = useState(!initialNews);
     const { width } = useWindowDimensions();
 
-    const imageUrl = news._embedded?.['wp:featuredmedia']?.[0]?.source_url || null;
-    const date = new Date(news.date).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    useEffect(() => {
+        if (news || !id) return;
+
+        const fetchNews = async () => {
+            try {
+                const docRef = doc(firestore, 'noticias', id);
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    setNews({ id: snap.id, ...snap.data() });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar notícia:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchNews();
+    }, [id, news]);
+
+    const formatDate = (value) => {
+        if (!value) return 'N/A';
+        let date;
+        if (value?.toDate) date = value.toDate();
+        else if (value?.toMillis) date = new Date(value.toMillis());
+        else if (typeof value === 'number') date = new Date(value);
+        else date = new Date(value);
+        if (isNaN(date.getTime())) return 'N/A';
+        return date.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
+        });
+    };
+
+    if (loading) {
+        return (
+            <Container style={{ justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={primaryColor} />
+            </Container>
+        );
+    }
+
+    if (!news) {
+        return null;
+    }
+
+    const imageUrl = news.capaUrl || news._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://via.placeholder.com/600x400';
+    const titleText = news.titulo || news.title?.rendered || 'Notícia';
+    const subTitle = news.subtitulo || '';
+    const contentHtml = news.conteudo || news.content?.rendered || '';
+    const dateText = news.createdAt ? formatDate(news.createdAt) : (news.date ? formatDate(news.date) : 'N/A');
+    const shareUrl = news.link || '';
 
     const handleShare = async () => {
         try {
             await Share.share({
-                message: `${news.title.rendered}\n\nLeia mais em: ${news.link}`,
-                url: news.link,
-                title: news.title.rendered
+                message: `${titleText}${shareUrl ? `\n\nLeia mais em: ${shareUrl}` : ''}`,
+                url: shareUrl,
+                title: titleText
             });
         } catch (error) {
             console.error(error.message);
@@ -133,8 +182,8 @@ export default function NoticiaDetalheScreen({ route, navigation }) {
     };
 
     const handleOpenLink = () => {
-        if (news.link) {
-            Linking.openURL(news.link);
+        if (shareUrl) {
+            Linking.openURL(shareUrl);
         }
     };
 
@@ -147,7 +196,7 @@ export default function NoticiaDetalheScreen({ route, navigation }) {
 
     return (
         <Container>
-            <FeaturedImage source={{ uri: imageUrl || 'https://via.placeholder.com/600x400' }} resizeMode="cover" />
+            <FeaturedImage source={{ uri: imageUrl }} resizeMode="cover" />
             
             <Header>
                 <BackButton onPress={() => navigation.goBack()}>
@@ -159,22 +208,24 @@ export default function NoticiaDetalheScreen({ route, navigation }) {
             </Header>
 
             <ContentContainer showsVerticalScrollIndicator={false}>
-                <DateText>{date}</DateText>
-                <Title>{news.title.rendered}</Title>
-                
+                <DateText>{dateText}</DateText>
+                <Title>{titleText}</Title>
+                {subTitle ? <Text style={{ fontSize: 16, color: '#555', marginBottom: 16 }}>{subTitle}</Text> : null}
                 <Divider />
 
                 <RenderHtml
                     contentWidth={width - 40}
-                    source={{ html: news.content.rendered }}
+                    source={{ html: contentHtml }}
                     tagsStyles={tagsStyles}
                     baseStyle={{ color: '#444' }}
                 />
 
-                <LinkButton onPress={handleOpenLink} activeOpacity={0.8}>
-                    <LinkButtonText>Ver no site oficial</LinkButtonText>
-                    <Ionicons name="open-outline" size={20} color="#fff" />
-                </LinkButton>
+                {shareUrl ? (
+                    <LinkButton onPress={handleOpenLink} activeOpacity={0.8}>
+                        <LinkButtonText>Ver no site oficial</LinkButtonText>
+                        <Ionicons name="open-outline" size={20} color="#fff" />
+                    </LinkButton>
+                ) : null}
             </ContentContainer>
         </Container>
     );
