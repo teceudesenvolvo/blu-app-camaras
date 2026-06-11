@@ -80,27 +80,28 @@ export default function NotificacoesScreen({ navigation }) {
   useEffect(() => {
     if (!user) return;
 
-    // Busca apenas notificações desta câmara (flavor)
+    // 1. Otimização da Query: Filtra diretamente pelo userId do usuário logado.
+    // Isso evita baixar notificações de outros usuários e garante que o listener seja eficiente.
     const q = query(
       collection(firestore, 'notifications'),
-      where('flavorId', '==', flavorId)
+      where('flavorId', '==', flavorId),
+      where('userId', '==', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const data = [];
       const batch = writeBatch(firestore);
       let hasUpdates = false;
+      const userEmail = user?.email ? String(user.email).toLowerCase() : '';
 
       snapshot.forEach((docSnap) => {
         const notification = docSnap.data();
+        
+        // Verificação de segurança adicional para o caso de notificações enviadas via e-mail
         const notificationEmail = notification.userEmail ? String(notification.userEmail).toLowerCase() : '';
-        const userEmail = user?.email ? String(user.email).toLowerCase() : '';
-        const isTargetUser = notification.userId === user.uid ||
-          notification.targetUserId === user.uid ||
-          (notificationEmail && notificationEmail === userEmail);
-
+        const isTargetUser = notification.userId === user.uid || (notificationEmail && notificationEmail === userEmail);
         const isRead = notification.read === true || notification.isRead === true;
-        // Firestore timestamps podem ser objetos ou números.
+        
         const createdAt = notification.createdAt?.toMillis
           ? notification.createdAt.toMillis()
           : (notification.createdAt || notification.timestamp || (notification.migratedAt ? new Date(notification.migratedAt).getTime() : 0));
@@ -112,8 +113,8 @@ export default function NotificacoesScreen({ navigation }) {
             createdAt
           });
 
-          // Se ainda não foi lida, prepara para marcar como lida
-          if (!isRead) {
+          // 2. Só adiciona ao batch se houver algo para atualizar de fato
+          if (!isRead && docSnap.id) {
             const notifRef = doc(firestore, 'notifications', docSnap.id);
             batch.update(notifRef, { read: true, isRead: true });
             hasUpdates = true;
@@ -123,16 +124,19 @@ export default function NotificacoesScreen({ navigation }) {
 
       if (hasUpdates) {
         try {
-          await batch.commit();
+          // 3. O commit é assíncrono e não deve bloquear a renderização inicial dos dados já recebidos
+          batch.commit().catch(err => console.error("Erro ao atualizar status de leitura:", err));
         } catch (err) {
           console.error("Erro ao atualizar status de leitura:", err);
         }
       }
 
-      // Ordena por data (mais recente primeiro)
       data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
       setNotifications(data);
+      setLoading(false);
+    }, (error) => {
+      // 4. Tratamento de erro: Essencial para identificar falhas de permissão ou índices ausentes
+      console.error("Erro no listener de notificações:", error);
       setLoading(false);
     });
 

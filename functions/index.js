@@ -1,5 +1,5 @@
 const functions = require('firebase-functions');
-const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineString, defineSecret } = require("firebase-functions/params");
 const admin = require('firebase-admin');
@@ -33,15 +33,15 @@ async function sendPushNotificationToUser(userId, title, body, data) {
     try {
         const userDoc = await admin.firestore().collection('users').doc(userId).get();
         if (!userDoc.exists) {
-            console.log(`User ${userId} not found for push notification.`);
-            return;
+            console.error(`User ${userId} not found for push notification.`);
+            return false;
         }
         const userData = userDoc.data();
         const pushToken = userData.pushToken;
 
         if (!pushToken) {
-            console.log(`No pushToken found for user ${userId}.`);
-            return;
+            console.warn(`No pushToken found for user ${userId}.`);
+            return false;
         }
 
         const message = {
@@ -65,9 +65,18 @@ async function sendPushNotificationToUser(userId, title, body, data) {
             },
         });
 
-        console.log(`Push notification sent to ${userId}:`, response.data);
+        // Verifica se houve erro específico do Expo (ex: token inválido)
+        const expoData = response.data;
+        if (expoData.data && expoData.data[0] && expoData.data[0].status === 'error') {
+            console.error(`Expo push error for ${userId}:`, expoData.data[0].message);
+            return false;
+        }
+
+        console.log(`Push notification successfully sent to ${userId}`);
+        return true;
     } catch (error) {
         console.error(`Error sending push notification to user ${userId}:`, error);
+        return false;
     }
 }
 
@@ -81,7 +90,7 @@ async function addFirestoreNotification(userId, flavorId, title, body, data) {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         read: false,
         isRead: false,
-        ...data
+        data: data // Garante que os metadados fiquem dentro do objeto 'data'
     });
     console.log(`Notification added to Firestore for user ${userId}.`);
 }
@@ -157,8 +166,12 @@ const handlePanicAlert = onDocumentCreated(
             // para permitir consultas indexadas (.where) em vez de varrer a coleção inteira.
 
             if (contactUserId) {
-                await sendPushNotificationToUser(contactUserId, '🆘 PEDIDO DE SOCORRO!', 
-                    `${victim.name || 'Uma pessoa'} precisa de ajuda urgente! Veja a localização.`, 
+                // Salva no histórico de notificações do contato
+                await addFirestoreNotification(
+                    contactUserId, 
+                    flavorId, 
+                    '🆘 PEDIDO DE SOCORRO!', 
+                    `${victim.name || 'Uma pessoa'} precisa de ajuda urgente! Veja a localização.`,
                     { screen: 'PanicLocation', lat: alert.lat, lng: alert.lng, victimName: victim.name }
                 );
             }
@@ -186,15 +199,18 @@ exports.sendPushNotificationFirestore = onDocumentCreated(
         console.log(`Processing notification for user: ${notification.userId}`);
 
         try {
-            await sendPushNotificationToUser(
+            const success = await sendPushNotificationToUser(
                 notification.userId,
                 notification.tituloNotification || 'Nova notificação',
                 notification.descricaoNotification || '',
                 notification.data || {}
             );
             
-            // Marca a notificação como processada
-            await event.data.ref.update({ processed: true, processedAt: admin.firestore.FieldValue.serverTimestamp() });
+            if (success) {
+                await event.data.ref.update({ processed: true, processedAt: admin.firestore.FieldValue.serverTimestamp() });
+            } else {
+                await event.data.ref.update({ processed: false, error: 'Push delivery failed or no token' });
+            }
         } catch (error) {
             console.error('Erro ao processar notificação:', error);
         }
@@ -282,8 +298,34 @@ exports.sendMailOnNewRequest = onDocumentCreated(
             html: `${mailData.message.html}${emailFooter}`,
         };
 
-        await transport.sendMail(mailOptions);
-        return snapshot.ref.delete();
+        try {
+            await transport.sendMail(mailOptions);
+
+            if (mailData.userId) {
+                const protocolo = mailData.protocolo || "";
+                const status = mailData.status || "Atualizado";
+                const desc = `O status da sua solicitação (Protocolo: ${protocolo})` +
+                    ` foi alterado para: ${status}.`;
+
+                await addFirestoreNotification(
+                    mailData.userId,
+                    "paraipaba",
+                    "Status de Solicitação Atualizado",
+                    desc,
+                    {
+                        protocolo: protocolo,
+                        solicitacaoId: protocolo,
+                        status: status,
+                        collection: mailData.collection || "balcao-cidadao",
+                    }
+                );
+            }
+
+            return snapshot.ref.delete();
+        } catch (error) {
+            console.error(`Erro ao enviar email para ${mailData.to}:`, error);
+            return null;
+        }
     }
 );
 
@@ -430,6 +472,78 @@ exports.onOuvidoriaUpdate = onDocumentUpdated(
     }
 );
 
+/**
+ * 6. Notifica todos os usuários quando uma nova notícia é publicada
+ */
+exports.notifyUsersOnNewsPublished = onDocumentWritten(
+    "noticias/{noticiaId}",
+    async (event) => {
+        const beforeData = event.data.before ? event.data.before.data() : null;
+        const afterData = event.data.after ? event.data.after.data() : null;
+
+        // Caso de exclusão de documento
+        if (!afterData) return null;
+
+        // Verifica se o status mudou para "Publicado"
+        const isNewlyPublished = afterData.status === "Publicado" &&
+            (!beforeData || beforeData.status !== "Publicado");
+
+        if (!isNewlyPublished) return null;
+
+        const db = admin.firestore();
+        console.log("Iniciando notificação de nova notícia: " + event.params.noticiaId);
+        
+        const usersSnapshot = await db.collection("users").get();
+        console.log(`Encontrados ${usersSnapshot.size} usuários para processar.`);
+
+        const mailRef = db.collection("mail");
+        const promises = [];
+
+        usersSnapshot.forEach((userDoc) => {
+            const userData = userDoc.data() || {};
+            const email = userData.email || userData.userEmail || null;
+            
+            // Cria notificação no Firestore usando o helper padrão
+            promises.push(
+                addFirestoreNotification(
+                    userDoc.id,
+                    "paraipaba",
+                    "📢 " + afterData.titulo,
+                    afterData.subtitulo || "Novidade no app.",
+                    {
+                        protocolo: event.params.noticiaId,
+                        type: "news",
+                        screen: "Notificacoes",
+                    }
+                )
+            );
+
+            // Enfileira e-mail informativo
+            if (email) {
+                promises.push(
+                    mailRef.add({
+                        to: email,
+                        message: {
+                            subject: `Informativo: ${afterData.titulo}`,
+                            html: `<h3>${afterData.titulo}</h3>` +
+                                `<p>${afterData.subtitulo || ""}</p>` +
+                                `<hr><p>Uma nova notícia foi publicada no ` +
+                                `Portal de Serviços da Câmara Municipal de ` +
+                                `Paraipaba.</p><p>Acesse o aplicativo para ler ` +
+                                `o conteúdo completo.</p>`,
+                        },
+                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    })
+                );
+            }
+        });
+
+        await Promise.all(promises);
+        console.log("Notificações de notícias processadas.");
+        return null;
+    }
+);
+
 // 5. Triggers para Notificações de Atualização - Procuradoria da Mulher (v2 API)
 exports.onProcuradoriaMulherUpdate = onDocumentUpdated(
     "procuradoria-mulher/{id}",
@@ -474,3 +588,9 @@ exports.onProcuradoriaMulherUpdate = onDocumentUpdated(
         return null;
     }
 );
+
+try {
+    Object.assign(exports, require("./lib/index"));
+} catch (error) {
+    console.warn("Funcoes TypeScript ainda nao compiladas. Execute `npm --prefix functions run build`.");
+}

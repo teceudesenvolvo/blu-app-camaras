@@ -91,8 +91,12 @@ export const AuthProvider = ({ children }) => {
         if (!user) return;
 
         // Começamos a ouvir apenas notificações criadas a partir de agora
-        const now = Date.now();
-        const q = query(collection(firestore, 'notifications'), where('flavorId', '==', flavorId));
+        // Otimização: Filtramos pelo usuário logado no Firestore para evitar processamento excessivo
+        const q = query(
+            collection(firestore, 'notifications'), 
+            where('flavorId', '==', flavorId),
+            where('userId', '==', user.uid)
+        );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             snapshot.docChanges().forEach(async (change) => {
@@ -104,15 +108,10 @@ export const AuthProvider = ({ children }) => {
                         ? notification.createdAt.toMillis() 
                         : (notification.createdAt || 0);
 
-                    // Só dispara se foi criada agora
-                    if (createdAt < now) return;
+                    // Evita disparar push para notificações antigas no primeiro carregamento
+                    const isRecent = createdAt > (Date.now() - 60000); 
 
-                    const isTargetUser = notification && (
-                        notification.userId === user.uid || 
-                        (notification.userEmail && String(notification.userEmail).toLowerCase() === String(user.email).toLowerCase())
-                    );
-
-                    if (isTargetUser && notification.read !== true && notification.isRead !== true) {
+                    if (isRecent && notification.read !== true && notification.isRead !== true) {
                         await Notifications.scheduleNotificationAsync({
                             content: {
                                 title: notification.tituloNotification || 'Nova Notificação',
@@ -137,21 +136,18 @@ export const AuthProvider = ({ children }) => {
             return;
         }
 
-        // Filtramos por flavorId para performance, o restante filtramos no JS para cobrir userId ou Email
+        // Filtramos por flavorId e userId para performance
         const q = query(
             collection(firestore, 'notifications'), 
-            where('flavorId', '==', flavorId)
+            where('flavorId', '==', flavorId),
+            where('userId', '==', user.uid)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             let count = 0;
             snapshot.forEach((docSnap) => {
                 const notif = docSnap.data();
-                const userEmail = user?.email ? String(user.email).toLowerCase() : '';
-                const isTargetUser = notif.userId === user.uid || 
-                    (notif.userEmail && String(notif.userEmail).toLowerCase() === userEmail);
-
-                if (isTargetUser && notif.read !== true && notif.isRead !== true) {
+                if (notif.read !== true && notif.isRead !== true) {
                     count++;
                 }
             });
