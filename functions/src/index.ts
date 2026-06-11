@@ -20,6 +20,7 @@ const youtubeWebhookVerifyToken = defineSecret("YOUTUBE_WEBHOOK_VERIFY_TOKEN");
 type PlaylistVideo = {
   playlistItemId: string;
   videoId: string;
+  title: string;
 };
 
 type PublicPlaylistVideo = {
@@ -66,6 +67,7 @@ function getPlaylistVideo(item: youtube_v3.Schema$PlaylistItem): PlaylistVideo |
   return {
     playlistItemId,
     videoId,
+    title: item.snippet?.title ?? "Novo video na TV Câmara",
   };
 }
 
@@ -448,6 +450,13 @@ export const listarVideosTvCamara = onRequest(
         pageToken = playlistItemsResponse.data.nextPageToken ?? undefined;
       } while (pageToken);
 
+      videos.sort((firstVideo, secondVideo) => {
+        const firstTime = firstVideo.publishedAt ? Date.parse(firstVideo.publishedAt) : 0;
+        const secondTime = secondVideo.publishedAt ? Date.parse(secondVideo.publishedAt) : 0;
+
+        return secondTime - firstTime;
+      });
+
       logger.info("Lista publica da TV Camara carregada.", {
         videosCount: videos.length,
       });
@@ -472,7 +481,7 @@ export const listarVideosTvCamara = onRequest(
 
 export const atualizarPlaylistYoutube = onSchedule(
   {
-    schedule: "0 6 * * *",
+    schedule: "*/30 8-19 * * *",
     timeZone: "America/Fortaleza",
     region: "southamerica-east1",
     secrets: [
@@ -500,32 +509,43 @@ export const atualizarPlaylistYoutube = onSchedule(
       const currentPlaylistVideoIds = new Set(
         currentPlaylistVideos.map((video) => video.videoId),
       );
-      const uniqueChannelVideoIds = Array.from(
-        new Set(channelUploads.map((video) => video.videoId)),
+      const uniqueChannelVideos = Array.from(
+        new Map(channelUploads.map((video) => [video.videoId, video])).values(),
       );
       let inserted = 0;
 
       logger.info("Comparando uploads do canal com playlist publica.", {
-        channelVideosCount: uniqueChannelVideoIds.length,
+        channelVideosCount: uniqueChannelVideos.length,
         playlistVideosCount: currentPlaylistVideoIds.size,
       });
 
-      for (const videoId of uniqueChannelVideoIds) {
+      for (const video of uniqueChannelVideos) {
         const wasInserted = await addVideoToPlaylistIfMissing({
           youtube,
           playlistId,
-          videoId,
+          videoId: video.videoId,
           knownPlaylistVideoIds: currentPlaylistVideoIds,
         });
 
         if (wasInserted) {
           inserted += 1;
-          logger.info("Video adicionado durante backfill da playlist.", { videoId });
+          const notificationsCreated = await notifyUsersAboutNewYoutubeVideo({
+            videoId: video.videoId,
+            title: video.title,
+          });
+
+          logger.info("Video adicionado durante backfill da playlist.", {
+            videoId: video.videoId,
+          });
+          logger.info("Notificacoes criadas para video adicionado por backfill.", {
+            videoId: video.videoId,
+            notificationsCreated,
+          });
         }
       }
 
       logger.info("Backfill da playlist do YouTube concluido.", {
-        channelVideosCount: uniqueChannelVideoIds.length,
+        channelVideosCount: uniqueChannelVideos.length,
         inserted,
       });
     } catch (error) {

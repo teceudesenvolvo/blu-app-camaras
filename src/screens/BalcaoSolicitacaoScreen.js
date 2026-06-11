@@ -15,6 +15,19 @@ const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
+const getStartOfToday = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
+
+const isBeforeToday = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return true;
+  const normalizedDate = new Date(date);
+  normalizedDate.setHours(0, 0, 0, 0);
+  return normalizedDate < getStartOfToday();
+};
+
 const Container = styled.ScrollView`
   flex: 1;
   background-color: ${backgroundColor};
@@ -349,12 +362,20 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
         fetchAvailability(date);
       } else {
         setAvailableSlots([]);
+        setSelectedSlot(null);
       }
     }
   }, [formData.dataAgendamento, serviceName]);
 
   // Função para buscar horários disponíveis no Firebase
   const fetchAvailability = async (selectedDate) => {
+    if (isBeforeToday(selectedDate)) {
+      setAvailableSlots([]);
+      setSelectedSlot(null);
+      Alert.alert('Data inválida', 'Não é possível agendar para uma data anterior a hoje.');
+      return;
+    }
+
     setLoadingSlots(true);
     setSelectedSlot(null); // Reseta horário selecionado ao mudar data
     setAvailableSlots([]);
@@ -410,6 +431,13 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
   const onDateChange = (event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
+      if (isBeforeToday(selectedDate)) {
+        setAvailableSlots([]);
+        setSelectedSlot(null);
+        Alert.alert('Data inválida', 'Não é possível agendar para uma data anterior a hoje.');
+        return;
+      }
+
       setDateObject(selectedDate);
       // Salva formato legível no formData ou ISO para backend
       const formattedDate = selectedDate.toLocaleDateString('pt-BR');
@@ -858,6 +886,16 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
     if (serviceName === 'Agendamentos' && (!formData.dataAgendamento || !selectedSlot)) {
       Alert.alert('Atenção', 'Por favor, selecione uma data e um horário disponível.');
       return;
+    }
+
+    if (serviceName === 'Agendamentos') {
+      const dateObj = new Date(formData.dataAgendamento.split('/').reverse().join('-'));
+      if (isBeforeToday(dateObj)) {
+        Alert.alert('Data inválida', 'Não é possível agendar para uma data anterior a hoje.');
+        setAvailableSlots([]);
+        setSelectedSlot(null);
+        return;
+      }
     }
 
     setLoading(true);

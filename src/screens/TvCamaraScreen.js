@@ -6,7 +6,6 @@ import styled from 'styled-components/native';
 
 const primaryColor = Constants.expoConfig.extra?.theme?.primary || '#004a99';
 const secondaryColor = Constants.expoConfig.extra?.theme?.secondary || '#f9c204';
-const playlistId = 'PLLWtKAX8X90qj4BPf4ceLgCJR1Lv5-26j';
 const videosEndpoint = 'https://southamerica-east1-blu-app-camara.cloudfunctions.net/listarVideosTvCamara';
 const { width } = Dimensions.get('window');
 const playerWidth = width - 36;
@@ -268,7 +267,6 @@ function buildPlayerUrl(videoId) {
   }
 
   const params = new URLSearchParams({
-    list: playlistId,
     rel: '0',
     modestbranding: '1',
     playsinline: '1',
@@ -277,6 +275,11 @@ function buildPlayerUrl(videoId) {
   });
 
   return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
+}
+
+function getVideoTimestamp(video) {
+  const timestamp = new Date(video?.publishedAt ?? '').getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
 function getWebViewComponent() {
@@ -333,11 +336,14 @@ export default function TvCamaraScreen() {
 
         const payload = await response.json();
         const playlistVideos = Array.isArray(payload?.videos) ? payload.videos : [];
+        const orderedVideos = [...playlistVideos].sort(
+          (firstVideo, secondVideo) => getVideoTimestamp(secondVideo) - getVideoTimestamp(firstVideo),
+        );
 
         if (!mounted) return;
 
-        setVideos(playlistVideos);
-        setSelectedVideo(playlistVideos[0] ?? null);
+        setVideos(orderedVideos);
+        setSelectedVideo(orderedVideos[0] ?? null);
         setHasError(false);
       } catch (error) {
         console.error('Falha ao carregar videos da TV Camara:', error);

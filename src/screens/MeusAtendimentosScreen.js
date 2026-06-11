@@ -12,6 +12,19 @@ const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
+const getStartOfToday = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
+
+const isBeforeToday = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return true;
+  const normalizedDate = new Date(date);
+  normalizedDate.setHours(0, 0, 0, 0);
+  return normalizedDate < getStartOfToday();
+};
+
 const Container = styled.View`
   flex: 1;
   background-color: ${backgroundColor};
@@ -220,6 +233,12 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
     useEffect(() => {
         if (!availability) return;
 
+        if (isBeforeToday(appointmentDate)) {
+            setAvailableTimes([]);
+            setAppointmentTime('');
+            return;
+        }
+
         // Formata data para bater com o padrão Web (YYYY-MM-DD para chaves e DD/MM/YYYY para bloqueios)
         const day = String(appointmentDate.getDate()).padStart(2, '0');
         const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
@@ -249,12 +268,22 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
     const onDateChange = (event, selectedDate) => {
         setShowDatePicker(false);
         if (selectedDate) {
+            if (isBeforeToday(selectedDate)) {
+                Alert.alert('Data inválida', 'Não é possível agendar para uma data anterior a hoje.');
+                setAppointmentTime('');
+                return;
+            }
             setAppointmentDate(selectedDate);
         }
     };
 
     const handleSchedule = async () => {
         if (!appointmentTime) return;
+        if (isBeforeToday(appointmentDate)) {
+            Alert.alert('Data inválida', 'Não é possível agendar para uma data anterior a hoje.');
+            setAppointmentTime('');
+            return;
+        }
         setScheduling(true);
         const day = String(appointmentDate.getDate()).padStart(2, '0');
         const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');

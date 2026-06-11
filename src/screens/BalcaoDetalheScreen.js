@@ -21,6 +21,19 @@ const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
+const getStartOfToday = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+};
+
+const isBeforeToday = (date) => {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return true;
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(0, 0, 0, 0);
+    return normalizedDate < getStartOfToday();
+};
+
 const Container = styled.View`
   flex: 1;
   background-color: ${backgroundColor};
@@ -355,6 +368,12 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
     const onDateChange = (event, selectedDate) => {
         setShowDatePicker(Platform.OS === 'ios');
         if (selectedDate) {
+            if (isBeforeToday(selectedDate)) {
+                Alert.alert("Data inválida", "Não é possível agendar para uma data anterior a hoje.");
+                setAppointmentTime('');
+                setAvailableTimes([]);
+                return;
+            }
             setAppointmentDate(selectedDate);
             updateAvailableTimes(selectedDate);
         }
@@ -362,6 +381,12 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
 
     const updateAvailableTimes = (date) => {
         if (!availability) return;
+
+        if (isBeforeToday(date)) {
+            setAvailableTimes([]);
+            setAppointmentTime('');
+            return;
+        }
 
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -390,6 +415,13 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
     const handleScheduleSubmit = async () => {
         if (!appointmentTime) {
             Alert.alert("Atenção", "Por favor, selecione um horário.");
+            return;
+        }
+
+        if (isBeforeToday(appointmentDate)) {
+            Alert.alert("Data inválida", "Não é possível agendar para uma data anterior a hoje.");
+            setAppointmentTime('');
+            setAvailableTimes([]);
             return;
         }
 
