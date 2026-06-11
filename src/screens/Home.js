@@ -9,7 +9,6 @@ import { AuthContext } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const primaryColor = Constants.expoConfig.extra?.theme?.primary || '#004a99';
-const secondaryColor = Constants.expoConfig.extra?.theme?.secondary || '#f9c204';
 const backgroundColor = Constants.expoConfig.extra?.theme?.background || '#f8fafc';
 // --- ESTILOS ---
 
@@ -131,7 +130,7 @@ const NewsCard = styled.TouchableOpacity`
 
 const NewsImage = styled.Image`
   width: 100%;
-  height: 120px;
+  height: 115px;
   background-color: #F0F0F0;
 `;
 
@@ -141,9 +140,29 @@ const NewsContent = styled.View`
 
 const NewsTitle = styled.Text`
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: #444;
   line-height: 18px;
+`;
+
+const NewsSummary = styled.Text`
+  margin-top: 7px;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 16px;
+`;
+
+const ReadMoreRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-top: 10px;
+`;
+
+const ReadMoreText = styled.Text`
+  font-size: 12px;
+  color: ${primaryColor};
+  font-weight: 800;
+  margin-right: 4px;
 `;
 
 // --- COMPONENTES AUXILIARES ---
@@ -156,6 +175,27 @@ const MenuAction = ({ icon, label, onPress }) => (
     <MenuLabel>{label}</MenuLabel>
   </MenuItem>
 );
+
+const stripHtml = (value = '') => String(value)
+  .replace(/<[^>]*>/g, ' ')
+  .replace(/&nbsp;/g, ' ')
+  .replace(/&amp;/g, '&')
+  .replace(/&quot;/g, '"')
+  .replace(/&#39;/g, "'")
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const getNewsSummary = (item) => {
+  const rawSummary =
+    item.resumo ||
+    item.subtitulo ||
+    item.excerpt?.rendered ||
+    item.descricao ||
+    item.content?.rendered ||
+    '';
+
+  return stripHtml(rawSummary);
+};
 
 // --- TELA PRINCIPAL ---
 
@@ -228,12 +268,18 @@ const HomeScreen = ({ navigation }) => {
           {news.map((item) => {
             const imageUrl = item.capaUrl || item._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://via.placeholder.com/400x200.png?text=Sem+Imagem';
             const titleText = item.titulo || item.title?.rendered || 'Notícia';
+            const summaryText = getNewsSummary(item);
             
             return (
               <NewsCard key={item.id} activeOpacity={0.9} onPress={() => navigation.navigate('NoticiaDetalhe', { news: item, id: item.id })}>
                 <NewsImage source={{ uri: imageUrl }} />
                 <NewsContent>
                   <NewsTitle numberOfLines={3}>{titleText}</NewsTitle>
+                  {summaryText ? <NewsSummary numberOfLines={3}>{summaryText}</NewsSummary> : null}
+                  <ReadMoreRow>
+                    <ReadMoreText>Leia mais</ReadMoreText>
+                    <MaterialCommunityIcons name="arrow-right" size={14} color={primaryColor} />
+                  </ReadMoreRow>
                 </NewsContent>
               </NewsCard>
             );

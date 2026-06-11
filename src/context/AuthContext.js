@@ -116,7 +116,7 @@ export const AuthProvider = ({ children }) => {
                             content: {
                                 title: notification.tituloNotification || 'Nova Notificação',
                                 body: notification.descricaoNotification || 'Você recebeu uma atualização.',
-                                data: { screen: 'Notificacoes' },
+                                data: notification.data || { screen: 'Notificacoes' },
                                 sound: true,
                             },
                             trigger: null,

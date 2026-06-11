@@ -356,7 +356,7 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
-  const { source } = route.params || {};
+  const { source, solicitacaoId } = route.params || {};
 
   useEffect(() => {
     if (!user) return;
@@ -370,7 +370,6 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
       basePath = 'procuradoria-mulher';
     }
 
-    const refPath = `${flavorId}/${basePath}`;
     const requestsQuery = query(
       collection(firestore, basePath),
       where('userId', '==', user.uid)
@@ -409,6 +408,19 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
 
     return () => unsubscribe();
   }, [user, source]);
+
+  useEffect(() => {
+    if (loading || !solicitacaoId || requests.length === 0) return;
+
+    const selectedRequest = requests.find((request) => request.id === solicitacaoId);
+    if (!selectedRequest) return;
+
+    let destination = 'BalcaoDetalhe';
+    if (selectedRequest.originCollection === 'ouvidoria') destination = 'OuvidoriaDetalhe';
+    if (selectedRequest.originCollection === 'procuradoria-mulher') destination = 'ProcuradoriaDetalhe';
+
+    navigation.navigate(destination, { item: selectedRequest });
+  }, [loading, navigation, requests, solicitacaoId]);
 
     const getStatusInfo = (status) => {
     switch (status) {

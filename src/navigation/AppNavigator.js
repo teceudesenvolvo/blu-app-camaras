@@ -43,6 +43,43 @@ const Stack = createNativeStackNavigator();
 
 const { width } = Dimensions.get('window');
 
+const getNotificationRoute = (data = {}) => {
+    if (data.screen === 'TvCamara') {
+        return {
+            name: 'MainTabs',
+            params: { screen: 'TvCamara', params: { videoId: data.videoId } },
+        };
+    }
+
+    if (data.screen === 'NoticiaDetalhe' || data.type === 'news') {
+        return {
+            name: 'NoticiaDetalhe',
+            params: {
+                id: data.id || data.noticiaId || data.protocolo,
+            },
+        };
+    }
+
+    if (data.screen === 'MeusAtendimentos' || data.collection) {
+        return {
+            name: 'MeusAtendimentos',
+            params: {
+                source: data.source || data.collection || 'balcao-cidadao',
+                solicitacaoId: data.solicitacaoId || data.protocolo,
+            },
+        };
+    }
+
+    if (data.screen) {
+        return {
+            name: data.screen,
+            params: data,
+        };
+    }
+
+    return null;
+};
+
 // 3. O COMPONENTE DA BARRA
 const LiquidTabBar = ({ state, descriptors, navigation }) => {
     const { theme } = Constants.expoConfig.extra;
@@ -123,8 +160,10 @@ function NavigationContent() {
         // Listener para quando o usuário CLICA na notificação
         const subscription = Notifications.addNotificationResponseReceivedListener(response => {
             const data = response.notification.request.content.data;
-            if (data?.screen) {
-                navigation.navigate(data.screen);
+            const route = getNotificationRoute(data);
+
+            if (route) {
+                navigation.navigate(route.name, route.params);
             }
         });
 

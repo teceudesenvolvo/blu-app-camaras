@@ -82,6 +82,12 @@ async function sendPushNotificationToUser(userId, title, body, data) {
 
 // --- Helper to add a notification to Firestore (which will then trigger the push) ---
 async function addFirestoreNotification(userId, flavorId, title, body, data) {
+    const notificationData = data || {};
+    if (!notificationData.screen && notificationData.collection) {
+        notificationData.screen = 'MeusAtendimentos';
+        notificationData.source = notificationData.collection;
+    }
+
     await admin.firestore().collection('notifications').add({
         userId: userId,
         flavorId: flavorId,
@@ -90,7 +96,7 @@ async function addFirestoreNotification(userId, flavorId, title, body, data) {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         read: false,
         isRead: false,
-        data: data // Garante que os metadados fiquem dentro do objeto 'data'
+        data: notificationData // Garante que os metadados fiquem dentro do objeto 'data'
     });
     console.log(`Notification added to Firestore for user ${userId}.`);
 }
@@ -236,7 +242,7 @@ exports.onBalcaoCidadaoUpdate = onDocumentUpdated(
         }
 
         let title = "Atualização no Balcão do Cidadão";
-        let data = { solicitacaoId: docId, collection: 'balcao-cidadao' };
+        let data = { screen: 'MeusAtendimentos', source: 'balcao-cidadao', solicitacaoId: docId, collection: 'balcao-cidadao' };
 
         try {
             // Verifica mudança de status
@@ -316,6 +322,8 @@ exports.sendMailOnNewRequest = onDocumentCreated(
                         protocolo: protocolo,
                         solicitacaoId: protocolo,
                         status: status,
+                        screen: "MeusAtendimentos",
+                        source: mailData.collection || "balcao-cidadao",
                         collection: mailData.collection || "balcao-cidadao",
                     }
                 );
@@ -445,7 +453,7 @@ exports.onOuvidoriaUpdate = onDocumentUpdated(
         }
 
         let title = "Atualização na Ouvidoria";
-        let data = { solicitacaoId: docId, collection: 'ouvidoria' };
+        let data = { screen: 'MeusAtendimentos', source: 'ouvidoria', solicitacaoId: docId, collection: 'ouvidoria' };
 
         try {
             // Verifica mudança de status
@@ -512,8 +520,10 @@ exports.notifyUsersOnNewsPublished = onDocumentWritten(
                     afterData.subtitulo || "Novidade no app.",
                     {
                         protocolo: event.params.noticiaId,
+                        id: event.params.noticiaId,
+                        noticiaId: event.params.noticiaId,
                         type: "news",
-                        screen: "Notificacoes",
+                        screen: "NoticiaDetalhe",
                     }
                 )
             );
@@ -562,7 +572,7 @@ exports.onProcuradoriaMulherUpdate = onDocumentUpdated(
         }
 
         let title = "Atualização na Procuradoria";
-        let data = { solicitacaoId: docId, collection: 'procuradoria-mulher' };
+        let data = { screen: 'MeusAtendimentos', source: 'procuradoria-mulher', solicitacaoId: docId, collection: 'procuradoria-mulher' };
 
         try {
             // Verifica mudança de status

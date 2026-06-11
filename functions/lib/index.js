@@ -143,6 +143,43 @@ async function addVideoToPlaylistIfMissing(params) {
     knownPlaylistVideoIds?.add(videoId);
     return true;
 }
+async function notifyUsersAboutNewYoutubeVideo(params) {
+    const { videoId, title } = params;
+    const db = firebase_admin_1.default.firestore();
+    const usersSnapshot = await db.collection("users").get();
+    let batch = db.batch();
+    let batchOperations = 0;
+    let created = 0;
+    for (const userDoc of usersSnapshot.docs) {
+        const notificationRef = db.collection("notifications").doc();
+        const userData = userDoc.data() ?? {};
+        batch.set(notificationRef, {
+            userId: userDoc.id,
+            flavorId: userData.flavorId || "paraipaba",
+            tituloNotification: "Novo video na TV Câmara",
+            descricaoNotification: title || "Há um novo vídeo disponível para assistir.",
+            createdAt: firebase_admin_1.default.firestore.FieldValue.serverTimestamp(),
+            read: false,
+            isRead: false,
+            data: {
+                screen: "TvCamara",
+                type: "youtube-video",
+                videoId,
+            },
+        });
+        batchOperations += 1;
+        created += 1;
+        if (batchOperations >= 450) {
+            await batch.commit();
+            batch = db.batch();
+            batchOperations = 0;
+        }
+    }
+    if (batchOperations > 0) {
+        await batch.commit();
+    }
+    return created;
+}
 async function subscribeToYoutubeWebSub(callbackUrl) {
     const channelId = readSecret(youtubeChannelId, "YOUTUBE_CHANNEL_ID");
     const verifyToken = readSecret(youtubeWebhookVerifyToken, "YOUTUBE_WEBHOOK_VERIFY_TOKEN");
@@ -216,6 +253,7 @@ exports.youtubeChannelWebhook = (0, https_1.onRequest)({
         for (const entry of entries) {
             const videoId = entry?.videoId;
             const entryChannelId = entry?.channelId;
+            const title = entry?.title ?? "Novo video na TV Câmara";
             if (!videoId || entryChannelId !== channelId) {
                 firebase_functions_1.logger.warn("Entrada WebSub ignorada por canal ou video invalido.", {
                     hasVideoId: Boolean(videoId),
@@ -230,7 +268,15 @@ exports.youtubeChannelWebhook = (0, https_1.onRequest)({
             });
             if (wasInserted) {
                 inserted += 1;
+                const notificationsCreated = await notifyUsersAboutNewYoutubeVideo({
+                    videoId,
+                    title,
+                });
                 firebase_functions_1.logger.info("Video novo adicionado via webhook YouTube.", { videoId });
+                firebase_functions_1.logger.info("Notificacoes criadas para novo video da TV Camara.", {
+                    videoId,
+                    notificationsCreated,
+                });
             }
         }
         response.status(204).send("");

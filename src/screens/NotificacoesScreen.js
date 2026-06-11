@@ -72,6 +72,45 @@ const NotificationDate = styled.Text`
   text-align: right;
 `;
 
+const getNotificationRoute = (notification = {}) => {
+  const data = notification.data || {};
+
+  if (data.screen === 'TvCamara') {
+    return {
+      name: 'MainTabs',
+      params: { screen: 'TvCamara', params: { videoId: data.videoId } },
+    };
+  }
+
+  if (data.screen === 'NoticiaDetalhe' || data.type === 'news') {
+    return {
+      name: 'NoticiaDetalhe',
+      params: {
+        id: data.id || data.noticiaId || data.protocolo,
+      },
+    };
+  }
+
+  if (data.screen === 'MeusAtendimentos' || data.collection) {
+    return {
+      name: 'MeusAtendimentos',
+      params: {
+        source: data.source || data.collection || 'balcao-cidadao',
+        solicitacaoId: data.solicitacaoId || data.protocolo,
+      },
+    };
+  }
+
+  if (data.screen) {
+    return {
+      name: data.screen,
+      params: data,
+    };
+  }
+
+  return null;
+};
+
 export default function NotificacoesScreen({ navigation }) {
   const { user } = useContext(AuthContext);
   const [notifications, setNotifications] = useState([]);
@@ -143,15 +182,31 @@ export default function NotificacoesScreen({ navigation }) {
     return () => unsubscribe();
   }, [user]);
 
-  const renderItem = ({ item }) => (
-    <NotificationCard activeOpacity={0.7}>
-      <NotificationTitle>{item.tituloNotification}</NotificationTitle>
-      <NotificationDesc>{item.descricaoNotification}</NotificationDesc>
-      <NotificationDate>
-        {item.createdAt ? new Date(item.createdAt).toLocaleString('pt-BR') : ''}
-      </NotificationDate>
-    </NotificationCard>
-  );
+  const handleNotificationPress = (notification) => {
+    const route = getNotificationRoute(notification);
+
+    if (route) {
+      navigation.navigate(route.name, route.params);
+    }
+  };
+
+  const renderItem = ({ item }) => {
+    const route = getNotificationRoute(item);
+
+    return (
+      <NotificationCard
+        activeOpacity={route ? 0.7 : 1}
+        onPress={() => handleNotificationPress(item)}
+        disabled={!route}
+      >
+        <NotificationTitle>{item.tituloNotification}</NotificationTitle>
+        <NotificationDesc>{item.descricaoNotification}</NotificationDesc>
+        <NotificationDate>
+          {item.createdAt ? new Date(item.createdAt).toLocaleString('pt-BR') : ''}
+        </NotificationDate>
+      </NotificationCard>
+    );
+  };
 
   return (
     <Container>

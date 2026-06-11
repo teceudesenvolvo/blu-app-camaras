@@ -31,6 +31,12 @@ type PublicPlaylistVideo = {
   position: number | null;
 };
 
+type YoutubeWebhookEntry = {
+  videoId?: string;
+  channelId?: string;
+  title?: string;
+};
+
 function readSecret(secret: ReturnType<typeof defineSecret>, name: string): string {
   const value = secret.value()?.trim();
 
@@ -201,6 +207,53 @@ async function addVideoToPlaylistIfMissing(params: {
   return true;
 }
 
+async function notifyUsersAboutNewYoutubeVideo(params: {
+  videoId: string;
+  title: string;
+}): Promise<number> {
+  const { videoId, title } = params;
+  const db = admin.firestore();
+  const usersSnapshot = await db.collection("users").get();
+  let batch = db.batch();
+  let batchOperations = 0;
+  let created = 0;
+
+  for (const userDoc of usersSnapshot.docs) {
+    const notificationRef = db.collection("notifications").doc();
+    const userData = userDoc.data() ?? {};
+
+    batch.set(notificationRef, {
+      userId: userDoc.id,
+      flavorId: userData.flavorId || "paraipaba",
+      tituloNotification: "Novo video na TV Câmara",
+      descricaoNotification: title || "Há um novo vídeo disponível para assistir.",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      read: false,
+      isRead: false,
+      data: {
+        screen: "TvCamara",
+        type: "youtube-video",
+        videoId,
+      },
+    });
+
+    batchOperations += 1;
+    created += 1;
+
+    if (batchOperations >= 450) {
+      await batch.commit();
+      batch = db.batch();
+      batchOperations = 0;
+    }
+  }
+
+  if (batchOperations > 0) {
+    await batch.commit();
+  }
+
+  return created;
+}
+
 async function subscribeToYoutubeWebSub(callbackUrl: string): Promise<void> {
   const channelId = readSecret(youtubeChannelId, "YOUTUBE_CHANNEL_ID");
   const verifyToken = readSecret(youtubeWebhookVerifyToken, "YOUTUBE_WEBHOOK_VERIFY_TOKEN");
@@ -277,7 +330,7 @@ export const youtubeChannelWebhook = onRequest(
         removeNSPrefix: true,
       });
       const parsed = parser.parse(body);
-      const entries = normalizeArray(parsed?.feed?.entry);
+      const entries = normalizeArray<YoutubeWebhookEntry>(parsed?.feed?.entry);
 
       if (entries.length === 0) {
         logger.info("Webhook YouTube recebido sem novos videos.");
@@ -291,6 +344,7 @@ export const youtubeChannelWebhook = onRequest(
       for (const entry of entries) {
         const videoId = entry?.videoId;
         const entryChannelId = entry?.channelId;
+        const title = entry?.title ?? "Novo video na TV Câmara";
 
         if (!videoId || entryChannelId !== channelId) {
           logger.warn("Entrada WebSub ignorada por canal ou video invalido.", {
@@ -308,7 +362,16 @@ export const youtubeChannelWebhook = onRequest(
 
         if (wasInserted) {
           inserted += 1;
+          const notificationsCreated = await notifyUsersAboutNewYoutubeVideo({
+            videoId,
+            title,
+          });
+
           logger.info("Video novo adicionado via webhook YouTube.", { videoId });
+          logger.info("Notificacoes criadas para novo video da TV Camara.", {
+            videoId,
+            notificationsCreated,
+          });
         }
       }
 
