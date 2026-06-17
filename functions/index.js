@@ -8,6 +8,44 @@ const nodemailer = require('nodemailer'); // Keep nodemailer for email sending
 
 admin.initializeApp();
 
+exports.logoutOtherDevices = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
+    }
+
+    const uid = context.auth.uid;
+    const currentActivityId = data && data.currentActivityId ? String(data.currentActivityId) : null;
+
+    try {
+        const snapshot = await admin.firestore()
+            .collection('login-activities')
+            .where('userId', '==', uid)
+            .get();
+
+        const batch = admin.firestore().batch();
+        let revokedActivities = 0;
+
+        snapshot.docs.forEach((docSnap) => {
+            if (currentActivityId && docSnap.id === currentActivityId) return;
+
+            batch.update(docSnap.ref, {
+                revoked: true,
+                revokedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            revokedActivities += 1;
+        });
+
+        if (revokedActivities > 0) {
+            await batch.commit();
+        }
+
+        return { success: true, revokedActivities };
+    } catch (error) {
+        console.error('Erro ao encerrar sessões de outros dispositivos:', error);
+        throw new functions.https.HttpsError('internal', 'Não foi possível encerrar as outras sessões.');
+    }
+});
+
 // Parâmetros e Segredos da v2
 const gmailEmail = defineString("GMAIL_EMAIL", { default: 'blutecnologiasbr@gmail.com' });
 const gmailAppPassword = defineSecret("GMAIL_APP_PASSWORD");

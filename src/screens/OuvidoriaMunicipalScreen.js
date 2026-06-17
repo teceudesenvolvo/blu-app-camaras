@@ -22,7 +22,7 @@ const Container = styled.ScrollView`
 const HeaderContainer = styled.View`
   flex-direction: row;
   align-items: center;
-  padding: 50px 20px 20px 20px;
+  padding: 72px 20px 20px 20px;
   background-color: #fff;
 `;
 
@@ -31,12 +31,20 @@ const BackButton = styled.TouchableOpacity`
 `;
 
 const HeaderTitle = styled.Text`
-  flex: 1;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 900;
   color: #111;
-  margin-right: 30px;
+`;
+
+const HeaderSubtitle = styled.Text`
+  margin-top: 5px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #64748b;
+`;
+
+const HeaderTextGroup = styled.View`
+  flex: 1;
 `;
 
 const FormContainer = styled.View`
@@ -315,7 +323,10 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
                 <BackButton onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back" size={24} color="#333" />
                 </BackButton>
-                <HeaderTitle>Ouvidoria</HeaderTitle>
+                <HeaderTextGroup>
+                    <HeaderTitle>Ouvidoria</HeaderTitle>
+                    <HeaderSubtitle>Envie sua manifestação e acompanhe o atendimento.</HeaderSubtitle>
+                </HeaderTextGroup>
             </HeaderContainer>
 
             <FormContainer>

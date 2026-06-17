@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
+import { LinearGradient } from 'expo-linear-gradient';
 import { collection, deleteDoc, doc, getDoc, onSnapshot, query, runTransaction, where } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
@@ -9,8 +10,9 @@ import { firestore } from '../../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const textColor = '#0f172a';
+const mutedColor = '#64748b';
 
 const getStartOfToday = () => {
   const today = new Date();
@@ -25,41 +27,104 @@ const isBeforeToday = (date) => {
   return normalizedDate < getStartOfToday();
 };
 
+const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const padDatePart = (value) => String(value).padStart(2, '0');
+const formatLocalDate = (date) => `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+const formatMonthId = (date) => `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}`;
+const normalizeSlotList = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (typeof value === 'object') return Object.values(value).filter(Boolean);
+    return [];
+};
+const normalizeBookedSlots = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (typeof value === 'object') return Object.entries(value).map(([, bookedValue]) => (bookedValue === true ? null : bookedValue)).filter(Boolean);
+    return [];
+};
+const buildSlotKey = (slot) => String(slot).replace(/[^a-zA-Z0-9_-]/g, '_');
+
 const Container = styled.View`
   flex: 1;
-  background-color: ${backgroundColor};
+  background-color: #f8fbff;
 `;
 
-const Header = styled.View`
-  flex-direction: row;
-  align-items: center;
-  padding: 50px 20px 20px 20px;
-  background-color: #fff;
+const Header = styled(LinearGradient).attrs({
+  colors: ['#f8fbff', '#eef5fb', '#ffffff'],
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+})`
+  padding: 54px 20px 22px;
 `;
 
 const BackButton = styled.TouchableOpacity`
-  padding: 5px;
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  background-color: rgba(255, 255, 255, 0.82);
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
 `;
 
 const HeaderTitle = styled.Text`
-  flex: 1;
-  text-align: center;
-  font-size: 18px;
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 900;
+  color: ${textColor};
+`;
+
+const HeaderSubtitle = styled.Text`
+  color: ${mutedColor};
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 700;
-  color: #111;
-  margin-right: 30px;
+  margin-top: 6px;
 `;
 
 const ListContainer = styled.View`
   flex: 1;
-  padding: 20px;
+  padding: 18px;
+`;
+
+const FilterRow = styled.View`
+  flex-direction: row;
+  gap: 8px;
+  margin-bottom: 16px;
+`;
+
+const FilterButton = styled.TouchableOpacity`
+  flex: 1;
+  min-height: 42px;
+  border-radius: 14px;
+  overflow: hidden;
+  background-color: ${props => props.active ? primaryColor : '#ffffff'};
+  border-width: 1px;
+  border-color: ${props => props.active ? primaryColor : '#dbe3ee'};
+`;
+
+const FilterGradient = styled(LinearGradient).attrs(props => ({
+  colors: props.active ? [primaryColor, '#0077ed'] : ['#ffffff', '#f8fafc'],
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+}))`
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+`;
+
+const FilterText = styled.Text`
+  color: ${props => props.active ? '#ffffff' : mutedColor};
+  font-size: 12px;
+  font-weight: 900;
 `;
 
 const RequestCard = styled.View`
   background-color: #fff;
-  border-radius: 12px;
-  padding: 15px;
-  margin-bottom: 15px;
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
   flex-direction: row;
   align-items: center;
   shadow-color: #000;
@@ -67,8 +132,8 @@ const RequestCard = styled.View`
   shadow-opacity: 0.05;
   shadow-radius: 4px;
   elevation: 2;
-  border-left-width: 4px;
-  border-left-color: ${props => props.statusColor || primaryColor};
+  border-width: 1px;
+  border-color: #e2e8f0;
 `;
 
 const IconWrapper = styled.View`
@@ -87,8 +152,8 @@ const InfoSection = styled.View`
 
 const RequestTitle = styled.Text`
   font-size: 15px;
-  font-weight: 700;
-  color: #333;
+  font-weight: 900;
+  color: ${textColor};
   margin-bottom: 4px;
 `;
 
@@ -100,8 +165,8 @@ const RequestDate = styled.Text`
 
 const StatusTag = styled.View`
   background-color: ${props => props.bgColor || '#e0e0e0'};
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 5px 9px;
+  border-radius: 999px;
   align-self: flex-start;
   margin-top: 5px;
 `;
@@ -167,8 +232,7 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
     const [appointmentDate, setAppointmentDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [appointmentTime, setAppointmentTime] = useState('');
-    const [availability, setAvailability] = useState(null);
-    const [bookedSlots, setBookedSlots] = useState({});
+    const [monthConfig, setMonthConfig] = useState(null);
     const [blockedDates, setBlockedDates] = useState([]);
     const [availableTimes, setAvailableTimes] = useState([]);
     const [loadingConfig, setLoadingConfig] = useState(true);
@@ -177,22 +241,12 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const availabilityRef = doc(firestore, 'balcao-config', 'availability');
-                const bookedSlotsRef = doc(firestore, 'balcao-config', 'bookedSlots');
-                const blockedDatesRef = doc(firestore, 'balcao-config', 'blockedDates');
+                const monthRef = doc(firestore, 'balcao-monthly-configs', formatMonthId(appointmentDate));
+                const monthSnap = await getDoc(monthRef);
+                const monthlyData = monthSnap.exists() ? monthSnap.data() : {};
+                setMonthConfig(monthlyData);
 
-                const [availSnap, bookedSnap, blockedSnap] = await Promise.all([
-                    getDoc(availabilityRef), getDoc(bookedSlotsRef), getDoc(blockedDatesRef)
-                ]);
-
-                if (availSnap.exists()) setAvailability(availSnap.data());
-                if (bookedSnap.exists()) setBookedSlots(bookedSnap.data());
-
-                let manualBlocked = [];
-                if (blockedSnap.exists()) {
-                    const data = blockedSnap.data();
-                    manualBlocked = data.dates || data.blockedDates || [];
-                }
+                let manualBlocked = monthlyData.blockedDates || monthlyData.dates || [];
 
                     const currentYear = new Date().getFullYear();
                     const years = [currentYear, currentYear + 1];
@@ -228,10 +282,10 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
         };
 
         fetchConfig();
-    }, []);
+    }, [appointmentDate]);
 
     useEffect(() => {
-        if (!availability) return;
+        if (!monthConfig) return;
 
         if (isBeforeToday(appointmentDate)) {
             setAvailableTimes([]);
@@ -240,9 +294,9 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
         }
 
         // Formata data para bater com o padrão Web (YYYY-MM-DD para chaves e DD/MM/YYYY para bloqueios)
-        const day = String(appointmentDate.getDate()).padStart(2, '0');
-        const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
-        const dateISO = `${appointmentDate.getFullYear()}-${month}-${day}`;
+        const day = padDatePart(appointmentDate.getDate());
+        const month = padDatePart(appointmentDate.getMonth() + 1);
+        const dateISO = formatLocalDate(appointmentDate);
         const dateBR = `${day}/${month}/${appointmentDate.getFullYear()}`;
 
         if (blockedDates.includes(dateBR)) {
@@ -251,19 +305,15 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
             return;
         }
 
-        // Obtém o dia da semana em inglês para bater com o mapa 'availability'
-        const dayOfWeek = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-        
-        const allSlotsForDay = availability[dayOfWeek] || [];
-        
-        const existingObj = bookedSlots[dateISO] || [];
-        // O portal web armazena bookedSlots como arrays de horários
-        const existingBookings = Array.isArray(existingObj) ? existingObj : Object.keys(existingObj);
+        const dayOfWeek = daysOfWeek[appointmentDate.getDay()];
+        const dayConfig = monthConfig[dayOfWeek] || {};
+        const allSlotsForDay = normalizeSlotList(dayConfig.slots || dayConfig.horarios || dayConfig.availableSlots || dayConfig.availability);
+        const existingBookings = normalizeBookedSlots(dayConfig.bookedSlots?.[dateISO] || dayConfig.booked?.[dateISO] || monthConfig.bookedSlots?.[dateISO]);
 
         const freeSlots = allSlotsForDay.filter(slot => !existingBookings.includes(slot));
         setAvailableTimes(freeSlots);
         setAppointmentTime('');
-    }, [appointmentDate, availability, bookedSlots, blockedDates]);
+    }, [appointmentDate, monthConfig, blockedDates]);
 
     const onDateChange = (event, selectedDate) => {
         setShowDatePicker(false);
@@ -285,12 +335,11 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
             return;
         }
         setScheduling(true);
-        const day = String(appointmentDate.getDate()).padStart(2, '0');
-        const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
-        const dateISO = `${appointmentDate.getFullYear()}-${month}-${day}`;
+        const dateISO = formatLocalDate(appointmentDate);
 
         try {
-            const bookedSlotRef = doc(firestore, 'balcao-config', 'bookedSlots');
+            const dayName = daysOfWeek[appointmentDate.getDay()];
+            const bookedSlotRef = doc(firestore, 'balcao-monthly-configs', formatMonthId(appointmentDate));
             const solicitacaoRef = doc(firestore, 'balcao-cidadao', solicitacaoId);
 
             await runTransaction(firestore, async (transaction) => {
@@ -299,7 +348,8 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
                 let existing = [];
                 if (configSnap.exists()) {
                     const data = configSnap.data();
-                    existing = Array.isArray(data[dateISO]) ? data[dateISO] : (data[dateISO] ? Object.keys(data[dateISO]) : []);
+                    const dayConfig = data[dayName] || {};
+                    existing = normalizeBookedSlots(dayConfig.bookedSlots?.[dateISO] || dayConfig.booked?.[dateISO] || data.bookedSlots?.[dateISO]);
                 }
 
                 if (existing.includes(appointmentTime)) {
@@ -313,7 +363,13 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
                 });
 
                 transaction.set(bookedSlotRef, {
-                    [dateISO]: [...existing, appointmentTime]
+                    [dayName]: {
+                        bookedSlots: {
+                            [dateISO]: {
+                                [buildSlotKey(appointmentTime)]: appointmentTime,
+                            },
+                        },
+                    },
                 }, { merge: true });
             });
 
@@ -385,6 +441,7 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
+  const [activeFilter, setActiveFilter] = useState('todos');
   const { source, solicitacaoId } = route.params || {};
 
   useEffect(() => {
@@ -559,24 +616,46 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
     );
   };
 
+  const filteredRequests = requests.filter((item) => {
+    if (activeFilter === 'todos') return true;
+    if (activeFilter === 'abertos') return !['Concluído', 'Cancelado'].includes(item.status);
+    if (activeFilter === 'agendados') return ['Agendado', 'Agendamento Liberado'].includes(item.status);
+    return true;
+  });
+
   return (
     <Container>
       <Header>
         <BackButton onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={22} color={primaryColor} />
         </BackButton>
         <HeaderTitle>Meus Atendimentos</HeaderTitle>
+        <HeaderSubtitle>Acompanhe solicitações, mensagens, documentos e agendamentos.</HeaderSubtitle>
       </Header>
 
       <ListContainer>
+        <FilterRow>
+          {[
+            ['todos', 'Todos'],
+            ['abertos', 'Em aberto'],
+            ['agendados', 'Agenda'],
+          ].map(([key, label]) => (
+            <FilterButton key={key} active={activeFilter === key} onPress={() => setActiveFilter(key)} activeOpacity={0.82}>
+              <FilterGradient active={activeFilter === key}>
+                <FilterText active={activeFilter === key}>{label}</FilterText>
+              </FilterGradient>
+            </FilterButton>
+          ))}
+        </FilterRow>
         {loading ? (
           <ActivityIndicator size="large" color={primaryColor} />
         ) : (
           <FlatList
-            data={requests}
+            data={filteredRequests}
             renderItem={renderItem}
             keyExtractor={item => item.id}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 130 }}
             ListEmptyComponent={
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}>
                 <Text style={{ color: '#888' }}>Nenhum atendimento encontrado.</Text>

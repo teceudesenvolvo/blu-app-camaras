@@ -2,7 +2,8 @@
   "expo": {
     "name": "CM Paraipaba",
     "slug": "cm-paraipaba",
-    "version": "1.0.2",
+    "version": "1.0.3",
+    "scheme": "com.googleusercontent.apps.1070248841383-vg1efk3b9sah1h9aoplq7e1mvtdq80se",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,19 +19,12 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.bluappcmparaipaba",
       "googleServicesFile": "./services/firebase/paraipaba/GoogleService-Info.plist",
-      "entitlements": {
-        "aps-environment": "development"
-      },
       "infoPlist": {
-        "NSCameraUsageDescription": "Precisamos de acesso à câmera para que você possa anexar fotos às suas solicitações de Ouvidoria e Procuradoria.",
-        "NSPhotoLibraryUsageDescription": "Precisamos de acesso à sua galeria para que você possa selecionar fotos para anexar às suas solicitações.",
-        "NSMicrophoneUsageDescription": "Precisamos de acesso ao microfone para permitir que você grave vídeos ou áudios em suas solicitações e denúncias.",
-        "NSPhotoLibraryAddUsageDescription": "Precisamos de permissão para salvar fotos em sua galeria quando necessário.",
-        "NSLocationWhenInUseUsageDescription": "Precisamos da sua localização para identificar com precisão o endereço de ocorrências em denúncias e ouvidorias.",
+        "NSCameraUsageDescription": "Permita o uso da câmera para anexar fotos às solicitações enviadas à Câmara.",
+        "NSPhotoLibraryUsageDescription": "Permita o acesso à galeria para selecionar imagens e anexá-las às suas solicitações.",
+        "NSPhotoLibraryAddUsageDescription": "Permita salvar imagens geradas pelo aplicativo na sua galeria quando você solicitar essa ação.",
+        "NSLocationWhenInUseUsageDescription": "Permita o uso da localização para registrar o endereço de ocorrências e pedidos de ajuda enviados pelo aplicativo.",
         "LSApplicationQueriesSchemes": [
-          "itms-apps",
-          "itms-apps",
-          "itms-apps",
           "itms-apps"
         ],
         "ITSAppUsesNonExemptEncryption": false
@@ -52,7 +46,35 @@
     },
     "plugins": [
       "@react-native-community/datetimepicker",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-font",
+      "expo-router",
+      "expo-web-browser",
+      [
+        "expo-quick-actions",
+        {
+          "iosActions": [
+            {
+              "id": "new-balcao",
+              "title": "Nova solicitação",
+              "subtitle": "Balcão do Cidadão",
+              "icon": "compose",
+              "params": {
+                "screen": "BalcaoSolicitacao"
+              }
+            },
+            {
+              "id": "tv-camara",
+              "title": "TV Câmara",
+              "subtitle": "Assistir no app",
+              "icon": "play",
+              "params": {
+                "screen": "TvCamara"
+              }
+            }
+          ]
+        }
+      ]
     ],
     "extra": {
       "eas": {
@@ -67,6 +89,10 @@
         "secondary": "#f9c204",
         "background": "#f8fafc",
         "text": "#0f172a"
+      },
+      "googleAuth": {
+        "iosClientId": "1070248841383-vg1efk3b9sah1h9aoplq7e1mvtdq80se.apps.googleusercontent.com",
+        "reversedClientId": "com.googleusercontent.apps.1070248841383-vg1efk3b9sah1h9aoplq7e1mvtdq80se"
       }
     },
     "runtimeVersion": {

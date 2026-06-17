@@ -1,64 +1,43 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, View } from 'react-native';
 import styled from 'styled-components/native';
+import {
+  PortalBackground,
+  PortalCard,
+  PortalInput,
+  PortalScreenHeader,
+} from '../components/PortalScaffold';
+import { portalTheme } from '../styles/portalTheme';
 
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
-
-const Container = styled.View`
+const Container = styled(PortalBackground)`
   flex: 1;
-  background-color: ${props => props.theme.background || '#f4f4f5'};
-`;
-
-const Header = styled.View`
-  padding: 20px;
-  padding-top: 60px;
-  background-color: #fff;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-`;
-
-const HeaderTitle = styled.Text`
-  color: #333;
-  font-size: 18px;
-  font-weight: bold;
-`;
-
-const BackButton = styled.TouchableOpacity`
-  position: absolute;
-  left: 20px;
-  top: 60px;
-  z-index: 10;
 `;
 
 const FiltersWrapper = styled.View`
-  padding: 20px;
-  background-color: #fff;
+  padding: 18px 18px 8px;
 `;
 
-const SearchInputContainer = styled.View`
+const SearchInputContainer = styled(PortalCard)`
   flex-direction: row;
   align-items: center;
-  background-color: #f1f5f9;
-  border-radius: 8px;
-  padding: 0 15px;
-  height: 45px;
-  margin-bottom: 15px;
+  padding: 0 14px;
+  height: 54px;
+  margin-bottom: 12px;
 `;
 
-const SearchInput = styled.TextInput`
+const SearchInput = styled(PortalInput)`
   flex: 1;
+  min-height: 48px;
+  border-width: 0;
+  padding: 0;
   margin-left: 10px;
+  background-color: transparent;
   font-size: 14px;
-  color: #333;
 `;
 
 const DropdownsRow = styled.View`
   flex-direction: row;
-  justify-content: space-between;
 `;
 
 const DropdownItem = styled.TouchableOpacity`
@@ -66,292 +45,316 @@ const DropdownItem = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  background-color: #f1f5f9;
-  border-radius: 8px;
-  padding: 0 15px;
-  height: 45px;
-  margin: 0 5px;
-  ${props => props.first && `margin-left: 0;`}
-  ${props => props.last && `margin-right: 0;`}
+  background-color: ${portalTheme.card};
+  border-radius: 14px;
+  border-width: 1px;
+  border-color: ${portalTheme.border};
+  padding: 0 14px;
+  height: 52px;
+  margin-right: ${props => props.last ? '0' : '10px'};
 `;
 
 const DropdownText = styled.Text`
-  color: #555;
+  color: ${portalTheme.text};
   font-size: 14px;
+  font-weight: 800;
 `;
 
-const Card = styled.View`
-  background-color: #fff;
-  margin: 10px 20px;
-  padding: 20px;
-  border-radius: 16px;
-  elevation: 2;
-  border: 1px solid #f0f0f0;
+const Card = styled(PortalCard)`
+  margin: 6px 18px 10px;
+`;
+
+const CardTopRow = styled.View`
+  flex-direction: row;
+  align-items: flex-start;
+`;
+
+const CardIcon = styled.View`
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  background-color: rgba(2, 90, 161, 0.1);
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+`;
+
+const CardTitleGroup = styled.View`
+  flex: 1;
 `;
 
 const CardTitle = styled.Text`
   font-size: 16px;
-  font-weight: 800;
-  color: ${primaryColor};
-  margin-bottom: 6px;
+  font-weight: 900;
+  color: ${portalTheme.text};
+  margin-bottom: 5px;
 `;
 
 const CardInfo = styled.Text`
   font-size: 12px;
-  color: #888;
+  color: ${portalTheme.muted};
   margin-bottom: 2px;
+  font-weight: 700;
 `;
 
 const CardDesc = styled.Text`
   font-size: 13px;
-  color: #333;
+  color: ${portalTheme.text};
   font-weight: 600;
-  margin-top: 8px;
-  margin-bottom: 10px;
-  line-height: 18px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+  line-height: 19px;
 `;
 
 const CardValue = styled.Text`
   font-size: 15px;
-  font-weight: 800;
-  color: ${primaryColor};
+  font-weight: 900;
+  color: ${portalTheme.primary};
 `;
 
 const ModalBackdrop = styled.TouchableOpacity`
   flex: 1;
-  background-color: rgba(0,0,0,0.5);
+  background-color: rgba(15,23,42,0.42);
   justify-content: center;
   align-items: center;
 `;
 
-const ModalContainer = styled.View`
-  background-color: #fff;
-  border-radius: 10px;
-  padding: 10px;
-  width: 80%;
+const ModalContainer = styled(PortalCard)`
+  padding: 8px;
+  width: 82%;
   max-height: 70%;
 `;
 
 const ModalItem = styled.TouchableOpacity`
   padding: 15px;
   border-bottom-width: 1px;
-  border-bottom-color: #eee;
+  border-bottom-color: ${portalTheme.border};
 `;
 
 const ModalItemText = styled.Text`
   font-size: 16px;
-  color: #333;
+  color: ${portalTheme.text};
+  font-weight: 700;
+`;
+
+const EmptyState = styled.View`
+  margin-top: 48px;
+  align-items: center;
+  padding: 20px;
+`;
+
+const EmptyText = styled.Text`
+  color: ${portalTheme.muted};
+  font-weight: 800;
+  margin-top: 10px;
 `;
 
 const CNPJ = '35076017000107';
 
 const MODALIDADES = [
-    { label: 'Selecione', value: null },
-    { label: 'Dispensa de Licitação', value: 8 },
-    { label: 'Inexigibilidade', value: 9 },
-    { label: 'Pregão Eletrônico', value: 6 },
-    { label: 'Concorrência Eletrônica', value: 4 },
-    { label: 'Diálogo Competitivo', value: 2 },
-    { label: 'Concurso', value: 3 },
+  { label: 'Selecione', value: null },
+  { label: 'Dispensa de Licitação', value: 8 },
+  { label: 'Inexigibilidade', value: 9 },
+  { label: 'Pregão Eletrônico', value: 6 },
+  { label: 'Concorrência Eletrônica', value: 4 },
+  { label: 'Diálogo Competitivo', value: 2 },
+  { label: 'Concurso', value: 3 },
 ];
 
 const ANOS = [
-    new Date().getFullYear(),
-    new Date().getFullYear() - 1,
-    new Date().getFullYear() - 2,
-    new Date().getFullYear() - 3,
+  new Date().getFullYear(),
+  new Date().getFullYear() - 1,
+  new Date().getFullYear() - 2,
+  new Date().getFullYear() - 3,
 ];
 
+export default function LicitacoesScreen() {
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [licitacoes, setLicitacoes] = useState([]);
+  const [filteredLicitacoes, setFilteredLicitacoes] = useState([]);
 
-export default function LicitacoesScreen({ navigation }) {
-    const [loading, setLoading] = useState(false);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [searchText, setSearchText] = useState('');
-    const [licitacoes, setLicitacoes] = useState([]);
-    const [filteredLicitacoes, setFilteredLicitacoes] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [modality, setModality] = useState(MODALIDADES[0]);
 
-    const [year, setYear] = useState(new Date().getFullYear());
-    const [modality, setModality] = useState(MODALIDADES[0]); // { label: 'Todas', value: null }
+  const [isYearModalVisible, setYearModalVisible] = useState(false);
+  const [isModalityModalVisible, setModalityModalVisible] = useState(false);
 
-    const [isYearModalVisible, setYearModalVisible] = useState(false);
-    const [isModalityModalVisible, setModalityModalVisible] = useState(false);
+  const fetchLicitacoes = useCallback(async (pageNumber, selectedYear, selectedModality) => {
+    if (pageNumber === 1) setLoading(true);
+    else setLoadingMore(true);
 
-    const fetchLicitacoes = useCallback(async (pageNumber, selectedYear, selectedModality) => {
-        if (pageNumber === 1) setLoading(true);
-        else setLoadingMore(true);
+    const dataInicial = `${selectedYear}0101`;
+    const dataFinal = `${selectedYear}1231`;
+    const modalidadeParam = selectedModality.value ? `&codigoModalidadeContratacao=${selectedModality.value}` : '';
+    const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?dataInicial=${dataInicial}&dataFinal=${dataFinal}&uf=ce&cnpj=${CNPJ}${modalidadeParam}&pagina=${pageNumber}&tamanhoPagina=20`;
 
-        const dataInicial = `${selectedYear}0101`;
-        const dataFinal = `${selectedYear}1231`;
-        const modalidadeParam = selectedModality.value ? `&codigoModalidadeContratacao=${selectedModality.value}` : '';
-        const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?dataInicial=${dataInicial}&dataFinal=${dataFinal}&uf=ce&cnpj=${CNPJ}${modalidadeParam}&pagina=${pageNumber}&tamanhoPagina=20`;
+    try {
+      const response = await fetch(url);
 
-        try {
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-                if (pageNumber === 1) setLicitacoes([]);
-                return;
-            }
+      if (!response.ok) {
+        if (pageNumber === 1) setLicitacoes([]);
+        return;
+      }
 
-            const json = await response.json();
+      const json = await response.json();
 
-            if (json && json.data) {
-                setLicitacoes(prev => pageNumber === 1 ? json.data : [...prev, ...json.data]);
-                setTotalPages(json.totalPaginas || 1);
-            } else {
-                if (pageNumber === 1) setLicitacoes([]);
-            }
-        } catch (error) {
-            console.log("Erro ao buscar licitações:", error);
-            if (pageNumber === 1) setLicitacoes([]);
-        } finally {
-            setLoading(false);
-            setLoadingMore(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        setPage(1);
+      if (json && json.data) {
+        setLicitacoes(prev => pageNumber === 1 ? json.data : [...prev, ...json.data]);
+        setTotalPages(json.totalPaginas || 1);
+      } else if (pageNumber === 1) {
         setLicitacoes([]);
-        fetchLicitacoes(1, year, modality);
-    }, [year, modality, fetchLicitacoes]);
+      }
+    } catch (error) {
+      console.log('Erro ao buscar licitações:', error);
+      if (pageNumber === 1) setLicitacoes([]);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, []);
 
-    useEffect(() => {
-        if (searchText) {
-            const filtered = licitacoes.filter(item =>
-                (item.objetoCompra || '').toLowerCase().includes(searchText.toLowerCase())
-            );
-            setFilteredLicitacoes(filtered);
-        } else {
-            setFilteredLicitacoes(licitacoes);
-        }
-    }, [searchText, licitacoes]);
+  useEffect(() => {
+    setPage(1);
+    setLicitacoes([]);
+    fetchLicitacoes(1, year, modality);
+  }, [year, modality, fetchLicitacoes]);
 
-    const handleLoadMore = () => {
-        if (!loadingMore && page < totalPages) {
-            const newPage = page + 1;
-            setPage(newPage);
-            fetchLicitacoes(newPage, year, modality);
-        }
-    };
+  useEffect(() => {
+    if (searchText) {
+      const filtered = licitacoes.filter(item =>
+        (item.objetoCompra || '').toLowerCase().includes(searchText.toLowerCase())
+      );
+      setFilteredLicitacoes(filtered);
+    } else {
+      setFilteredLicitacoes(licitacoes);
+    }
+  }, [searchText, licitacoes]);
 
-    const renderItem = ({ item }) => (
-        <Card>
-            <CardTitle>Contrato Nº {item.numeroCompra || 'Não informado'}</CardTitle>
-            <CardInfo>Modalidade: {item.modalidadeNome || 'Não informado'}</CardInfo>
-            <CardInfo>Data da Publicação: {item.dataPublicacaoPncp ? new Date(item.dataPublicacaoPncp).toLocaleDateString('pt-BR') : 'Não informado'}</CardInfo>
-            <CardDesc>Objeto: {item.objetoCompra || 'Não informado'}</CardDesc>
-            <CardValue>
-                Valor Estimado: {item.valorTotalEstimado ? item.valorTotalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não informado'}
-            </CardValue>
-        </Card>
-    );
+  const handleLoadMore = () => {
+    if (!loadingMore && page < totalPages) {
+      const newPage = page + 1;
+      setPage(newPage);
+      fetchLicitacoes(newPage, year, modality);
+    }
+  };
 
-    return (
-        <Container>
-            <Header>
-                <BackButton onPress={() => navigation.goBack()}>
-                    <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
-                </BackButton>
-                <HeaderTitle>Contratações</HeaderTitle>
-            </Header>
+  const renderItem = ({ item }) => (
+    <Card>
+      <CardTopRow>
+        <CardIcon>
+          <MaterialCommunityIcons name="file-document-check-outline" size={22} color={portalTheme.primary} />
+        </CardIcon>
+        <CardTitleGroup>
+          <CardTitle>Contrato Nº {item.numeroCompra || 'Não informado'}</CardTitle>
+          <CardInfo>Modalidade: {item.modalidadeNome || 'Não informado'}</CardInfo>
+          <CardInfo>Publicação: {item.dataPublicacaoPncp ? new Date(item.dataPublicacaoPncp).toLocaleDateString('pt-BR') : 'Não informado'}</CardInfo>
+        </CardTitleGroup>
+      </CardTopRow>
 
-            <FiltersWrapper>
-                <SearchInputContainer>
-                    <MaterialCommunityIcons name="magnify" size={20} color="#888" />
-                    <SearchInput
-                        placeholder="Pesquisar por objeto do contrato"
-                        value={searchText}
-                        onChangeText={setSearchText}
-                        placeholderTextColor="#aaa"
-                    />
-                </SearchInputContainer>
+      <CardDesc numberOfLines={4}>Objeto: {item.objetoCompra || 'Não informado'}</CardDesc>
+      <CardValue>
+        {item.valorTotalEstimado ? item.valorTotalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Valor não informado'}
+      </CardValue>
+    </Card>
+  );
 
-                <DropdownsRow>
-                    <DropdownItem first onPress={() => setYearModalVisible(true)}>
-                        <DropdownText>{year}</DropdownText>
-                        <MaterialCommunityIcons name="menu-down" size={20} color="#555" />
-                    </DropdownItem>
-                    <DropdownItem last onPress={() => setModalityModalVisible(true)}>
-                        <DropdownText numberOfLines={1}>{modality.label}</DropdownText>
-                        <MaterialCommunityIcons name="menu-down" size={20} color="#555" />
-                    </DropdownItem>
-                </DropdownsRow>
-            </FiltersWrapper>
+  return (
+    <Container>
+      <PortalScreenHeader
+        title="Licitações"
+        subtitle="Acompanhe as contratações públicas e filtre por ano, modalidade ou objeto."
+        canGoBack={false}
+      />
 
-            <Modal
-                transparent={true}
-                visible={isYearModalVisible}
-                animationType="fade"
-                onRequestClose={() => setYearModalVisible(false)}
-            >
-                <ModalBackdrop onPress={() => setYearModalVisible(false)}>
-                    <ModalContainer>
-                        <FlatList
-                            data={ANOS}
-                            keyExtractor={item => item.toString()}
-                            renderItem={({ item }) => (
-                                <ModalItem onPress={() => {
-                                    setYear(item);
-                                    setYearModalVisible(false);
-                                }}>
-                                    <ModalItemText>{item}</ModalItemText>
-                                </ModalItem>
-                            )}
-                        />
-                    </ModalContainer>
-                </ModalBackdrop>
-            </Modal>
+      <FiltersWrapper>
+        <SearchInputContainer>
+          <MaterialCommunityIcons name="magnify" size={21} color={portalTheme.primary} />
+          <SearchInput
+            placeholder="Pesquisar por objeto do contrato"
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholderTextColor={portalTheme.subtle}
+          />
+        </SearchInputContainer>
 
-            <Modal
-                transparent={true}
-                visible={isModalityModalVisible}
-                animationType="fade"
-                onRequestClose={() => setModalityModalVisible(false)}
-            >
-                <ModalBackdrop onPress={() => setModalityModalVisible(false)}>
-                    <ModalContainer>
-                        <FlatList
-                            data={MODALIDADES}
-                            keyExtractor={item => item.label}
-                            renderItem={({ item }) => (
-                                <ModalItem onPress={() => {
-                                    setModality(item);
-                                    setModalityModalVisible(false);
-                                }}>
-                                    <ModalItemText>{item.label}</ModalItemText>
-                                </ModalItem>
-                            )}
-                        />
-                    </ModalContainer>
-                </ModalBackdrop>
-            </Modal>
+        <DropdownsRow>
+          <DropdownItem onPress={() => setYearModalVisible(true)}>
+            <DropdownText>{year}</DropdownText>
+            <MaterialCommunityIcons name="chevron-down" size={20} color={portalTheme.primary} />
+          </DropdownItem>
+          <DropdownItem last onPress={() => setModalityModalVisible(true)}>
+            <DropdownText numberOfLines={1}>{modality.label}</DropdownText>
+            <MaterialCommunityIcons name="chevron-down" size={20} color={portalTheme.primary} />
+          </DropdownItem>
+        </DropdownsRow>
+      </FiltersWrapper>
 
-            {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={primaryColor} />
-                </View>
-            ) : (
-                <FlatList
-                    data={filteredLicitacoes}
-                    keyExtractor={(item, index) => item.numeroControlePNCP || index.toString()}
-                    renderItem={renderItem}
-                    contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
-                    onEndReached={handleLoadMore}
-                    onEndReachedThreshold={0.5}
-                    ListFooterComponent={loadingMore && <ActivityIndicator size="small" color={primaryColor} style={{ marginVertical: 20 }} />}
-                    ListEmptyComponent={
-                        !loading && (
-                            <View style={{ marginTop: 50, alignItems: 'center' }}>
-                                <Text style={{ color: '#888', fontWeight: 'bold' }}>Não Existem Licitações</Text>
-                            </View>
-                        )
-                    }
-                />
-            )}
-        </Container>
-    );
+      <Modal transparent visible={isYearModalVisible} animationType="fade" onRequestClose={() => setYearModalVisible(false)}>
+        <ModalBackdrop onPress={() => setYearModalVisible(false)}>
+          <ModalContainer>
+            <FlatList
+              data={ANOS}
+              keyExtractor={item => item.toString()}
+              renderItem={({ item }) => (
+                <ModalItem onPress={() => {
+                  setYear(item);
+                  setYearModalVisible(false);
+                }}>
+                  <ModalItemText>{item}</ModalItemText>
+                </ModalItem>
+              )}
+            />
+          </ModalContainer>
+        </ModalBackdrop>
+      </Modal>
+
+      <Modal transparent visible={isModalityModalVisible} animationType="fade" onRequestClose={() => setModalityModalVisible(false)}>
+        <ModalBackdrop onPress={() => setModalityModalVisible(false)}>
+          <ModalContainer>
+            <FlatList
+              data={MODALIDADES}
+              keyExtractor={item => item.label}
+              renderItem={({ item }) => (
+                <ModalItem onPress={() => {
+                  setModality(item);
+                  setModalityModalVisible(false);
+                }}>
+                  <ModalItemText>{item.label}</ModalItemText>
+                </ModalItem>
+              )}
+            />
+          </ModalContainer>
+        </ModalBackdrop>
+      </Modal>
+
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={portalTheme.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredLicitacoes}
+          keyExtractor={(item, index) => item.numeroControlePNCP || index.toString()}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 120, paddingTop: 6 }}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={loadingMore && <ActivityIndicator size="small" color={portalTheme.primary} style={{ marginVertical: 20 }} />}
+          ListEmptyComponent={
+            !loading && (
+              <EmptyState>
+                <MaterialCommunityIcons name="file-search-outline" size={36} color={portalTheme.primary} />
+                <EmptyText>Não existem licitações para os filtros selecionados.</EmptyText>
+              </EmptyState>
+            )
+          }
+        />
+      )}
+    </Container>
+  );
 }

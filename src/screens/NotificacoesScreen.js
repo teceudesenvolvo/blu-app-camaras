@@ -1,75 +1,103 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { collection, doc, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
-import { useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Text } from 'react-native';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList } from 'react-native';
 import styled from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
+import {
+  PortalBackground,
+  PortalHeader,
+  PortalHeaderRow,
+  PortalBackButton,
+  PortalTitle,
+  PortalTitleGroup,
+  PortalSubtitle,
+} from '../components/PortalScaffold';
 import { AuthContext } from '../context/AuthContext';
+import { portalTheme } from '../styles/portalTheme';
 
-const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
-const Container = styled.View`
+const Container = styled(PortalBackground)`
   flex: 1;
-  background-color: ${backgroundColor};
 `;
 
-const HeaderContainer = styled.View`
-  flex-direction: row;
+const HeaderBadge = styled.View`
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
   align-items: center;
-  padding: 50px 20px 20px 20px;
-  background-color: #fff;
-`;
-
-const BackButton = styled.TouchableOpacity`
-  padding: 5px;
-`;
-
-const HeaderTitle = styled.Text`
-  flex: 1;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 700;
-  color: #111;
-  margin-right: 30px;
-`;
-
-const ListContainer = styled.View`
-  flex: 1;
+  justify-content: center;
+  background-color: rgba(2, 90, 161, 0.1);
+  margin-right: 12px;
 `;
 
 const NotificationCard = styled.TouchableOpacity`
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 15px;
+  background-color: ${portalTheme.card};
+  border-radius: 14px;
+  border-width: 1px;
   margin-bottom: 12px;
-  shadow-color: #000;
-  shadow-offset: 0px 1px;
-  shadow-opacity: 0.05;
-  shadow-radius: 3px;
-  elevation: 2;
+  padding: 15px;
+  border-color: ${props => props.unread ? portalTheme.primary : portalTheme.border};
+  shadow-color: #0f172a;
+  shadow-offset: 0px 10px;
+  shadow-opacity: 0.08;
+  shadow-radius: 18px;
+  elevation: 3;
+`;
+
+const CardRow = styled.View`
+  flex-direction: row;
+  align-items: flex-start;
+`;
+
+const CardIcon = styled.View`
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  align-items: center;
+  justify-content: center;
+  background-color: ${props => props.bg || 'rgba(2, 90, 161, 0.1)'};
+  margin-right: 12px;
+`;
+
+const CardBody = styled.View`
+  flex: 1;
 `;
 
 const NotificationTitle = styled.Text`
   font-size: 15px;
-  font-weight: 700;
-  color: #1A1A40;
+  line-height: 19px;
+  font-weight: 900;
+  color: ${portalTheme.text};
   margin-bottom: 5px;
 `;
 
 const NotificationDesc = styled.Text`
   font-size: 13px;
-  color: #666;
-  line-height: 18px;
+  color: ${portalTheme.muted};
+  line-height: 19px;
   margin-bottom: 10px;
 `;
 
 const NotificationDate = styled.Text`
   font-size: 12px;
-  color: #aaa;
-  text-align: right;
+  color: ${portalTheme.subtle};
+  font-weight: 700;
+`;
+
+const EmptyState = styled.View`
+  align-items: center;
+  padding: 46px 22px;
+`;
+
+const EmptyText = styled.Text`
+  margin-top: 12px;
+  color: ${portalTheme.muted};
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
 `;
 
 const getNotificationRoute = (notification = {}) => {
@@ -77,8 +105,8 @@ const getNotificationRoute = (notification = {}) => {
 
   if (data.screen === 'TvCamara') {
     return {
-      name: 'MainTabs',
-      params: { screen: 'TvCamara', params: { videoId: data.videoId } },
+      name: 'TvCamara',
+      params: { videoId: data.videoId },
     };
   }
 
@@ -111,20 +139,41 @@ const getNotificationRoute = (notification = {}) => {
   return null;
 };
 
-export default function NotificacoesScreen({ navigation }) {
+function getNotificationIcon(notification) {
+  const data = notification.data || {};
+
+  if (data.screen === 'TvCamara') {
+    return { icon: 'television-play', color: '#0f172a', bg: 'rgba(15, 23, 42, 0.1)' };
+  }
+
+  if (data.screen === 'NoticiaDetalhe' || data.type === 'news') {
+    return { icon: 'newspaper-variant-outline', color: portalTheme.primary, bg: 'rgba(2, 90, 161, 0.1)' };
+  }
+
+  if (data.collection === 'procuradoria-mulher' || data.source === 'procuradoria-mulher') {
+    return { icon: 'gender-female', color: '#db2777', bg: 'rgba(219, 39, 119, 0.1)' };
+  }
+
+  if (data.collection === 'ouvidoria' || data.source === 'ouvidoria') {
+    return { icon: 'bullhorn-outline', color: '#0f766e', bg: 'rgba(15, 118, 110, 0.1)' };
+  }
+
+  return { icon: 'message-text-outline', color: portalTheme.primary, bg: 'rgba(2, 90, 161, 0.1)' };
+}
+
+export default function NotificacoesScreen({ navigation, route }) {
   const { user } = useContext(AuthContext);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const isTabScreen = route?.name === 'Mensagens';
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) return undefined;
 
-    // 1. Otimização da Query: Filtra diretamente pelo userId do usuário logado.
-    // Isso evita baixar notificações de outros usuários e garante que o listener seja eficiente.
     const q = query(
       collection(firestore, 'notifications'),
       where('flavorId', '==', flavorId),
-      where('userId', '==', user.uid)
+      where('userId', '==', user.uid),
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
@@ -135,12 +184,10 @@ export default function NotificacoesScreen({ navigation }) {
 
       snapshot.forEach((docSnap) => {
         const notification = docSnap.data();
-        
-        // Verificação de segurança adicional para o caso de notificações enviadas via e-mail
         const notificationEmail = notification.userEmail ? String(notification.userEmail).toLowerCase() : '';
         const isTargetUser = notification.userId === user.uid || (notificationEmail && notificationEmail === userEmail);
         const isRead = notification.read === true || notification.isRead === true;
-        
+
         const createdAt = notification.createdAt?.toMillis
           ? notification.createdAt.toMillis()
           : (notification.createdAt || notification.timestamp || (notification.migratedAt ? new Date(notification.migratedAt).getTime() : 0));
@@ -149,10 +196,10 @@ export default function NotificacoesScreen({ navigation }) {
           data.push({
             id: docSnap.id,
             ...notification,
-            createdAt
+            createdAt,
+            unread: !isRead,
           });
 
-          // 2. Só adiciona ao batch se houver algo para atualizar de fato
           if (!isRead && docSnap.id) {
             const notifRef = doc(firestore, 'notifications', docSnap.id);
             batch.update(notifRef, { read: true, isRead: true });
@@ -163,10 +210,9 @@ export default function NotificacoesScreen({ navigation }) {
 
       if (hasUpdates) {
         try {
-          // 3. O commit é assíncrono e não deve bloquear a renderização inicial dos dados já recebidos
-          batch.commit().catch(err => console.error("Erro ao atualizar status de leitura:", err));
+          batch.commit().catch(err => console.error('Erro ao atualizar status de leitura:', err));
         } catch (err) {
-          console.error("Erro ao atualizar status de leitura:", err);
+          console.error('Erro ao atualizar status de leitura:', err);
         }
       }
 
@@ -174,62 +220,90 @@ export default function NotificacoesScreen({ navigation }) {
       setNotifications(data);
       setLoading(false);
     }, (error) => {
-      // 4. Tratamento de erro: Essencial para identificar falhas de permissão ou índices ausentes
-      console.error("Erro no listener de notificações:", error);
+      console.error('Erro no listener de notificações:', error);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [user]);
 
-  const handleNotificationPress = (notification) => {
-    const route = getNotificationRoute(notification);
+  const unreadCount = useMemo(() => notifications.filter((item) => item.unread).length, [notifications]);
 
-    if (route) {
-      navigation.navigate(route.name, route.params);
+  const handleNotificationPress = (notification) => {
+    const targetRoute = getNotificationRoute(notification);
+
+    if (targetRoute) {
+      navigation.navigate(targetRoute.name, targetRoute.params);
     }
   };
 
   const renderItem = ({ item }) => {
-    const route = getNotificationRoute(item);
+    const targetRoute = getNotificationRoute(item);
+    const icon = getNotificationIcon(item);
 
     return (
       <NotificationCard
-        activeOpacity={route ? 0.7 : 1}
+        unread={item.unread}
+        activeOpacity={targetRoute ? 0.76 : 1}
         onPress={() => handleNotificationPress(item)}
-        disabled={!route}
+        disabled={!targetRoute}
       >
-        <NotificationTitle>{item.tituloNotification}</NotificationTitle>
-        <NotificationDesc>{item.descricaoNotification}</NotificationDesc>
-        <NotificationDate>
-          {item.createdAt ? new Date(item.createdAt).toLocaleString('pt-BR') : ''}
-        </NotificationDate>
+        <CardRow>
+          <CardIcon bg={icon.bg}>
+            <MaterialCommunityIcons name={icon.icon} size={22} color={icon.color} />
+          </CardIcon>
+          <CardBody>
+            <NotificationTitle>{item.tituloNotification || 'Mensagem'}</NotificationTitle>
+            <NotificationDesc>{item.descricaoNotification || 'Você recebeu uma nova mensagem.'}</NotificationDesc>
+            <NotificationDate>
+              {item.createdAt ? new Date(item.createdAt).toLocaleString('pt-BR') : ''}
+            </NotificationDate>
+          </CardBody>
+        </CardRow>
       </NotificationCard>
     );
   };
 
   return (
     <Container>
-      <HeaderContainer>
-        <BackButton onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </BackButton>
-        <HeaderTitle>Notificações</HeaderTitle>
-      </HeaderContainer>
+      <PortalHeader compact>
+        <PortalHeaderRow>
+          {isTabScreen ? (
+            <HeaderBadge>
+              <Ionicons name="chatbubbles-outline" size={22} color={portalTheme.primary} />
+            </HeaderBadge>
+          ) : (
+            <PortalBackButton onPress={() => navigation.goBack()} activeOpacity={0.75}>
+              <Ionicons name="arrow-back" size={22} color={portalTheme.primary} />
+            </PortalBackButton>
+          )}
+          <PortalTitleGroup>
+            <PortalTitle>{isTabScreen ? 'Mensagens' : 'Notificações'}</PortalTitle>
+            <PortalSubtitle>
+              {unreadCount > 0
+                ? `${unreadCount} mensagem${unreadCount > 1 ? 's' : ''} nova${unreadCount > 1 ? 's' : ''}.`
+                : 'Acompanhe atualizações, retornos e avisos importantes.'}
+            </PortalSubtitle>
+          </PortalTitleGroup>
+        </PortalHeaderRow>
+      </PortalHeader>
 
-      <ListContainer>
-        {loading ? (
-          <ActivityIndicator size="large" color={primaryColor} style={{ marginTop: 20 }} />
-        ) : (
-          <FlatList
-            data={notifications}
-            keyExtractor={item => item.id}
-            renderItem={renderItem}
-            contentContainerStyle={{ padding: 15, paddingBottom: 40 }}
-            ListEmptyComponent={<Text style={{ textAlign: 'center', color: '#888', marginTop: 20 }}>Nenhuma notificação recebida.</Text>}
-          />
-        )}
-      </ListContainer>
+      {loading ? (
+        <ActivityIndicator size="large" color={portalTheme.primary} style={{ marginTop: 24 }} />
+      ) : (
+        <FlatList
+          data={notifications}
+          keyExtractor={item => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ padding: 18, paddingBottom: isTabScreen ? 124 : 42 }}
+          ListEmptyComponent={
+            <EmptyState>
+              <MaterialCommunityIcons name="message-text-outline" size={38} color={portalTheme.primary} />
+              <EmptyText>Nenhuma mensagem recebida até o momento.</EmptyText>
+            </EmptyState>
+          }
+        />
+      )}
     </Container>
   );
 }

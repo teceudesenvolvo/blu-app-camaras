@@ -1,110 +1,113 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useContext, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert } from 'react-native';
 import styled from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
+import {
+  PortalBackground,
+  PortalCard,
+  PortalIconBadge,
+  PortalScreenHeader,
+} from '../components/PortalScaffold';
 import { AuthContext } from '../context/AuthContext';
+import { portalGradients, portalTheme } from '../styles/portalTheme';
+import Constants from 'expo-constants';
 
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
-const { width } = Dimensions.get('window');
-
-const Container = styled.View`
-  flex: 1;
-  background-color: #fcf4f8; /* Light pink background */
-`;
-
-const Header = styled.View`
-  padding: 20px;
-  padding-top: 60px;
-  align-items: center;
-  justify-content: center;
-`;
-
-const HeaderTitle = styled.Text`
-  color: #333;
-  font-size: 18px;
-  font-weight: bold;
-`;
-
 const ContentContainer = styled.ScrollView`
   flex: 1;
-  padding: 20px;
+  padding: 18px 20px;
 `;
 
-const ButtonPanic = styled.TouchableOpacity`
-  background-color: #dc2626;
+const PanicButton = styled.TouchableOpacity`
   border-radius: 12px;
-  padding: 15px;
+  overflow: hidden;
+  margin-bottom: 13px;
+  shadow-color: #dc2626;
+  shadow-offset: 0px 8px;
+  shadow-opacity: 0.22;
+  shadow-radius: 14px;
+  elevation: 4;
+`;
+
+const PanicGradient = styled(LinearGradient).attrs({
+  colors: ['#ef4444', '#dc2626', '#991b1b'],
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+})`
+  min-height: 54px;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  margin-bottom: 15px;
 `;
 
-const ButtonPanicText = styled.Text`
-  color: #fff;
-  font-size: 16px;
-  font-weight: bold;
-  margin-left: 10px;
-`;
-
-const ButtonPink = styled.TouchableOpacity`
-  background-color: #f472b6;
+const WomanButton = styled.TouchableOpacity`
   border-radius: 12px;
-  padding: 15px;
+  overflow: hidden;
+  margin-bottom: 20px;
+`;
+
+const WomanGradient = styled(LinearGradient).attrs({
+  colors: portalGradients.woman,
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+})`
+  min-height: 52px;
   align-items: center;
   justify-content: center;
-  margin-bottom: 25px;
 `;
 
-const CardInfo = styled.View`
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 25px;
-  elevation: 2;
-  shadow-color: '#000';
-  shadow-offset: 0px 2px;
-  shadow-opacity: 0.05;
+const ButtonText = styled.Text`
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  margin-left: ${props => props.withIcon ? '9px' : '0px'};
 `;
 
-const CardTitle = styled.Text`
-  font-size: 16px;
-  font-weight: 800;
-  color: #9d174d; /* Dark Pink */
+const InfoTitle = styled.Text`
+  font-size: 17px;
+  font-weight: 900;
+  color: #9d174d;
   margin-bottom: 10px;
 `;
 
-const CardText = styled.Text`
+const InfoText = styled.Text`
   font-size: 14px;
-  color: #555;
-  line-height: 20px;
+  color: ${portalTheme.muted};
+  line-height: 21px;
 `;
 
-const SectionTitle = styled.Text`
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 15px;
-`;
-
-const EmptyCard = styled.View`
-  background-color: #fff;
+const HistoryCard = styled.TouchableOpacity`
+  background-color: #ffffff;
   border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 100px; /* Space for BottomBar */
-  elevation: 1;
+  padding: 16px;
+  margin-top: 18px;
+  margin-bottom: 130px;
+  flex-direction: row;
+  align-items: center;
+  border-width: 1px;
+  border-color: ${portalTheme.border};
 `;
 
-const EmptyText = styled.Text`
-  color: #666;
-  font-size: 14px;
+const HistoryInfo = styled.View`
+  flex: 1;
+  margin-left: 12px;
+`;
+
+const HistoryTitle = styled.Text`
+  color: ${portalTheme.text};
+  font-size: 15px;
+  font-weight: 900;
+`;
+
+const HistorySubtitle = styled.Text`
+  margin-top: 3px;
+  color: ${portalTheme.muted};
+  font-size: 12px;
 `;
 
 const FAB = styled.TouchableOpacity`
@@ -114,14 +117,22 @@ const FAB = styled.TouchableOpacity`
   width: 60px;
   height: 60px;
   border-radius: 30px;
-  background-color: #a21caf; /* Purple */
+  overflow: hidden;
+  elevation: 5;
+  shadow-color: #db2777;
+  shadow-offset: 0px 8px;
+  shadow-opacity: 0.26;
+  shadow-radius: 14px;
+`;
+
+const FabGradient = styled(LinearGradient).attrs({
+  colors: portalGradients.woman,
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+})`
+  flex: 1;
   justify-content: center;
   align-items: center;
-  elevation: 5;
-  shadow-color: #a21caf;
-  shadow-offset: 0px 4px;
-  shadow-opacity: 0.3;
-  shadow-radius: 6px;
 `;
 
 export default function ProcuradoriaScreen({ navigation }) {
@@ -139,37 +150,35 @@ export default function ProcuradoriaScreen({ navigation }) {
           onPress: async () => {
             setPanicLoading(true);
             try {
-              // 1. Pedir permissão de localização
-              let { status } = await Location.requestForegroundPermissionsAsync();
+              const { status } = await Location.requestForegroundPermissionsAsync();
               if (status !== 'granted') {
                 Alert.alert("Erro", "Permissão de localização negada. O alerta não pôde ser enviado.");
                 return;
               }
 
-              // 2. Obter posição atual
-              let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-
-              // 3. (Opcional) Reverse Geocode para endereço amigável
+              const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
               let address = "Localização via GPS";
+
               try {
-                let reverse = await Location.reverseGeocodeAsync({
+                const reverse = await Location.reverseGeocodeAsync({
                   latitude: location.coords.latitude,
-                  longitude: location.coords.longitude
+                  longitude: location.coords.longitude,
                 });
                 if (reverse && reverse.length > 0) {
                   const item = reverse[0];
                   address = `${item.street}, ${item.name} - ${item.subregion}`;
                 }
-              } catch (e) { console.log('Erro reverse geocode', e); }
+              } catch (e) {
+                console.log('Erro reverse geocode', e);
+              }
 
-              // 4. Salvar no Firebase para disparar a Cloud Function
               await addDoc(collection(firestore, 'panic-alerts'), {
                 flavorId,
                 userId: user.uid,
                 lat: location.coords.latitude,
                 lng: location.coords.longitude,
-                address: address,
-                timestamp: serverTimestamp()
+                address,
+                timestamp: serverTimestamp(),
               });
 
               Alert.alert("ENVIADO", "Seu pedido de socorro foi enviado com sucesso para o seu contato de confiança.");
@@ -179,54 +188,64 @@ export default function ProcuradoriaScreen({ navigation }) {
             } finally {
               setPanicLoading(false);
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
+
   return (
-    <Container>
-      <Header>
-        <HeaderTitle>Procuradoria da Mulher</HeaderTitle>
-      </Header>
+    <PortalBackground>
+      <PortalScreenHeader
+        navigation={navigation}
+        title="Procuradoria da Mulher"
+        subtitle="Canal de orientação, denúncia e defesa dos direitos das mulheres."
+      />
 
       <ContentContainer showsVerticalScrollIndicator={false}>
-        <ButtonPanic activeOpacity={0.8} onPress={handlePanic} disabled={panicLoading}>
-          {panicLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <MaterialCommunityIcons name="shield-alert-outline" size={24} color="#fff" />
-              <ButtonPanicText>Botão do Pânico</ButtonPanicText>
-            </>
-          )}
-        </ButtonPanic>
+        <PanicButton activeOpacity={0.86} onPress={handlePanic} disabled={panicLoading}>
+          <PanicGradient>
+            {panicLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="shield-alert-outline" size={24} color="#fff" />
+                <ButtonText withIcon>Botão do Pânico</ButtonText>
+              </>
+            )}
+          </PanicGradient>
+        </PanicButton>
 
-        <ButtonPink activeOpacity={0.8} onPress={() => navigation.navigate('ContatoConfianca')}>
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>Gerenciar Contato de Confiança</Text>
-        </ButtonPink>
+        <WomanButton activeOpacity={0.86} onPress={() => navigation.navigate('ContatoConfianca')}>
+          <WomanGradient>
+            <ButtonText>Gerenciar Contato de Confiança</ButtonText>
+          </WomanGradient>
+        </WomanButton>
 
-        <CardInfo>
-          <CardTitle>O que é a Procuradoria da Mulher?</CardTitle>
-          <CardText>
+        <PortalCard>
+          <InfoTitle>O que é a Procuradoria da Mulher?</InfoTitle>
+          <InfoText>
             A Procuradoria da Mulher é um órgão do Poder Legislativo que atua na defesa dos direitos das mulheres, combatendo a violência e a discriminação de gênero. Ela oferece acolhimento, orientação e encaminhamento para os serviços da rede de proteção.
-          </CardText>
-        </CardInfo>
+          </InfoText>
+        </PortalCard>
 
-        <TouchableOpacity onPress={() => navigation.navigate('MeusAtendimentos', { source: 'procuradoria-mulher' })}>
-          <SectionTitle>Meus Atendimentos</SectionTitle>
-          <EmptyCard>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <EmptyText>Ver histórico de solicitações</EmptyText>
-              <MaterialCommunityIcons name="chevron-right" size={20} color="#666" />
-            </View>
-          </EmptyCard>
-        </TouchableOpacity>
+        <HistoryCard onPress={() => navigation.navigate('MeusAtendimentos', { source: 'procuradoria-mulher' })}>
+          <PortalIconBadge>
+            <MaterialCommunityIcons name="history" size={22} color={portalTheme.primary} />
+          </PortalIconBadge>
+          <HistoryInfo>
+            <HistoryTitle>Meus Atendimentos</HistoryTitle>
+            <HistorySubtitle>Ver histórico de solicitações</HistorySubtitle>
+          </HistoryInfo>
+          <MaterialCommunityIcons name="chevron-right" size={22} color={portalTheme.subtle} />
+        </HistoryCard>
       </ContentContainer>
 
-      <FAB activeOpacity={0.8} onPress={() => navigation.navigate('ProcuradoriaSolicitacao')}>
-        <MaterialCommunityIcons name="plus" size={30} color="#fff" />
+      <FAB activeOpacity={0.86} onPress={() => navigation.navigate('ProcuradoriaSolicitacao')}>
+        <FabGradient>
+          <MaterialCommunityIcons name="plus" size={30} color="#fff" />
+        </FabGradient>
       </FAB>
-    </Container>
+    </PortalBackground>
   );
 }

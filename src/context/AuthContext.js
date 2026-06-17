@@ -1,15 +1,18 @@
 import Constants from 'expo-constants';
-import { createContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
+import { createContext, useEffect, useRef, useState } from 'react';
 
 
 import {
     createUserWithEmailAndPassword,
+    GoogleAuthProvider,
     onAuthStateChanged,
     sendPasswordResetEmail,
+    signInWithCredential,
     signInWithEmailAndPassword,
     signOut
 } from 'firebase/auth';
-import { collection, doc, serverTimestamp as firestoreTimestamp, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp as firestoreTimestamp, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { auth, firestore } from '../../services/firebaseConfig';
 
 // 🔔 Expo Notifications
@@ -24,6 +27,9 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [currentLoginActivityId, setCurrentLoginActivityId] = useState(null);
+    const [pendingGoogleProfileCompletion, setPendingGoogleProfileCompletion] = useState(false);
+    const lastRecordedLoginRef = useRef(null);
 
     // 🔐 OBSERVADOR DE LOGIN
     useEffect(() => {
@@ -45,6 +51,56 @@ export const AuthProvider = ({ children }) => {
             }),
         });
     }, []);
+
+    // 🔔 REGISTRO DE PUSH TOKEN
+    useEffect(() => {
+        if (!user) return;
+
+        if (lastRecordedLoginRef.current === user.uid) return;
+        lastRecordedLoginRef.current = user.uid;
+
+        const recordLoginActivity = async () => {
+            try {
+                const activityRef = await addDoc(collection(firestore, 'login-activities'), {
+                    flavorId,
+                    userId: user.uid,
+                    userEmail: user.email || '',
+                    deviceName: Device.deviceName || Device.modelName || 'Dispositivo',
+                    modelName: Device.modelName || '',
+                    osName: Device.osName || '',
+                    osVersion: Device.osVersion || '',
+                    platform: Platform.OS,
+                    appVersion: Constants.expoConfig?.version || '',
+                    createdAt: firestoreTimestamp(),
+                });
+                setCurrentLoginActivityId(activityRef.id);
+            } catch (error) {
+                console.error('Erro ao registrar atividade de login:', error);
+            }
+        };
+
+        recordLoginActivity();
+    }, [user]);
+
+    useEffect(() => {
+        if (!currentLoginActivityId) return undefined;
+
+        const unsubscribe = onSnapshot(
+            doc(firestore, 'login-activities', currentLoginActivityId),
+            async (snapshot) => {
+                if (snapshot.exists() && snapshot.data()?.revoked === true) {
+                    lastRecordedLoginRef.current = null;
+                    setCurrentLoginActivityId(null);
+                    await signOut(auth);
+                }
+            },
+            (error) => {
+                console.error('Erro ao monitorar sessão atual:', error);
+            },
+        );
+
+        return () => unsubscribe();
+    }, [currentLoginActivityId]);
 
     // 🔔 REGISTRO DE PUSH TOKEN
     useEffect(() => {
@@ -167,6 +223,47 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const loginWithGoogle = async (idToken) => {
+        if (!idToken) {
+            throw new Error('Token do Google não informado.');
+        }
+
+        try {
+            const credential = GoogleAuthProvider.credential(idToken);
+            const { user: googleUser } = await signInWithCredential(auth, credential);
+            const userRef = doc(firestore, 'users', googleUser.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+                await setDoc(userRef, {
+                    name: googleUser.displayName || '',
+                    email: googleUser.email || '',
+                    avatarBase64: googleUser.photoURL || '',
+                    authProvider: 'google',
+                    cadastroCompleto: false,
+                    googleProfilePending: true,
+                    createdAt: firestoreTimestamp(),
+                    flavorId,
+                });
+                setPendingGoogleProfileCompletion(true);
+                return { isNewGoogleUser: true };
+            }
+
+            const userData = userSnap.data();
+            const shouldCompleteProfile = userData.authProvider === 'google' && userData.googleProfilePending === true && userData.cadastroCompleto !== true;
+            setPendingGoogleProfileCompletion(shouldCompleteProfile);
+
+            await updateDoc(userRef, {
+                lastLoginAt: firestoreTimestamp(),
+            });
+
+            return { isNewGoogleUser: false };
+        } catch (error) {
+            console.error('Erro login Google:', error);
+            throw error;
+        }
+    };
+
     // 🆕 REGISTRO
     const register = async (email, password, extraData = {}) => {
         try {
@@ -185,6 +282,7 @@ export const AuthProvider = ({ children }) => {
                 console.error("Erro ao salvar usuário no Firestore:", fsError);
             }
 
+            return newUser;
         } catch (error) {
             console.error('Erro register:', error);
             throw error;
@@ -194,6 +292,9 @@ export const AuthProvider = ({ children }) => {
     // 🚪 LOGOUT
     const logout = async () => {
         try {
+            lastRecordedLoginRef.current = null;
+            setCurrentLoginActivityId(null);
+            setPendingGoogleProfileCompletion(false);
             await signOut(auth);
         } catch (error) {
             console.error('Erro logout:', error);
@@ -210,8 +311,24 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const clearPendingGoogleProfileCompletion = () => {
+        setPendingGoogleProfileCompletion(false);
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, resetPassword, unreadCount }}>
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            login,
+            loginWithGoogle,
+            register,
+            logout,
+            resetPassword,
+            unreadCount,
+            currentLoginActivityId,
+            pendingGoogleProfileCompletion,
+            clearPendingGoogleProfileCompletion
+        }}>
             {children}
         </AuthContext.Provider>
     );

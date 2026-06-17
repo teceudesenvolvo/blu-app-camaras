@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
-import { addDoc, collection, doc, serverTimestamp as firestoreTimestamp, getDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, query, setDoc, where } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
@@ -27,6 +27,43 @@ const isBeforeToday = (date) => {
   normalizedDate.setHours(0, 0, 0, 0);
   return normalizedDate < getStartOfToday();
 };
+
+const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+const padDatePart = (value) => String(value).padStart(2, '0');
+
+const formatLocalDate = (date) => {
+  const year = date.getFullYear();
+  const month = padDatePart(date.getMonth() + 1);
+  const day = padDatePart(date.getDate());
+  return `${year}-${month}-${day}`;
+};
+
+const getMonthId = (date) => {
+  const year = date.getFullYear();
+  const month = padDatePart(date.getMonth() + 1);
+  return `${year}-${month}`;
+};
+
+const normalizeSlotList = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === 'object') return Object.values(value).filter(Boolean);
+  return [];
+};
+
+const normalizeBookedSlots = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .map(([, bookedValue]) => (bookedValue === true ? null : bookedValue))
+      .filter(Boolean);
+  }
+  return [];
+};
+
+const buildSlotKey = (slot) => String(slot).replace(/[^a-zA-Z0-9_-]/g, '_');
 
 const Container = styled.ScrollView`
   flex: 1;
@@ -298,9 +335,13 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [documentPickerVisible, setDocumentPickerVisible] = useState(false);
   const [parentescoPickerVisible, setParentescoPickerVisible] = useState(false);
+  const [beneficiaryPickerVisible, setBeneficiaryPickerVisible] = useState(false);
 
   // States for beneficiary (requester vs other)
   const [destino, setDestino] = useState('voce'); // voce | outro
+  const [beneficiaryMode, setBeneficiaryMode] = useState('existente'); // existente | novo
+  const [beneficiarios, setBeneficiarios] = useState([]);
+  const [selectedBeneficiary, setSelectedBeneficiary] = useState(null);
   const [parentesco, setParentesco] = useState('');
   const [otherPerson, setOtherPerson] = useState({ name: '', cpf: '', phone: '' });
   const [phonePreference, setPhonePreference] = useState('novo'); // novo | mesmo
@@ -337,6 +378,35 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
     };
 
     fetchUserData();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+
+    const q = query(
+      collection(firestore, 'balcao'),
+      where('userId', '==', user.uid),
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs
+          .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+          .filter(item => (item.flavorId === flavorId || !item.flavorId) && item.type === 'beneficiario')
+          .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+
+        setBeneficiarios(data);
+        if (data.length === 0) {
+          setBeneficiaryMode('novo');
+        }
+      },
+      (error) => {
+        console.error('Erro ao carregar beneficiários:', error);
+      },
+    );
+
+    return () => unsubscribe();
   }, [user]);
 
   // Efeito para buscar horários quando a data é digitada
@@ -381,39 +451,33 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
     setAvailableSlots([]);
 
     try {
-      const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const dayName = daysOfWeek[selectedDate.getDay()];
-      const dateStr = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      const dateStr = formatLocalDate(selectedDate);
+      const monthId = getMonthId(selectedDate);
 
-      const docRef = doc(firestore, 'balcao-config', flavorId);
+      const docRef = doc(firestore, 'balcao-monthly-configs', monthId);
       const snapshot = await getDoc(docRef);
 
       if (snapshot.exists()) {
-        const config = snapshot.data();
-
-        // 1. Busca slots base do dia da semana (ex: 'monday')
-        const baseSlots = config.availability && config.availability[dayName]
-          ? Object.values(config.availability[dayName])
-          : [];
-
-        const bookedSlotsObject = config.bookedSlots && config.bookedSlots[dateStr]
-          ? config.bookedSlots[dateStr]
-          : {};
-
-        // 2. Busca slots já ocupados na data específica (bookedSlots/YYYY-MM-DD)
-        const booked = config.bookedSlots && config.bookedSlots[dateStr]
-          ? Object.entries(config.bookedSlots[dateStr]).map(([key, value]) => value)
-          : [];
-
-
-        console.log('Base slots:', baseSlots);
-        console.log('Booked slots object:', bookedSlotsObject);
-        console.log('Booked slots keys:', booked);
-
+        const monthConfig = snapshot.data();
+        const dayConfig = monthConfig[dayName] || {};
+        const baseSlots = normalizeSlotList(
+          dayConfig.slots ||
+          dayConfig.horarios ||
+          dayConfig.availableSlots ||
+          dayConfig.availability ||
+          monthConfig[`${dayName}Slots`],
+        );
+        const booked = normalizeBookedSlots(
+          dayConfig.bookedSlots?.[dateStr] ||
+          dayConfig.booked?.[dateStr] ||
+          monthConfig.bookedSlots?.[dateStr],
+        );
 
         const freeSlots = baseSlots.filter(slot => !booked.includes(slot));
-
         setAvailableSlots(freeSlots);
+      } else {
+        setAvailableSlots([]);
       }
 
     } catch (error) {
@@ -491,6 +555,28 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
     setNovoEndereco(prev => ({ ...prev, [name]: value }));
   };
 
+  const selectBeneficiary = (beneficiary) => {
+    setSelectedBeneficiary(beneficiary);
+    setBeneficiaryPickerVisible(false);
+    setOtherPerson({
+      name: beneficiary.name || '',
+      cpf: beneficiary.cpf || '',
+      phone: beneficiary.phone || '',
+    });
+    setParentesco(beneficiary.parentesco || '');
+
+    if (beneficiary.endereco) {
+      setNovoEndereco({
+        cep: beneficiary.endereco.cep || '',
+        rua: beneficiary.endereco.rua || '',
+        numero: beneficiary.endereco.numero || '',
+        bairro: beneficiary.endereco.bairro || '',
+        cidade: beneficiary.endereco.cidade || '',
+        estado: beneficiary.endereco.estado || '',
+      });
+    }
+  };
+
   const fetchAddressByCep = async () => {
     const cep = novoEndereco.cep.replace(/\D/g, '');
     if (cep.length === 8) {
@@ -527,147 +613,215 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
 
         {destino === 'outro' && (
           <Card>
-            <Label>Grau de Parentesco *</Label>
-            <StyledSelect onPress={() => setParentescoPickerVisible(true)} style={{ marginBottom: 15 }}>
-              <SelectText placeholder={!parentesco}>
-                {parentesco || 'Selecione o grau de parentesco...'}
-              </SelectText>
-              <Ionicons name="chevron-down" size={20} color="#666" />
-            </StyledSelect>
+            <Label>Beneficiário</Label>
+            <TabContainer>
+              <TabButton first active={beneficiaryMode === 'existente'} onPress={() => setBeneficiaryMode('existente')}>
+                <TabText active={beneficiaryMode === 'existente'}>Existente</TabText>
+              </TabButton>
+              <TabButton last active={beneficiaryMode === 'novo'} onPress={() => {
+                setBeneficiaryMode('novo');
+                setSelectedBeneficiary(null);
+              }}>
+                <TabText active={beneficiaryMode === 'novo'}>Criar novo</TabText>
+              </TabButton>
+            </TabContainer>
 
-            <Modal
-              transparent={true}
-              visible={parentescoPickerVisible}
-              animationType="fade"
-              onRequestClose={() => setParentescoPickerVisible(false)}
-            >
-              <ModalBackdrop onPress={() => setParentescoPickerVisible(false)}>
-                <ModalContainer>
-                  <ScrollView>
-                    {['Pai/Mãe', 'Filho(a)', 'Tio(a)', 'Avô/Avó'].map((opcao, index) => (
-                      <ModalItem
-                        key={index}
-                        onPress={() => {
-                          setParentesco(opcao);
-                          setParentescoPickerVisible(false);
-                        }}
-                      >
-                        <ModalItemText>{opcao}</ModalItemText>
-                      </ModalItem>
-                    ))}
-                  </ScrollView>
-                </ModalContainer>
-              </ModalBackdrop>
-            </Modal>
+            {beneficiaryMode === 'existente' ? (
+              <>
+                <StyledSelect onPress={() => setBeneficiaryPickerVisible(true)} style={{ marginBottom: 15 }}>
+                  <SelectText placeholder={!selectedBeneficiary}>
+                    {selectedBeneficiary?.name || 'Selecione um beneficiário cadastrado...'}
+                  </SelectText>
+                  <Ionicons name="chevron-down" size={20} color="#666" />
+                </StyledSelect>
+
+                <Modal
+                  transparent={true}
+                  visible={beneficiaryPickerVisible}
+                  animationType="fade"
+                  onRequestClose={() => setBeneficiaryPickerVisible(false)}
+                >
+                  <ModalBackdrop onPress={() => setBeneficiaryPickerVisible(false)}>
+                    <ModalContainer>
+                      <ScrollView>
+                        {beneficiarios.length === 0 ? (
+                          <ModalItem onPress={() => {
+                            setBeneficiaryMode('novo');
+                            setBeneficiaryPickerVisible(false);
+                          }}>
+                            <ModalItemText>Nenhum cadastrado. Criar novo beneficiário</ModalItemText>
+                          </ModalItem>
+                        ) : (
+                          beneficiarios.map((beneficiary) => (
+                            <ModalItem key={beneficiary.id} onPress={() => selectBeneficiary(beneficiary)}>
+                              <ModalItemText>{beneficiary.name} • {beneficiary.parentesco || 'Sem parentesco'}</ModalItemText>
+                            </ModalItem>
+                          ))
+                        )}
+                      </ScrollView>
+                    </ModalContainer>
+                  </ModalBackdrop>
+                </Modal>
+
+                {selectedBeneficiary ? (
+                  <View style={{ backgroundColor: '#fff', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                    <Text style={{ color: '#111827', fontWeight: '800', marginBottom: 4 }}>{selectedBeneficiary.name}</Text>
+                    <Text style={{ color: '#666', fontWeight: '600' }}>{selectedBeneficiary.parentesco || 'Parentesco não informado'} • CPF {selectedBeneficiary.cpf || 'não informado'}</Text>
+                    {selectedBeneficiary.phone ? <Text style={{ color: '#666', fontWeight: '600', marginTop: 2 }}>{selectedBeneficiary.phone}</Text> : null}
+                  </View>
+                ) : null}
+              </>
+            ) : null}
+
+            {beneficiaryMode === 'novo' && (
+              <>
+                <Label>Grau de Parentesco *</Label>
+                <StyledSelect onPress={() => setParentescoPickerVisible(true)} style={{ marginBottom: 15 }}>
+                  <SelectText placeholder={!parentesco}>
+                    {parentesco || 'Selecione o grau de parentesco...'}
+                  </SelectText>
+                  <Ionicons name="chevron-down" size={20} color="#666" />
+                </StyledSelect>
+
+                <Modal
+                  transparent={true}
+                  visible={parentescoPickerVisible}
+                  animationType="fade"
+                  onRequestClose={() => setParentescoPickerVisible(false)}
+                >
+                  <ModalBackdrop onPress={() => setParentescoPickerVisible(false)}>
+                    <ModalContainer>
+                      <ScrollView>
+                        {['Pai/Mãe', 'Filho(a)', 'Tio(a)', 'Avô/Avó', 'Cônjuge', 'Outro'].map((opcao, index) => (
+                          <ModalItem
+                            key={index}
+                            onPress={() => {
+                              setParentesco(opcao);
+                              setParentescoPickerVisible(false);
+                            }}
+                          >
+                            <ModalItemText>{opcao}</ModalItemText>
+                          </ModalItem>
+                        ))}
+                      </ScrollView>
+                    </ModalContainer>
+                  </ModalBackdrop>
+                </Modal>
             
-            <Label>Nome Completo do Beneficiário *</Label>
-            <Input
-              placeholder="Nome"
-              value={otherPerson.name}
-              onChangeText={(v) => handleOtherPersonChange('name', v)}
-              style={{ marginBottom: 15 }}
-            />
-
-            <Label>CPF do Beneficiário *</Label>
-            <Input
-              placeholder="000.000.000-00"
-              value={otherPerson.cpf}
-              onChangeText={(v) => handleOtherPersonChange('cpf', v)}
-              keyboardType="number-pad"
-              style={{ marginBottom: 15 }}
-            />
-
-            <Label>Telefone do Beneficiário *</Label>
-            <RadioGroup>
-              <RadioButton onPress={() => setPhonePreference('mesmo')}>
-                <RadioCircle selected={phonePreference === 'mesmo'}>
-                  {phonePreference === 'mesmo' && <SelectedBg />}
-                </RadioCircle>
-                <Text style={{color: '#333'}}>Usar o meu</Text>
-              </RadioButton>
-              <RadioButton onPress={() => setPhonePreference('novo')}>
-                <RadioCircle selected={phonePreference === 'novo'}>
-                  {phonePreference === 'novo' && <SelectedBg />}
-                </RadioCircle>
-                <Text style={{color: '#333'}}>Informar novo</Text>
-              </RadioButton>
-            </RadioGroup>
-            
-            {phonePreference === 'novo' && (
-              <Input
-                placeholder="(00) 00000-0000"
-                value={otherPerson.phone}
-                onChangeText={(v) => handleOtherPersonChange('phone', v)}
-                keyboardType="phone-pad"
-                style={{ marginBottom: 15 }}
-              />
-            )}
-
-            <Label>Endereço do Beneficiário</Label>
-            <RadioGroup>
-              <RadioButton onPress={() => setEnderecoPreference('mesmo')}>
-                <RadioCircle selected={enderecoPreference === 'mesmo'}>
-                  {enderecoPreference === 'mesmo' && <SelectedBg />}
-                </RadioCircle>
-                <Text style={{color: '#333'}}>Usar meu endereço</Text>
-              </RadioButton>
-              <RadioButton onPress={() => setEnderecoPreference('novo')}>
-                <RadioCircle selected={enderecoPreference === 'novo'}>
-                  {enderecoPreference === 'novo' && <SelectedBg />}
-                </RadioCircle>
-                <Text style={{color: '#333'}}>Informar novo endereço</Text>
-              </RadioButton>
-            </RadioGroup>
-
-            {enderecoPreference === 'novo' && (
-              <View style={{ marginTop: 10, borderTopWidth: 1, borderColor: '#eee', paddingTop: 15 }}>
-                <Label>CEP *</Label>
+                <Label>Nome Completo do Beneficiário *</Label>
                 <Input
-                  placeholder="00000-000"
-                  value={novoEndereco.cep}
-                  onChangeText={(v) => handleNovoEnderecoChange('cep', v)}
-                  onBlur={fetchAddressByCep}
+                  placeholder="Nome"
+                  value={otherPerson.name}
+                  onChangeText={(v) => handleOtherPersonChange('name', v)}
+                  style={{ marginBottom: 15 }}
+                />
+
+                <Label>CPF do Beneficiário *</Label>
+                <Input
+                  placeholder="000.000.000-00"
+                  value={otherPerson.cpf}
+                  onChangeText={(v) => handleOtherPersonChange('cpf', v)}
                   keyboardType="number-pad"
                   style={{ marginBottom: 15 }}
                 />
+              </>
+            )}
+
+            {beneficiaryMode === 'novo' && (
+              <>
+                <Label>Telefone do Beneficiário *</Label>
+                <RadioGroup>
+                  <RadioButton onPress={() => setPhonePreference('mesmo')}>
+                    <RadioCircle selected={phonePreference === 'mesmo'}>
+                      {phonePreference === 'mesmo' && <SelectedBg />}
+                    </RadioCircle>
+                    <Text style={{color: '#333'}}>Usar o meu</Text>
+                  </RadioButton>
+                  <RadioButton onPress={() => setPhonePreference('novo')}>
+                    <RadioCircle selected={phonePreference === 'novo'}>
+                      {phonePreference === 'novo' && <SelectedBg />}
+                    </RadioCircle>
+                    <Text style={{color: '#333'}}>Informar novo</Text>
+                  </RadioButton>
+                </RadioGroup>
                 
-                <Label>Rua/Logradouro *</Label>
-                <Input
-                  placeholder="Rua..."
-                  value={novoEndereco.rua}
-                  onChangeText={(v) => handleNovoEnderecoChange('rua', v)}
-                  style={{ marginBottom: 15 }}
-                />
+                {phonePreference === 'novo' && (
+                  <Input
+                    placeholder="(00) 00000-0000"
+                    value={otherPerson.phone}
+                    onChangeText={(v) => handleOtherPersonChange('phone', v)}
+                    keyboardType="phone-pad"
+                    style={{ marginBottom: 15 }}
+                  />
+                )}
 
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <View style={{ flex: 1, marginRight: 10 }}>
-                    <Label>Número *</Label>
+                <Label>Endereço do Beneficiário</Label>
+                <RadioGroup>
+                  <RadioButton onPress={() => setEnderecoPreference('mesmo')}>
+                    <RadioCircle selected={enderecoPreference === 'mesmo'}>
+                      {enderecoPreference === 'mesmo' && <SelectedBg />}
+                    </RadioCircle>
+                    <Text style={{color: '#333'}}>Usar meu endereço</Text>
+                  </RadioButton>
+                  <RadioButton onPress={() => setEnderecoPreference('novo')}>
+                    <RadioCircle selected={enderecoPreference === 'novo'}>
+                      {enderecoPreference === 'novo' && <SelectedBg />}
+                    </RadioCircle>
+                    <Text style={{color: '#333'}}>Informar novo endereço</Text>
+                  </RadioButton>
+                </RadioGroup>
+
+                {enderecoPreference === 'novo' && (
+                  <View style={{ marginTop: 10, borderTopWidth: 1, borderColor: '#eee', paddingTop: 15 }}>
+                    <Label>CEP *</Label>
                     <Input
-                      placeholder="Nº"
-                      value={novoEndereco.numero}
-                      onChangeText={(v) => handleNovoEnderecoChange('numero', v)}
+                      placeholder="00000-000"
+                      value={novoEndereco.cep}
+                      onChangeText={(v) => handleNovoEnderecoChange('cep', v)}
+                      onBlur={fetchAddressByCep}
+                      keyboardType="number-pad"
                       style={{ marginBottom: 15 }}
                     />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Label>Bairro *</Label>
+                    
+                    <Label>Rua/Logradouro *</Label>
                     <Input
-                      placeholder="Bairro..."
-                      value={novoEndereco.bairro}
-                      onChangeText={(v) => handleNovoEnderecoChange('bairro', v)}
+                      placeholder="Rua..."
+                      value={novoEndereco.rua}
+                      onChangeText={(v) => handleNovoEnderecoChange('rua', v)}
                       style={{ marginBottom: 15 }}
                     />
-                  </View>
-                </View>
 
-                <Label>Cidade/Estado *</Label>
-                <Input
-                  placeholder="Cidade - UF"
-                  value={novoEndereco.cidade ? `${novoEndereco.cidade} - ${novoEndereco.estado}` : ''}
-                  editable={false}
-                  style={{ backgroundColor: '#e9ecef', marginBottom: 15 }}
-                />
-              </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <View style={{ flex: 1, marginRight: 10 }}>
+                        <Label>Número *</Label>
+                        <Input
+                          placeholder="Nº"
+                          value={novoEndereco.numero}
+                          onChangeText={(v) => handleNovoEnderecoChange('numero', v)}
+                          style={{ marginBottom: 15 }}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Label>Bairro *</Label>
+                        <Input
+                          placeholder="Bairro..."
+                          value={novoEndereco.bairro}
+                          onChangeText={(v) => handleNovoEnderecoChange('bairro', v)}
+                          style={{ marginBottom: 15 }}
+                        />
+                      </View>
+                    </View>
+
+                    <Label>Cidade/Estado *</Label>
+                    <Input
+                      placeholder="Cidade - UF"
+                      value={novoEndereco.cidade ? `${novoEndereco.cidade} - ${novoEndereco.estado}` : ''}
+                      editable={false}
+                      style={{ backgroundColor: '#e9ecef', marginBottom: 15 }}
+                    />
+                  </View>
+                )}
+              </>
             )}
           </Card>
         )}
@@ -865,10 +1019,21 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
 
   const bookTimeSlot = async (dateStr, slot) => {
     try {
-      const docRef = doc(firestore, 'balcao-config', flavorId);
-      await updateDoc(docRef, {
-        [`bookedSlots.${dateStr}.${slot}`]: true
-      });
+      const date = new Date(`${dateStr}T00:00:00`);
+      const dayName = daysOfWeek[date.getDay()];
+      const monthId = getMonthId(date);
+      const slotKey = buildSlotKey(slot);
+      const docRef = doc(firestore, 'balcao-monthly-configs', monthId);
+
+      await setDoc(docRef, {
+        [dayName]: {
+          bookedSlots: {
+            [dateStr]: {
+              [slotKey]: slot,
+            },
+          },
+        },
+      }, { merge: true });
       console.log(`Horário ${slot} agendado com sucesso em ${dateStr}`);
     } catch (error) {
       console.error("Erro ao salvar horário agendado:", error);
@@ -886,6 +1051,18 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
     if (serviceName === 'Agendamentos' && (!formData.dataAgendamento || !selectedSlot)) {
       Alert.alert('Atenção', 'Por favor, selecione uma data e um horário disponível.');
       return;
+    }
+
+    if (destino === 'outro') {
+      if (beneficiaryMode === 'existente' && !selectedBeneficiary) {
+        Alert.alert('Atenção', 'Selecione um beneficiário ou escolha criar um novo.');
+        return;
+      }
+
+      if (beneficiaryMode === 'novo' && (!otherPerson.name || !otherPerson.cpf || !parentesco)) {
+        Alert.alert('Atenção', 'Informe nome, CPF e parentesco do beneficiário.');
+        return;
+      }
     }
 
     if (serviceName === 'Agendamentos') {
@@ -960,8 +1137,13 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
               } 
           };
       } else {
-          const phoneFinal = phonePreference === 'mesmo' ? (loggedInUserData?.phone || formData.telefone || 'Não informado') : otherPerson.phone;
-          const enderecoFinal = enderecoPreference === 'mesmo' 
+          const selectedEndereco = selectedBeneficiary?.endereco || {};
+          const phoneFinal = beneficiaryMode === 'existente'
+              ? (selectedBeneficiary?.phone || formData.telefone || 'Não informado')
+              : phonePreference === 'mesmo' ? (loggedInUserData?.phone || formData.telefone || 'Não informado') : otherPerson.phone;
+          const enderecoFinal = beneficiaryMode === 'existente'
+              ? selectedEndereco
+              : enderecoPreference === 'mesmo' 
               ? { 
                   rua: loggedInUserData?.address || 'Não informado', 
                   numero: loggedInUserData?.numero || 'S/N', 
@@ -973,11 +1155,11 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
               : novoEndereco;
           
           dadosBeneficiario = {
-              id: 'outro',
-              name: otherPerson.name,
-              cpf: otherPerson.cpf,
+              id: selectedBeneficiary?.id || 'outro',
+              name: selectedBeneficiary?.name || otherPerson.name,
+              cpf: selectedBeneficiary?.cpf || otherPerson.cpf,
               phone: phoneFinal,
-              parentesco: parentesco || 'Não informado',
+              parentesco: selectedBeneficiary?.parentesco || parentesco || 'Não informado',
               endereco: {
                   rua: enderecoFinal.rua || 'Não informado',
                   numero: enderecoFinal.numero || 'S/N',
@@ -987,6 +1169,25 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                   cep: enderecoFinal.cep || 'Não informado'
               }
           };
+
+          if (beneficiaryMode === 'novo') {
+              try {
+                await addDoc(collection(firestore, 'balcao'), {
+                  type: 'beneficiario',
+                  flavorId,
+                  userId: user.uid,
+                  name: dadosBeneficiario.name,
+                  cpf: dadosBeneficiario.cpf,
+                  phone: dadosBeneficiario.phone,
+                  parentesco: dadosBeneficiario.parentesco,
+                  endereco: dadosBeneficiario.endereco,
+                  createdAt: firestoreTimestamp(),
+                  updatedAt: firestoreTimestamp(),
+                });
+              } catch (beneficiaryError) {
+                console.error('Erro ao salvar beneficiário:', beneficiaryError);
+              }
+          }
       }
 
       const firestoreData = {

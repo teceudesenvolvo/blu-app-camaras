@@ -1,134 +1,111 @@
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
-import { Text, TouchableOpacity } from 'react-native';
+import { Text } from 'react-native';
 import styled from 'styled-components/native';
+import {
+  PortalBackground,
+  PortalCard,
+  PortalIconBadge,
+  PortalScreenHeader,
+} from '../components/PortalScaffold';
+import { portalTheme } from '../styles/portalTheme';
 
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
-
-const Container = styled.ScrollView`
+const Content = styled.ScrollView`
   flex: 1;
-  background-color: ${backgroundColor};
 `;
 
-const HeaderContainer = styled.View`
-  flex-direction: row;
-  align-items: center;
-  padding: 50px 20px 20px 20px;
-  background-color: #fff;
-`;
-
-const BackButton = styled.TouchableOpacity`
-  padding: 5px;
-`;
-
-const HeaderTitle = styled.Text`
-  flex: 1;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 700;
-  color: #111;
-  margin-right: 30px;
-`;
-
-const ContentContainer = styled.View`
-  padding: 20px;
+const Inner = styled.View`
+  padding: 18px 20px 34px;
 `;
 
 const IntroText = styled.Text`
-  font-size: 15px;
-  color: #555;
-  margin-bottom: 20px;
-  line-height: 22px;
+  font-size: 14px;
+  color: ${portalTheme.muted};
+  margin-bottom: 18px;
+  line-height: 21px;
 `;
 
 const ServiceCard = styled.TouchableOpacity`
-  background-color: #fff;
+  background-color: #ffffff;
   border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 15px;
+  padding: 16px;
+  margin-bottom: 13px;
   flex-direction: row;
   align-items: center;
-  shadow-color: #000;
-  shadow-offset: 0px 2px;
-  shadow-opacity: 0.05;
-  shadow-radius: 4px;
-  elevation: 2;
-  border-left-width: 4px;
-  border-left-color: ${primaryColor};
-`;
-
-const ServiceIconContainer = styled.View`
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  background-color: ${primaryColor}15;
-  justify-content: center;
-  align-items: center;
-  margin-right: 15px;
+  border-width: 1px;
+  border-color: ${portalTheme.border};
 `;
 
 const ServiceInfo = styled.View`
   flex: 1;
+  margin-left: 12px;
 `;
 
 const ServiceTitle = styled.Text`
-  font-size: 16px;
-  font-weight: 700;
-  color: #333;
+  font-size: 15px;
+  font-weight: 900;
+  color: ${portalTheme.text};
   margin-bottom: 4px;
 `;
 
 const ServiceDesc = styled.Text`
-  font-size: 13px;
-  color: #777;
+  font-size: 12px;
+  color: ${portalTheme.muted};
+  line-height: 17px;
+`;
+
+const OutlineButton = styled.TouchableOpacity`
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border-width: 1px;
+  border-color: ${portalTheme.border};
+  background-color: rgba(255, 255, 255, 0.75);
+  margin-top: 4px;
 `;
 
 export default function BalcaoCidadaoScreen({ navigation }) {
   const services = [
-    { id: '1', title: 'Emissão de Documentos', desc: 'Agende serviços de identidade, CPF, passe livre, etc.', icon: 'card-outline' },
-    { id: '2', title: 'Informações Gerais', desc: 'Dúvidas sobre serviços públicos e locais de atendimento.', icon: 'information-circle-outline' },
+    { id: '1', title: 'Emissão de Documentos', desc: 'Agende serviços de identidade, CPF, passe livre e outros documentos.', icon: 'card-outline' },
+    { id: '2', title: 'Informações Gerais', desc: 'Tire dúvidas sobre serviços públicos e locais de atendimento.', icon: 'information-circle-outline' },
   ];
 
   return (
-    <Container showsVerticalScrollIndicator={false}>
-      <HeaderContainer>
-        <BackButton onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </BackButton>
-        <HeaderTitle>Balcão do Cidadão</HeaderTitle>
-      </HeaderContainer>
+    <PortalBackground>
+      <PortalScreenHeader
+        navigation={navigation}
+        title="Balcão do Cidadão"
+        subtitle="Solicite documentos e agende atendimentos de forma rápida."
+      />
 
-      <ContentContainer>
-        <IntroText>
-          O Balcão do Cidadão oferece suporte rápido para resolução de demandas e serviços essenciais.
-          Selecione o serviço desejado:
-        </IntroText>
+      <Content showsVerticalScrollIndicator={false}>
+        <Inner>
+          <PortalCard>
+            <IntroText>Selecione o serviço desejado para iniciar seu atendimento.</IntroText>
 
-        {services.map((service) => (
-          <ServiceCard
-            key={service.id}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('BalcaoSolicitacao', { serviceName: service.title })}
-          >
-            <ServiceIconContainer>
-              <Ionicons name={service.icon} size={20} color={primaryColor} />
-            </ServiceIconContainer>
-            <ServiceInfo>
-              <ServiceTitle>{service.title}</ServiceTitle>
-              <ServiceDesc>{service.desc}</ServiceDesc>
-            </ServiceInfo>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </ServiceCard>
-        ))}
+            {services.map((service) => (
+              <ServiceCard
+                key={service.id}
+                activeOpacity={0.78}
+                onPress={() => navigation.navigate('BalcaoSolicitacao', { serviceName: service.title })}
+              >
+                <PortalIconBadge>
+                  <Ionicons name={service.icon} size={22} color={portalTheme.primary} />
+                </PortalIconBadge>
+                <ServiceInfo>
+                  <ServiceTitle>{service.title}</ServiceTitle>
+                  <ServiceDesc>{service.desc}</ServiceDesc>
+                </ServiceInfo>
+                <Ionicons name="chevron-forward" size={20} color={portalTheme.subtle} />
+              </ServiceCard>
+            ))}
 
-        <TouchableOpacity
-          onPress={() => navigation.navigate('MeusAtendimentos', { source: 'balcao-cidadao' })}
-          style={{ padding: 20, alignItems: 'center', marginTop: 10, backgroundColor: '#fff', borderRadius: 12 }}
-        >
-          <Text style={{ color: primaryColor, fontWeight: 'bold' }}>Ver Meus Atendimentos</Text>
-        </TouchableOpacity>
-      </ContentContainer>
-    </Container>
+            <OutlineButton onPress={() => navigation.navigate('MeusAtendimentos', { source: 'balcao-cidadao' })}>
+              <Text style={{ color: portalTheme.primary, fontWeight: '900' }}>Ver Meus Atendimentos</Text>
+            </OutlineButton>
+          </PortalCard>
+        </Inner>
+      </Content>
+    </PortalBackground>
   );
 }

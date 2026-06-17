@@ -1,8 +1,9 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Constants from 'expo-constants';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, View, useWindowDimensions } from 'react-native';
 import RenderHtml from 'react-native-render-html';
 import styled from 'styled-components/native';
 
@@ -12,57 +13,75 @@ import { firestore, storage } from '../../services/firebaseConfig';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const genericBiographies = [
+  'Parlamentar da Câmara Municipal de Paraipaba, atuando na representação da população e no acompanhamento das demandas do município.',
+  'Vereador com atuação voltada ao diálogo com a comunidade, fiscalização do poder público e defesa de melhorias para Paraipaba.',
+  'Representante do legislativo municipal, dedicado à construção de políticas públicas e ao atendimento das necessidades dos cidadãos.',
+];
 
 const Container = styled.View`
   flex: 1;
-  background-color: ${props => props.theme.background || '#f8fafc'};
+  background-color: #f8fbff;
 `;
 
-const Header = styled.View`
-  padding: 20px;
-  padding-top: 60px;
-  background-color: #fff;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
+const Header = styled(LinearGradient).attrs({
+  colors: ['#f8fbff', '#eef5fb', '#ffffff'],
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+})`
+  padding: 54px 20px 18px;
 `;
 
 const HeaderTitle = styled.Text`
-  color: #333;
-  font-size: 18px;
-  font-weight: bold;
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 900;
+`;
+
+const HeaderSubtitle = styled.Text`
+  color: #64748b;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  margin-top: 6px;
 `;
 
 const BackButton = styled.TouchableOpacity`
-  position: absolute;
-  left: 20px;
-  top: 60px;
-  z-index: 10;
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  background-color: rgba(255, 255, 255, 0.82);
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
 `;
 
 const TopScroller = styled.ScrollView`
-  padding: 10px 0;
-  background-color: #fff;
-  border-bottom-width: 1px;
-  border-bottom-color: #f0f0f0;
-  max-height: 120px;
+  padding: 14px 0 12px;
+  background-color: transparent;
+  max-height: 126px;
 `;
 
 const AvatarContainer = styled.TouchableOpacity`
   align-items: center;
-  margin: 0 10px;
-  width: 70px;
+  margin: 0 7px;
+  width: 76px;
 `;
 
-const AvatarRing = styled.View`
-  width: 68px;
-  height: 68px;
-  border-radius: 34px;
+const AvatarRing = styled(LinearGradient).attrs(props => ({
+  colors: props.selected ? ['#025AA1', '#0077ed'] : ['#ffffff', '#eef5fb'],
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+}))`
+  width: 72px;
+  height: 72px;
+  border-radius: 36px;
   border-width: 2px;
-  border-color: ${props => props.selected ? primaryColor : 'transparent'};
+  border-color: ${props => props.selected ? 'rgba(2, 90, 161, 0.35)' : '#e2e8f0'};
   justify-content: center;
   align-items: center;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 `;
 
 const AvatarPhoto = styled.Image`
@@ -74,9 +93,9 @@ const AvatarPhoto = styled.Image`
 
 const AvatarName = styled.Text`
   font-size: 11px;
-  color: #555;
+  color: ${props => props.selected ? primaryColor : '#64748b'};
   text-align: center;
-  font-weight: ${props => props.selected ? 'bold' : 'normal'};
+  font-weight: 900;
 `;
 
 const DetailsContainer = styled.ScrollView`
@@ -85,21 +104,25 @@ const DetailsContainer = styled.ScrollView`
 `;
 
 const GlassCard = styled(BlurView)`
-  border-radius: 20px;
+  border-radius: 22px;
   overflow: hidden;
-  background-color: rgba(255, 255, 255, 0.7);
-  border-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(255, 255, 255, 0.78);
+  border-color: #e2e8f0;
   border-width: 1px;
-  padding: 20px;
-  flex-direction: row;
+  padding: 16px;
   margin-bottom: 25px;
   elevation: 3;
 `;
 
+const ProfileRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+`;
+
 const ProfileImage = styled.Image`
-  width: 100px;
-  height: 120px;
-  border-radius: 15px;
+  width: 104px;
+  height: 126px;
+  border-radius: 18px;
   background-color: #ccc;
   margin-right: 15px;
 `;
@@ -110,22 +133,24 @@ const ProfileInfo = styled.View`
 `;
 
 const ProfileName = styled.Text`
-  font-size: 18px;
+  font-size: 19px;
+  line-height: 24px;
   font-weight: 800;
-  color: ${primaryColor};
+  color: #0f172a;
   margin-bottom: 10px;
 `;
 
 const ProfileDetail = styled.Text`
   font-size: 14px;
-  color: #555;
+  color: #64748b;
   margin-bottom: 4px;
+  font-weight: 700;
 `;
 
 const SectionTitle = styled.Text`
   font-size: 18px;
-  font-weight: bold;
-  color: #333;
+  font-weight: 900;
+  color: #0f172a;
   margin-bottom: 15px;
 `;
 
@@ -175,7 +200,7 @@ export default function VereadoresScreen({ navigation }) {
   // Função para retornar um texto genérico baseado no ID do vereador
   const getGenericBio = (id) => {
     const hash = (id || '0').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return GENERIC_BIOGRAPHIES[hash % GENERIC_BIOGRAPHIES.length];
+    return genericBiographies[hash % genericBiographies.length];
   };
 
   useEffect(() => {
@@ -199,7 +224,9 @@ export default function VereadoresScreen({ navigation }) {
             };
           }));
 
-          const sortedData = data.sort((a, b) => (a.name || '').localeCompare(b.name || '')); // Ordenação local
+          const sortedData = data
+            .filter((item) => item.flavorId === flavorId || !item.flavorId)
+            .sort((a, b) => (a.name || '').localeCompare(b.name || '')); // Ordenação local
 
           setVereadores(sortedData);
           setSelectedId(sortedData[0]?.id);
@@ -236,9 +263,10 @@ export default function VereadoresScreen({ navigation }) {
     <Container>
       <Header>
         <BackButton onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialCommunityIcons name="arrow-left" size={23} color={primaryColor} />
         </BackButton>
         <HeaderTitle>Vereadores</HeaderTitle>
+        <HeaderSubtitle>Conheça os parlamentares da Câmara Municipal de Paraipaba.</HeaderSubtitle>
       </Header>
 
       {loading ? (
@@ -248,7 +276,7 @@ export default function VereadoresScreen({ navigation }) {
       ) : (
         <>
           {/* Top Scroller for Avatars */}
-          <TopScroller horizontal showsHorizontalScrollIndicator={false}>
+          <TopScroller horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 13 }}>
             {vereadores.map((v) => (
               <AvatarContainer key={v.id} onPress={() => setSelectedId(v.id)}>
                 <AvatarRing selected={selectedId === v.id}>
@@ -265,13 +293,15 @@ export default function VereadoresScreen({ navigation }) {
           {selectedVereador && (
             <DetailsContainer showsVerticalScrollIndicator={false}>
               <GlassCard intensity={80} tint="default">
-                <ProfileImage source={getAvatarSource(selectedVereador.resolvedAvatarUrl || selectedVereador.avatarUrl || selectedVereador.avatarBase64)} />
-                <ProfileInfo>
-                  <ProfileName>{selectedVereador.name}</ProfileName>
-                  <ProfileDetail><Text style={{ fontWeight: 'bold' }}>Cargo:</Text> {selectedVereador.cargo || 'Vereador'}</ProfileDetail>
-                  <ProfileDetail><Text style={{ fontWeight: 'bold' }}>Nascimento:</Text> {selectedVereador.dataNascimento ? selectedVereador.dataNascimento.split('-').reverse().join('/') : 'N/A'}</ProfileDetail>
-                  <ProfileDetail><Text style={{ fontWeight: 'bold' }}>Partido:</Text> {selectedVereador.partido || 'N/A'}</ProfileDetail>
-                </ProfileInfo>
+                <ProfileRow>
+                  <ProfileImage source={getAvatarSource(selectedVereador.resolvedAvatarUrl || selectedVereador.avatarUrl || selectedVereador.avatarBase64)} />
+                  <ProfileInfo>
+                    <ProfileName>{selectedVereador.name}</ProfileName>
+                    <ProfileDetail>{selectedVereador.cargo || 'Vereador'}</ProfileDetail>
+                    <ProfileDetail>Partido: {selectedVereador.partido || 'N/A'}</ProfileDetail>
+                    <ProfileDetail>Nascimento: {selectedVereador.dataNascimento ? selectedVereador.dataNascimento.split('-').reverse().join('/') : 'N/A'}</ProfileDetail>
+                  </ProfileInfo>
+                </ProfileRow>
               </GlassCard>
 
               <SectionTitle>Biografia</SectionTitle>

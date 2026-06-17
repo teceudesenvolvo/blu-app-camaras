@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
-import { doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -18,8 +19,9 @@ import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const textColor = '#0f172a';
+const mutedColor = '#64748b';
 
 const getStartOfToday = () => {
     const today = new Date();
@@ -34,54 +36,121 @@ const isBeforeToday = (date) => {
     return normalizedDate < getStartOfToday();
 };
 
+const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const padDatePart = (value) => String(value).padStart(2, '0');
+const formatLocalDate = (date) => `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+const formatMonthId = (date) => `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}`;
+const normalizeSlotList = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (typeof value === 'object') return Object.values(value).filter(Boolean);
+    return [];
+};
+const normalizeBookedSlots = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (typeof value === 'object') return Object.entries(value).map(([, bookedValue]) => (bookedValue === true ? null : bookedValue)).filter(Boolean);
+    return [];
+};
+const buildSlotKey = (slot) => String(slot).replace(/[^a-zA-Z0-9_-]/g, '_');
+
 const Container = styled.View`
   flex: 1;
-  background-color: ${backgroundColor};
+  background-color: #f8fbff;
 `;
 
-const Header = styled.View`
-  flex-direction: row;
-  align-items: center;
-  padding: 50px 20px 20px 20px;
-  background-color: #fff;
-  border-bottom-width: 1px;
-  border-bottom-color: #eee;
+const Header = styled(LinearGradient).attrs({
+  colors: ['#f8fbff', '#eef5fb', '#ffffff'],
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+})`
+  padding: 54px 20px 18px;
 `;
 
 const BackButton = styled.TouchableOpacity`
-  padding: 5px;
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  background-color: rgba(255, 255, 255, 0.82);
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
 `;
 
 const HeaderTitle = styled.Text`
-  flex: 1;
-  text-align: center;
-  font-size: 18px;
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 900;
+  color: ${textColor};
+`;
+
+const HeaderSubtitle = styled.Text`
+  color: ${mutedColor};
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 700;
-  color: #111;
-  margin-right: 30px;
+  margin-top: 6px;
 `;
 
 const Content = styled.ScrollView`
   flex: 1;
-  padding: 20px;
+`;
+
+const ContentInner = styled.View`
+  padding: 18px 18px 130px;
+`;
+
+const TabsRow = styled.View`
+  flex-direction: row;
+  gap: 10px;
+  margin-bottom: 16px;
+`;
+
+const TabButton = styled.TouchableOpacity`
+  flex: 1;
+  min-height: 46px;
+  border-radius: 16px;
+  overflow: hidden;
+  border-width: 1px;
+  border-color: ${props => props.active ? primaryColor : '#dbe3ee'};
+`;
+
+const TabGradient = styled(LinearGradient).attrs(props => ({
+  colors: props.active ? [primaryColor, '#0077ed'] : ['#ffffff', '#f8fafc'],
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+}))`
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+`;
+
+const TabText = styled.Text`
+  color: ${props => props.active ? '#ffffff' : mutedColor};
+  font-size: 14px;
+  font-weight: 900;
+  margin-left: 7px;
 `;
 
 const Section = styled.View`
   background-color: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 14px;
   shadow-color: #000;
   shadow-offset: 0px 2px;
   shadow-opacity: 0.05;
   shadow-radius: 4px;
   elevation: 2;
+  border-width: 1px;
+  border-color: #e2e8f0;
 `;
 
 const SectionTitle = styled.Text`
   font-size: 16px;
-  font-weight: 700;
-  color: ${primaryColor};
+  font-weight: 900;
+  color: ${textColor};
   margin-bottom: 15px;
   border-bottom-width: 1px;
   border-bottom-color: #f0f0f0;
@@ -117,12 +186,6 @@ const StatusText = styled.Text`
   color: #fff;
   font-weight: bold;
   font-size: 12px;
-`;
-
-const AttachmentContainer = styled.View`
-  flex-direction: row;
-  flex-wrap: wrap;
-  margin-top: 10px;
 `;
 
 const FileCard = styled.View`
@@ -235,14 +298,14 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
     const [dadosSolicitacao, setDadosSolicitacao] = useState(item.dadosSolicitacao || {});
     const [rootAnexos, setRootAnexos] = useState(item.anexos || null);
     const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState('');
+  const [activeTab, setActiveTab] = useState('dados');
 
     // Agendamento states
     const [appointmentDate, setAppointmentDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [appointmentTime, setAppointmentTime] = useState('');
-    const [availability, setAvailability] = useState(null);
-    const [bookedSlots, setBookedSlots] = useState({});
+    const [monthConfig, setMonthConfig] = useState(null);
     const [blockedDates, setBlockedDates] = useState([]);
     const [availableTimes, setAvailableTimes] = useState([]);
     const [loadingConfig, setLoadingConfig] = useState(false);
@@ -310,27 +373,17 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
         if (status === 'Agendamento Liberado') {
             fetchAgendamentoConfig();
         }
-    }, [status]);
+    }, [status, appointmentDate]);
 
     const fetchAgendamentoConfig = async () => {
         setLoadingConfig(true);
         try {
-            const availabilityRef = doc(firestore, 'balcao-config', 'availability');
-            const bookedSlotsRef = doc(firestore, 'balcao-config', 'bookedSlots');
-            const blockedDatesRef = doc(firestore, 'balcao-config', 'blockedDates');
+            const monthRef = doc(firestore, 'balcao-monthly-configs', formatMonthId(appointmentDate));
+            const monthSnap = await getDoc(monthRef);
+            const monthlyData = monthSnap.exists() ? monthSnap.data() : {};
+            setMonthConfig(monthlyData);
 
-            const [availSnap, bookedSnap, blockedSnap] = await Promise.all([
-                getDoc(availabilityRef), getDoc(bookedSlotsRef), getDoc(blockedDatesRef)
-            ]);
-
-            if (availSnap.exists()) setAvailability(availSnap.data());
-            if (bookedSnap.exists()) setBookedSlots(bookedSnap.data());
-
-            let manualBlocked = [];
-            if (blockedSnap.exists()) {
-                const data = blockedSnap.data();
-                manualBlocked = data.dates || data.blockedDates || [];
-            }
+            let manualBlocked = monthlyData.dates || monthlyData.blockedDates || [];
 
             // BrasilAPI Holidays
             const currentYear = new Date().getFullYear();
@@ -380,7 +433,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
     };
 
     const updateAvailableTimes = (date) => {
-        if (!availability) return;
+        if (!monthConfig) return;
 
         if (isBeforeToday(date)) {
             setAvailableTimes([]);
@@ -388,9 +441,9 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
             return;
         }
 
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const dateISO = `${date.getFullYear()}-${month}-${day}`;
+        const day = padDatePart(date.getDate());
+        const month = padDatePart(date.getMonth() + 1);
+        const dateISO = formatLocalDate(date);
         const dateBR = `${day}/${month}/${date.getFullYear()}`;
 
         if (blockedDates.includes(dateBR)) {
@@ -399,12 +452,10 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
             return;
         }
 
-        // Dia da semana em inglês para bater com o portal web
-        const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-        
-        const allSlots = availability[dayOfWeek] || [];
-        const bookedObj = bookedSlots[dateISO] || [];
-        const booked = Array.isArray(bookedObj) ? bookedObj : Object.keys(bookedObj);
+        const dayOfWeek = daysOfWeek[date.getDay()];
+        const dayConfig = monthConfig[dayOfWeek] || {};
+        const allSlots = normalizeSlotList(dayConfig.slots || dayConfig.horarios || dayConfig.availableSlots || dayConfig.availability);
+        const booked = normalizeBookedSlots(dayConfig.bookedSlots?.[dateISO] || dayConfig.booked?.[dateISO] || monthConfig.bookedSlots?.[dateISO]);
 
         const freeSlots = allSlots.filter(s => !booked.includes(s));
         setAvailableTimes(freeSlots);
@@ -427,17 +478,17 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
 
         setScheduling(true);
         try {
-            const day = String(appointmentDate.getDate()).padStart(2, '0');
-            const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
-            const dateISO = `${appointmentDate.getFullYear()}-${month}-${day}`;
-            const configRef = doc(firestore, 'balcao-config', 'bookedSlots');
+            const dateISO = formatLocalDate(appointmentDate);
+            const dayName = daysOfWeek[appointmentDate.getDay()];
+            const configRef = doc(firestore, 'balcao-monthly-configs', formatMonthId(appointmentDate));
 
             // Check race condition
             const configSnap = await getDoc(configRef);
             let existing = [];
             if (configSnap.exists()) {
                 const data = configSnap.data();
-                existing = Array.isArray(data[dateISO]) ? data[dateISO] : (data[dateISO] ? Object.keys(data[dateISO]) : []);
+                const dayConfig = data[dayName] || {};
+                existing = normalizeBookedSlots(dayConfig.bookedSlots?.[dateISO] || dayConfig.booked?.[dateISO] || data.bookedSlots?.[dateISO]);
             }
 
             if (existing.includes(appointmentTime)) {
@@ -447,10 +498,15 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                 return;
             }
 
-            // Update Config usando array como o portal web
-            await updateDoc(configRef, {
-                [dateISO]: [...existing, appointmentTime]
-            });
+            await setDoc(configRef, {
+                [dayName]: {
+                    bookedSlots: {
+                        [dateISO]: {
+                            [buildSlotKey(appointmentTime)]: appointmentTime,
+                        },
+                    },
+                },
+            }, { merge: true });
 
             // Update Document
             const fsDocRef = doc(firestore, 'balcao-cidadao', solicitacaoId);
@@ -584,12 +640,30 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
         <Container>
             <Header>
                 <BackButton onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
+                    <Ionicons name="arrow-back" size={22} color={primaryColor} />
                 </BackButton>
-                <HeaderTitle>Detalhes da Solicitação</HeaderTitle>
+                <HeaderTitle>Atendimento</HeaderTitle>
+                <HeaderSubtitle>Consulte dados, mensagens, agenda e documentos enviados.</HeaderSubtitle>
             </Header>
 
             <Content showsVerticalScrollIndicator={false}>
+              <ContentInner>
+                <TabsRow>
+                    {[
+                        ['dados', 'Dados', 'reader-outline'],
+                        ['arquivos', 'Arquivos', 'folder-open-outline'],
+                    ].map(([key, label, icon]) => (
+                        <TabButton key={key} active={activeTab === key} onPress={() => setActiveTab(key)} activeOpacity={0.84}>
+                            <TabGradient active={activeTab === key}>
+                                <Ionicons name={icon} size={18} color={activeTab === key ? '#ffffff' : mutedColor} />
+                                <TabText active={activeTab === key}>{label}</TabText>
+                            </TabGradient>
+                        </TabButton>
+                    ))}
+                </TabsRow>
+
+                {activeTab === 'dados' ? (
+                <>
                 <Section>
                     <SectionTitle>Status</SectionTitle>
                     <InfoRow>
@@ -753,8 +827,12 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                         </TouchableOpacity>
                     </InputRow>
                 </Section>
+                </>
+                ) : (
+                <>
                 {(!isCancelled && !(dadosSolicitacao?.anexos?.arquivos_adicionais || rootAnexos?.arquivos_adicionais)) && (
                     <Section>
+                        <SectionTitle>Adicionar arquivos</SectionTitle>
                         <UploadButton onPress={() => handleFileUpdate('arquivos_adicionais')} disabled={uploading || isCancelled} style={{ backgroundColor: '#e5e7eb', padding: 12, borderRadius: 8, width: '100%', justifyContent: 'center', opacity: (uploading || isCancelled) ? 0.6 : 1 }}>
                             {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="add-circle-outline" size={20} color="#374151" />}
                             <UploadButtonText style={{ fontSize: 14 }}>{uploading ? 'Enviando...' : 'Anexar Outros Arquivos'}</UploadButtonText>
@@ -803,9 +881,17 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                     </Section>
                 )}
 
-
-
-                <View style={{ height: 40 }} />
+                {!((dadosSolicitacao?.anexos && Object.keys(dadosSolicitacao.anexos).length > 0) || rootAnexos) && (
+                    <Section>
+                        <SectionTitle>Documentação e Anexos</SectionTitle>
+                        <Text style={{ color: mutedColor, fontWeight: '700', lineHeight: 20 }}>
+                            Nenhum arquivo enviado para este atendimento.
+                        </Text>
+                    </Section>
+                )}
+                </>
+                )}
+              </ContentInner>
             </Content>
         </Container>
     );

@@ -1,602 +1,531 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import * as ImagePicker from 'expo-image-picker';
-import { useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Text } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { Alert } from 'react-native';
 import styled from 'styled-components/native';
+import { firestore } from '../../services/firebaseConfig';
+import {
+  PortalBackground,
+  PortalCard,
+} from '../components/PortalScaffold';
 import { AuthContext } from '../context/AuthContext';
+import { portalGradients, portalTheme } from '../styles/portalTheme';
 
-// ✅ Firebase Web
-import { Ionicons } from '@expo/vector-icons';
-import { EmailAuthProvider, getAuth, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
-import { Modal, TouchableOpacity } from 'react-native';
-import app, { firestore } from '../../services/firebaseConfig';
-import { uploadFileToStorage } from '../../services/storageService';
-
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
-const Container = styled.View`
+const Container = styled(PortalBackground)`
   flex: 1;
-  background-color: #fdfdfd;
-  margin-bottom: 100px;
 `;
 
-const Header = styled.View`
-  padding: 20px;
-  padding-top: 60px;
+const Scroll = styled.ScrollView`
+  flex: 1;
+`;
+
+const Cover = styled(LinearGradient).attrs({
+  colors: portalGradients.primary,
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+})`
+  padding: 64px 20px 72px;
+  border-bottom-left-radius: 28px;
+  border-bottom-right-radius: 28px;
+`;
+
+const HeaderActions = styled.View`
   flex-direction: row;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  background-color: #fff;
 `;
 
-const HeaderAction = styled.TouchableOpacity``;
-
-const HeaderActionText = styled.Text`
-  font-size: 16px;
-  font-weight: 700;
-  color: ${props => props.color || primaryColor};
-`;
-
-const ProfileSection = styled.View`
+const HeaderButton = styled.TouchableOpacity`
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background-color: rgba(255,255,255,0.18);
+  border-width: 1px;
+  border-color: rgba(255,255,255,0.35);
   align-items: center;
-  padding: 20px;
-  background-color: #fff;
-  border-bottom-width: 1px;
-  border-bottom-color: #f0f0f0;
+  justify-content: center;
+  margin-left: 8px;
 `;
 
-const AvatarWrapper = styled.View`
-  margin-bottom: 15px;
+const HeaderButtonText = styled.Text`
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+`;
+
+const ProfileCard = styled(PortalCard)`
+  margin: -56px 18px 14px;
+  align-items: center;
+`;
+
+const AvatarButton = styled.TouchableOpacity`
+  margin-top: -58px;
+  margin-bottom: 12px;
 `;
 
 const AvatarBox = styled.View`
-  width: 100px;
-  height: 100px;
-  border-radius: 50px;
-  border-width: 3px;
-  border-color: ${primaryColor};
+  width: 108px;
+  height: 108px;
+  border-radius: 54px;
+  border-width: 4px;
+  border-color: #ffffff;
+  background-color: #ffffff;
   justify-content: center;
   align-items: center;
+  shadow-color: #0f172a;
+  shadow-offset: 0px 10px;
+  shadow-opacity: 0.18;
+  shadow-radius: 18px;
+  elevation: 6;
 `;
 
 const AvatarImage = styled.Image`
-  width: 90px;
-  height: 90px;
-  border-radius: 45px;
+  width: 96px;
+  height: 96px;
+  border-radius: 48px;
 `;
 
 const EditIconCircle = styled.View`
   position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 15px;
-  background-color: ${secondaryColor};
+  bottom: 2px;
+  right: 2px;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background-color: ${portalTheme.secondary};
   justify-content: center;
   align-items: center;
   border-width: 2px;
-  border-color: #fff;
+  border-color: #ffffff;
 `;
 
 const ProfileName = styled.Text`
-  font-size: 22px;
-  font-weight: bold;
-  color: #333;
-`;
-
-const InfoList = styled.ScrollView`
-  flex: 1;
-  padding: 20px;
-`;
-
-const InfoField = styled.View`
-  margin-bottom: 20px;
-  border-bottom-width: 1px;
-  border-bottom-color: #eee;
-  padding-bottom: 10px;
-`;
-
-const Label = styled.Text`
-  font-size: 13px;
-  color: #777;
-  margin-bottom: 5px;
-  font-weight: 500;
-`;
-
-const Value = styled.Text`
-  font-size: 16px;
-  color: #333;
-  font-weight: 600;
-`;
-
-const EditableInput = styled.TextInput`
-  font-size: 16px;
-  color: #333;
-  font-weight: 600;
-  border-bottom-width: 1px;
-  border-bottom-color: ${primaryColor};
-  padding-bottom: 4px;
-`;
-
-const ChangePasswordButton = styled.TouchableOpacity`
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  background-color: #fff;
-  border-width: 1px;
-  border-color: ${primaryColor};
-  padding: 12px;
-  border-radius: 8px;
-  margin-top: 15px;
-`;
-
-const ChangePasswordText = styled.Text`
-  color: ${primaryColor};
-  font-weight: 700;
-  margin-left: 10px;
-`;
-
-const ModalContainer = styled.View`
-  flex: 1;
-  background-color: rgba(0,0,0,0.5);
-  justify-content: center;
-  padding: 20px;
-`;
-
-const ModalContent = styled.View`
-  background-color: #fff;
-  border-radius: 20px;
-  padding: 30px;
-`;
-
-const ModalTitle = styled.Text`
-  font-size: 20px;
-  font-weight: 800;
-  color: #333;
-  margin-bottom: 20px;
+  font-size: 23px;
+  font-weight: 900;
+  color: ${portalTheme.text};
   text-align: center;
 `;
 
-const PasswordInputWrapper = styled.View`
-  position: relative;
-  margin-bottom: 15px;
+const ProfileEmail = styled.Text`
+  margin-top: 4px;
+  color: ${portalTheme.muted};
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
 `;
 
-const ModalInput = styled.TextInput`
-  background-color: #f5f5f5;
-  border-radius: 12px;
-  padding: 15px;
-  font-size: 16px;
-  color: #333;
-`;
-
-const SavePasswordButton = styled.TouchableOpacity`
-  background-color: ${primaryColor};
-  border-radius: 12px;
-  padding: 15px;
-  align-items: center;
-  margin-top: 20px;
-`;
-
-const CancelPasswordButton = styled.TouchableOpacity`
-  padding: 15px;
-  align-items: center;
+const RolePill = styled.View`
   margin-top: 10px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background-color: rgba(2, 90, 161, 0.09);
 `;
 
-export default function PerfilScreen() {
+const RoleText = styled.Text`
+  color: ${portalTheme.primary};
+  font-size: 12px;
+  font-weight: 900;
+`;
+
+const StatsRow = styled.View`
+  flex-direction: row;
+  width: 100%;
+  margin-top: 18px;
+`;
+
+const StatBox = styled.TouchableOpacity`
+  flex: 1;
+  align-items: center;
+  padding: 12px 6px;
+  border-radius: 14px;
+  background-color: #f8fafc;
+  margin: 0 4px;
+`;
+
+const StatNumber = styled.Text`
+  color: ${portalTheme.text};
+  font-size: 20px;
+  font-weight: 900;
+`;
+
+const StatLabel = styled.Text`
+  color: ${portalTheme.muted};
+  font-size: 11px;
+  font-weight: 800;
+  margin-top: 3px;
+  text-align: center;
+`;
+
+const Section = styled.View`
+  padding: 0 18px 14px;
+`;
+
+const SectionTitle = styled.Text`
+  color: ${portalTheme.text};
+  font-size: 18px;
+  font-weight: 900;
+  margin: 12px 0;
+`;
+
+const TimelineCard = styled.TouchableOpacity`
+  flex-direction: row;
+  align-items: center;
+  background-color: #ffffff;
+  border-radius: 14px;
+  border-width: 1px;
+  border-color: ${portalTheme.border};
+  padding: 13px;
+  margin-bottom: 10px;
+`;
+
+const TimelineIcon = styled.View`
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  align-items: center;
+  justify-content: center;
+  background-color: ${props => props.bg || 'rgba(2, 90, 161, 0.1)'};
+  margin-right: 12px;
+`;
+
+const TimelineInfo = styled.View`
+  flex: 1;
+`;
+
+const TimelineTitle = styled.Text`
+  color: ${portalTheme.text};
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 900;
+`;
+
+const TimelineMeta = styled.Text`
+  color: ${portalTheme.muted};
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 4px;
+`;
+
+const StatusPill = styled.View`
+  padding: 5px 8px;
+  border-radius: 999px;
+  background-color: ${props => props.bg || 'rgba(2, 90, 161, 0.1)'};
+`;
+
+const StatusText = styled.Text`
+  color: ${props => props.color || portalTheme.primary};
+  font-size: 10px;
+  font-weight: 900;
+`;
+
+const ProfileActions = styled.View`
+  width: 100%;
+  margin-top: 16px;
+`;
+
+const ProfileAction = styled.TouchableOpacity`
+  min-height: 52px;
+  border-radius: 14px;
+  border-width: 1px;
+  border-color: ${portalTheme.border};
+  background-color: #f8fafc;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 13px;
+  margin-top: 9px;
+`;
+
+const ProfileActionIcon = styled.View`
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  align-items: center;
+  justify-content: center;
+  background-color: ${props => props.bg || 'rgba(2, 90, 161, 0.1)'};
+  margin-right: 10px;
+`;
+
+const ProfileActionTextGroup = styled.View`
+  flex: 1;
+`;
+
+const ProfileActionTitle = styled.Text`
+  color: ${portalTheme.text};
+  font-size: 14px;
+  font-weight: 900;
+`;
+
+const ProfileActionSubtitle = styled.Text`
+  color: ${portalTheme.muted};
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 2px;
+`;
+
+const COLLECTIONS = [
+  { key: 'balcao-cidadao', label: 'Balcão', icon: 'card-account-details-outline', color: portalTheme.primary, bg: 'rgba(2, 90, 161, 0.1)' },
+  { key: 'ouvidoria', label: 'Ouvidoria', icon: 'bullhorn-outline', color: '#0f766e', bg: 'rgba(15, 118, 110, 0.1)' },
+  { key: 'procuradoria-mulher', label: 'Mulher', icon: 'gender-female', color: '#db2777', bg: 'rgba(219, 39, 119, 0.1)' },
+];
+
+function normalizeDate(item) {
+  return item.createdAt?.toMillis?.() ||
+    item.dataManifestacao?.toMillis?.() ||
+    item.updatedAt?.toMillis?.() ||
+    item.createdAt ||
+    item.dataManifestacao ||
+    0;
+}
+
+function formatDate(value) {
+  const timestamp = typeof value === 'number' ? value : new Date(value).getTime();
+  if (!timestamp || Number.isNaN(timestamp)) return 'Sem data';
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(timestamp));
+}
+
+function getStatusInfo(status) {
+  switch (status) {
+    case 'Concluído':
+    case 'Agendado':
+      return { label: status, color: '#0f766e', bg: 'rgba(15, 118, 110, 0.1)' };
+    case 'Cancelado':
+      return { label: 'Cancelado', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)' };
+    case 'Pendente':
+    case 'Recebida':
+      return { label: status, color: portalTheme.primary, bg: 'rgba(2, 90, 161, 0.1)' };
+    default:
+      return { label: status || 'Aguardando', color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.1)' };
+  }
+}
+
+function getRequestTitle(item) {
+  return item.tipoServico || item.tipoManifestacao || item.assunto || item.serviceName || item.description || 'Solicitação';
+}
+
+export default function PerfilScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
   const [userData, setUserData] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({});
-
-  // Password Change States
-  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [requests, setRequests] = useState([]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) return undefined;
 
     const unsubscribe = onSnapshot(doc(firestore, 'users', user.uid), (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         setUserData(data);
-
-        if (!isEditing) {
-          setForm(data);
-        }
+        setForm(data);
       }
     });
 
     return () => unsubscribe();
-  }, [user, isEditing]);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+
+    const latestByCollection = {};
+
+    const applyRequests = () => {
+      const combined = Object.values(latestByCollection)
+        .flat()
+        .sort((a, b) => b.sortDate - a.sortDate);
+
+      setRequests(combined);
+    };
+
+    const unsubscribes = COLLECTIONS.map((source) => {
+      const requestsQuery = query(
+        collection(firestore, source.key),
+        where('userId', '==', user.uid),
+      );
+
+      return onSnapshot(
+        requestsQuery,
+        (snapshot) => {
+          latestByCollection[source.key] = snapshot.docs
+            .map((docSnap) => {
+              const data = docSnap.data();
+              return {
+                ...data,
+                id: docSnap.id,
+                originCollection: source.key,
+                sourceLabel: source.label,
+                sourceIcon: source.icon,
+                sourceColor: source.color,
+                sourceBg: source.bg,
+                sortDate: normalizeDate(data),
+              };
+            })
+            .filter((item) => item.flavorId === flavorId || !item.flavorId);
+
+          applyRequests();
+        },
+        (error) => {
+          console.error(`Erro ao carregar atendimentos de ${source.key}:`, error);
+        },
+      );
+    });
+
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
+  }, [user]);
+
+  const stats = useMemo(() => {
+    const total = requests.length;
+    const byKey = requests.reduce((acc, item) => {
+      acc[item.originCollection] = (acc[item.originCollection] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      total,
+      balcao: byKey['balcao-cidadao'] || 0,
+      ouvidoria: byKey.ouvidoria || 0,
+      procuradoria: byKey['procuradoria-mulher'] || 0,
+    };
+  }, [requests]);
 
   const handleLogout = () => {
     Alert.alert('Sair', 'Deseja realmente sair da conta?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', onPress: logout, style: 'destructive' }
+      { text: 'Sair', onPress: logout, style: 'destructive' },
     ]);
   };
 
-  const handlePickImage = async () => {
-    if (!isEditing) return;
+  const openRequest = (item) => {
+    let destination = 'BalcaoDetalhe';
+    if (item.originCollection === 'ouvidoria') destination = 'OuvidoriaDetalhe';
+    if (item.originCollection === 'procuradoria-mulher') destination = 'ProcuradoriaDetalhe';
 
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
-      });
-
-      if (!result.canceled) {
-        const asset = result.assets[0];
-        setForm(prev => ({ ...prev, avatarUri: asset.uri }));
-      }
-    } catch {
-      Alert.alert('Erro', 'Não foi possível selecionar a imagem.');
-    }
+    navigation.navigate(destination, { item });
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const dataToSave = { ...form };
+  const avatarSource = form.avatarUri
+    ? { uri: form.avatarUri }
+    : form.avatarBase64
+      ? { uri: form.avatarBase64 }
+      : userData?.avatarBase64
+        ? { uri: userData.avatarBase64 }
+        : require('../../assets/logo.png');
 
-      // Se houver uma nova imagem local, faz upload para o Storage
-      if (dataToSave.avatarUri && !dataToSave.avatarUri.startsWith('http')) {
-        const downloadUrl = await uploadFileToStorage(dataToSave.avatarUri, `${flavorId}/perfil/${user.uid}/avatar`);
-        dataToSave.avatarBase64 = downloadUrl; // Mantém o nome do campo para compatibilidade
-        delete dataToSave.avatarUri;
-      }
-
-      try {
-        await updateDoc(doc(firestore, 'users', user.uid), dataToSave);
-      } catch (fsError) {
-        console.error("Erro ao atualizar perfil no Firestore:", fsError);
-        throw fsError;
-      }
-
-      setIsEditing(false);
-      Alert.alert('Sucesso', 'Perfil atualizado com sucesso!');
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Erro', 'Falha ao atualizar o perfil.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const toggleEdit = () => {
-    if (isEditing) {
-      handleSave();
-    } else {
-      setForm(userData || {});
-      setIsEditing(true);
-    }
-  };
-
-  const cancelEdit = () => {
-    setIsEditing(false);
-    setForm(userData || {});
-  };
-
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmNewPassword) {
-      Alert.alert('Erro', 'Preencha todos os campos.');
-      return;
-    }
-
-    if (newPassword !== confirmNewPassword) {
-      Alert.alert('Erro', 'As novas senhas não coincidem.');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      Alert.alert('Erro', 'A nova senha deve ter pelo menos 6 caracteres.');
-      return;
-    }
-
-    setPasswordLoading(true);
-    const auth = getAuth(app);
-    const currentUser = auth.currentUser;
-
-    try {
-      // Reautenticar
-      const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
-      await reauthenticateWithCredential(currentUser, credential);
-      
-      // Atualizar senha
-      await updatePassword(currentUser, newPassword);
-      
-      Alert.alert('Sucesso', 'Senha alterada com sucesso!');
-      setIsPasswordModalVisible(false);
-      // Limpar campos
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmNewPassword('');
-    } catch (error) {
-      console.error(error);
-      let msg = 'Erro ao alterar a senha. Verifique sua senha atual.';
-      if (error.code === 'auth/wrong-password') msg = 'Senha atual incorreta.';
-      Alert.alert('Erro', msg);
-    } finally {
-      setPasswordLoading(false);
-    }
-  };
+  const visibleRequests = requests.slice(0, 5);
 
   return (
     <Container>
-      <Header>
-        <HeaderAction onPress={toggleEdit} disabled={saving}>
-          {saving ? (
-            <ActivityIndicator color={primaryColor} size="small" />
+      <Scroll showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 130 }}>
+        <Cover>
+          <HeaderActions>
+            <HeaderButton onPress={handleLogout}>
+              <HeaderButtonText>Sair</HeaderButtonText>
+            </HeaderButton>
+          </HeaderActions>
+        </Cover>
+
+        <ProfileCard>
+          <AvatarButton activeOpacity={0.75} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
+            <AvatarBox>
+              <AvatarImage source={avatarSource} />
+            </AvatarBox>
+            <EditIconCircle>
+              <MaterialCommunityIcons name="account-edit-outline" size={17} color="#fff" />
+            </EditIconCircle>
+          </AvatarButton>
+
+          <ProfileName>{userData?.name || user?.displayName || 'Usuário'}</ProfileName>
+          <ProfileEmail>{user?.email || userData?.email || 'Email não informado'}</ProfileEmail>
+          <RolePill>
+            <RoleText>{form.tipo || userData?.tipo || 'Cidadão'}</RoleText>
+          </RolePill>
+
+          <StatsRow>
+            <StatBox onPress={() => navigation.navigate('MeusAtendimentos', { source: 'balcao-cidadao' })}>
+              <StatNumber>{stats.balcao}</StatNumber>
+              <StatLabel>Balcão</StatLabel>
+            </StatBox>
+            <StatBox onPress={() => navigation.navigate('MeusAtendimentos', { source: 'ouvidoria' })}>
+              <StatNumber>{stats.ouvidoria}</StatNumber>
+              <StatLabel>Ouvidoria</StatLabel>
+            </StatBox>
+            <StatBox onPress={() => navigation.navigate('MeusAtendimentos', { source: 'procuradoria-mulher' })}>
+              <StatNumber>{stats.procuradoria}</StatNumber>
+              <StatLabel>Mulher</StatLabel>
+            </StatBox>
+            <StatBox>
+              <StatNumber>{stats.total}</StatNumber>
+              <StatLabel>Total</StatLabel>
+            </StatBox>
+          </StatsRow>
+
+          <ProfileActions>
+            <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
+              <ProfileActionIcon>
+                <Ionicons name="person-outline" size={19} color={portalTheme.primary} />
+              </ProfileActionIcon>
+              <ProfileActionTextGroup>
+                <ProfileActionTitle>Dados pessoais</ProfileActionTitle>
+                <ProfileActionSubtitle>Cadastro, endereço e foto de perfil</ProfileActionSubtitle>
+              </ProfileActionTextGroup>
+              <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
+            </ProfileAction>
+
+            <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilBeneficiarios')}>
+              <ProfileActionIcon bg="rgba(15, 118, 110, 0.1)">
+                <MaterialCommunityIcons name="account-heart-outline" size={20} color="#0f766e" />
+              </ProfileActionIcon>
+              <ProfileActionTextGroup>
+                <ProfileActionTitle>Beneficiários</ProfileActionTitle>
+                <ProfileActionSubtitle>Pessoas vinculadas ao Balcão</ProfileActionSubtitle>
+              </ProfileActionTextGroup>
+              <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
+            </ProfileAction>
+
+            <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilSeguranca')}>
+              <ProfileActionIcon bg="rgba(124, 58, 237, 0.1)">
+                <Ionicons name="shield-checkmark-outline" size={19} color="#7c3aed" />
+              </ProfileActionIcon>
+              <ProfileActionTextGroup>
+                <ProfileActionTitle>Segurança</ProfileActionTitle>
+                <ProfileActionSubtitle>Senha e atividades de login</ProfileActionSubtitle>
+              </ProfileActionTextGroup>
+              <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
+            </ProfileAction>
+          </ProfileActions>
+        </ProfileCard>
+
+        <Section>
+          <SectionTitle>Atendimentos recentes</SectionTitle>
+          {visibleRequests.length === 0 ? (
+            <PortalCard>
+              <TimelineMeta>Você ainda não possui atendimentos registrados.</TimelineMeta>
+            </PortalCard>
           ) : (
-            <HeaderActionText>{isEditing ? 'Salvar' : 'Editar'}</HeaderActionText>
+            visibleRequests.map((item) => {
+              const status = getStatusInfo(item.status);
+
+              return (
+                <TimelineCard key={`${item.originCollection}-${item.id}`} activeOpacity={0.78} onPress={() => openRequest(item)}>
+                  <TimelineIcon bg={item.sourceBg}>
+                    <MaterialCommunityIcons name={item.sourceIcon} size={22} color={item.sourceColor} />
+                  </TimelineIcon>
+                  <TimelineInfo>
+                    <TimelineTitle numberOfLines={2}>{getRequestTitle(item)}</TimelineTitle>
+                    <TimelineMeta>{item.sourceLabel} • {formatDate(item.sortDate)}</TimelineMeta>
+                  </TimelineInfo>
+                  <StatusPill bg={status.bg}>
+                    <StatusText color={status.color}>{status.label}</StatusText>
+                  </StatusPill>
+                </TimelineCard>
+              );
+            })
           )}
-        </HeaderAction>
+        </Section>
 
-        <HeaderAction onPress={isEditing ? cancelEdit : handleLogout}>
-          <HeaderActionText color="#dc2626">
-            {isEditing ? 'Cancelar' : 'Sair'}
-          </HeaderActionText>
-        </HeaderAction>
-      </Header>
-
-      <ProfileSection>
-        <AvatarWrapper onTouchEnd={handlePickImage}>
-          <AvatarBox>
-            <AvatarImage
-              source={
-                form.avatarUri
-                  ? { uri: form.avatarUri }
-                  : form.avatarBase64
-                    ? { uri: form.avatarBase64 }
-                    : userData?.avatarBase64
-                      ? { uri: userData.avatarBase64 }
-                      : require('../../assets/logo.png')
-              }
-            />
-          </AvatarBox>
-          <EditIconCircle>
-            <MaterialCommunityIcons
-              name={isEditing ? "camera-plus" : "camera"}
-              size={16}
-              color="#fff"
-            />
-          </EditIconCircle>
-        </AvatarWrapper>
-
-        {isEditing ? (
-          <EditableInput
-            value={form.name}
-            onChangeText={(text) => setForm({ ...form, name: text })}
-            placeholder="Nome Completo"
-            style={{ fontSize: 22, textAlign: 'center', width: '80%' }}
-          />
-        ) : (
-          <ProfileName>
-            {userData?.name || user?.displayName || 'Usuário'}
-          </ProfileName>
-        )}
-        <Text>{form.tipo || userData?.tipo || 'Não informado'}</Text>
-
-        <ChangePasswordButton onPress={() => setIsPasswordModalVisible(true)}>
-          <Ionicons name="key-outline" size={20} color={primaryColor} />
-          <ChangePasswordText>Alterar Minha Senha</ChangePasswordText>
-        </ChangePasswordButton>
-      </ProfileSection>
-
-      <Modal
-        visible={isPasswordModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsPasswordModalVisible(false)}
-      >
-        <ModalContainer>
-          <ModalContent>
-            <ModalTitle>Alterar Senha</ModalTitle>
-
-            <Label>Senha Atual</Label>
-            <PasswordInputWrapper>
-              <ModalInput
-                placeholder="Digite a senha atual"
-                secureTextEntry={!showCurrent}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                style={{ paddingRight: 50 }}
-              />
-              <TouchableOpacity
-                style={{ position: 'absolute', right: 15, top: 12 }}
-                onPress={() => setShowCurrent(!showCurrent)}
-              >
-                <Ionicons name={showCurrent ? "eye-off" : "eye"} size={22} color="#888" />
-              </TouchableOpacity>
-            </PasswordInputWrapper>
-
-            <Label>Nova Senha</Label>
-            <PasswordInputWrapper>
-              <ModalInput
-                placeholder="Mín. 6 caracteres"
-                secureTextEntry={!showNew}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                style={{ paddingRight: 50 }}
-              />
-              <TouchableOpacity
-                style={{ position: 'absolute', right: 15, top: 12 }}
-                onPress={() => setShowNew(!showNew)}
-              >
-                <Ionicons name={showNew ? "eye-off" : "eye"} size={22} color="#888" />
-              </TouchableOpacity>
-            </PasswordInputWrapper>
-
-            <Label>Confirmar Nova Senha</Label>
-            <PasswordInputWrapper>
-              <ModalInput
-                placeholder="Repita a nova senha"
-                secureTextEntry={!showConfirm}
-                value={confirmNewPassword}
-                onChangeText={setConfirmNewPassword}
-                style={{ paddingRight: 50 }}
-              />
-              <TouchableOpacity
-                style={{ position: 'absolute', right: 15, top: 12 }}
-                onPress={() => setShowConfirm(!showConfirm)}
-              >
-                <Ionicons name={showConfirm ? "eye-off" : "eye"} size={22} color="#888" />
-              </TouchableOpacity>
-            </PasswordInputWrapper>
-
-            <SavePasswordButton onPress={handleChangePassword} disabled={passwordLoading}>
-              {passwordLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Salvar Nova Senha</Text>
-              )}
-            </SavePasswordButton>
-
-            <CancelPasswordButton onPress={() => setIsPasswordModalVisible(false)}>
-              <Text style={{ color: '#999', fontSize: 14 }}>Cancelar</Text>
-            </CancelPasswordButton>
-          </ModalContent>
-        </ModalContainer>
-      </Modal>
-
-      <InfoList>
-        <InfoField>
-          <Label>CPF</Label>
-          {isEditing ? (
-            <EditableInput
-              value={form.cpf}
-              onChangeText={(text) => setForm({ ...form, cpf: text })}
-              placeholder="000.000.000-00"
-              keyboardType="numeric"
-            />
-          ) : (
-            <Value>{userData?.cpf || 'Não informado'}</Value>
-          )}
-        </InfoField>
-
-        <InfoField>
-          <Label>Sexo</Label>
-          {isEditing ? (
-            <EditableInput
-              value={form.sexo}
-              onChangeText={(text) => setForm({ ...form, sexo: text })}
-              placeholder="Masculino/Feminino"
-            />
-          ) : (
-            <Value>{userData?.sexo || 'Não informado'}</Value>
-          )}
-        </InfoField>
-
-        <InfoField>
-          <Label>Estado Civil</Label>
-          {isEditing ? (
-            <EditableInput
-              value={form.estadoCivil}
-              onChangeText={(text) => setForm({ ...form, estadoCivil: text })}
-              placeholder="Solteiro(a), Casado(a)..."
-            />
-          ) : (
-            <Value>{userData?.estadoCivil || 'Não informado'}</Value>
-          )}
-        </InfoField>
-
-        <InfoField>
-          <Label>Endereço</Label>
-          {isEditing ? (
-            <EditableInput
-              value={form.address}
-              onChangeText={(text) => setForm({ ...form, address: text })}
-              placeholder="Rua, Av..."
-            />
-          ) : (
-            <Value>{userData?.address || 'Não informado'}</Value>
-          )}
-        </InfoField>
-
-        <InfoField>
-          <Label>Bairro</Label>
-          {isEditing ? (
-            <EditableInput
-              value={form.neighborhood}
-              onChangeText={(text) => setForm({ ...form, neighborhood: text })}
-              placeholder="Bairro"
-            />
-          ) : (
-            <Value>{userData?.neighborhood || 'Não informado'}</Value>
-          )}
-        </InfoField>
-
-        <InfoField>
-          <Label>Cidade</Label>
-          {isEditing ? (
-            <EditableInput
-              value={form.city}
-              onChangeText={(text) => setForm({ ...form, city: text })}
-              placeholder="Cidade"
-            />
-          ) : (
-            <Value>{userData?.city || 'Não informado'}</Value>
-          )}
-        </InfoField>
-
-        <InfoField>
-          <Label>Estado</Label>
-          {isEditing ? (
-            <EditableInput
-              value={form.state}
-              onChangeText={(text) => setForm({ ...form, state: text })}
-              placeholder="UF"
-              maxLength={2}
-              autoCapitalize="characters"
-            />
-          ) : (
-            <Value>{userData?.state || 'Não informado'}</Value>
-          )}
-        </InfoField>
-
-        <InfoField>
-          <Label>Número</Label>
-          {isEditing ? (
-            <EditableInput
-              value={form.numero}
-              onChangeText={(text) => setForm({ ...form, numero: text })}
-              placeholder="Nº"
-              keyboardType="numeric"
-            />
-          ) : (
-            <Value>{userData?.numero || 'Não informado'}</Value>
-          )}
-        </InfoField>
-
-        <InfoField>
-          <Label>Complemento</Label>
-          {isEditing ? (
-            <EditableInput
-              value={form.complemento}
-              onChangeText={(text) => setForm({ ...form, complemento: text })}
-              placeholder="Apt, Bloco..."
-            />
-          ) : (
-            <Value>{userData?.complemento || 'Não informado'}</Value>
-          )}
-        </InfoField>
-      </InfoList>
+      </Scroll>
     </Container>
   );
 }

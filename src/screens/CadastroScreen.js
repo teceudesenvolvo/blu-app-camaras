@@ -1,277 +1,369 @@
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useContext, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  Text,
 } from 'react-native';
 import styled from 'styled-components/native';
 import { AuthContext } from '../context/AuthContext';
+import { portalTheme } from '../styles/portalTheme';
 
-const primaryColor = '#e7e7e7';
-const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
-
-const Container = styled.View`
+const Screen = styled.View`
   flex: 1;
-  background-color: ${primaryColor};
+  background-color: #ffffff;
 `;
 
-const Header = styled.View`
-  flex-direction: row;
+const Hero = styled.View`
+  min-height: 222px;
+  background-color: #eef2f6;
   align-items: center;
-  padding: 50px 20px 20px 20px;
+  justify-content: center;
+  border-bottom-left-radius: 34px;
+  border-bottom-right-radius: 34px;
+  padding-top: 34px;
 `;
 
 const BackButton = styled.TouchableOpacity`
-  flex-direction: row;
+  position: absolute;
+  left: 18px;
+  top: 54px;
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  background-color: rgba(255, 255, 255, 0.82);
   align-items: center;
+  justify-content: center;
 `;
 
-const BackText = styled.Text`
-  color: #000;
-  font-size: 16px;
-  margin-left: 5px;
+const BrandImage = styled.Image`
+  width: 100px;
+  height: 100px;
 `;
 
-const TopSection = styled.View`
-  align-items: center;
-  padding-bottom: 30px;
+const Content = styled.View`
+  padding: 28px 24px 34px;
 `;
 
-const FormSection = styled.View`
-  flex: 1;
-  background-color: #fff;
-  border-top-left-radius: 40px;
-  border-top-right-radius: 40px;
-  padding: 40px 30px;
+const Title = styled.Text`
+  color: ${portalTheme.text};
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 900;
+  text-align: center;
+`;
+
+const Subtitle = styled.Text`
+  color: ${portalTheme.muted};
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 8px;
+  margin-bottom: 26px;
+`;
+
+const FieldBlock = styled.View`
+  margin-bottom: 14px;
 `;
 
 const Label = styled.Text`
-  font-size: 14px;
-  color: #333;
+  color: ${portalTheme.text};
+  font-size: 13px;
+  font-weight: 900;
   margin-bottom: 8px;
-  font-weight: 700;
+`;
+
+const InputShell = styled.View`
+  position: relative;
 `;
 
 const Input = styled.TextInput`
-  background-color: #f5f5f5;
-  border-radius: 12px;
-  padding: 15px;
+  min-height: 54px;
+  border-radius: 14px;
+  border-width: 1px;
+  border-color: ${portalTheme.border};
+  background-color: #f8fafc;
+  padding: 0 15px;
+  color: ${portalTheme.text};
   font-size: 16px;
-  margin-bottom: 20px;
-  color: #333;
 `;
 
-const NextButton = styled.TouchableOpacity`
-  background-color: ${secondaryColor};
-  border-radius: 12px;
-  padding: 18px;
-  align-items: center;
-  margin-top: 20px;
-  margin-bottom: 20px;
-  shadow-color: ${secondaryColor};
-  shadow-offset: 0px 4px;
-  shadow-opacity: 0.3;
-  shadow-radius: 5px;
-  elevation: 5;
-`;
-
-const NextButtonText = styled.Text`
-  color: #fff;
-  font-size: 18px;
-  font-weight: 800;
+const EyeButton = styled.TouchableOpacity`
+  position: absolute;
+  right: 14px;
+  top: 16px;
 `;
 
 const SelectPlaceholder = styled.TouchableOpacity`
-  background-color: #f5f5f5;
-  border-radius: 12px;
-  padding: 15px;
-  margin-bottom: 20px;
+  min-height: 54px;
+  border-radius: 14px;
+  border-width: 1px;
+  border-color: ${portalTheme.border};
+  background-color: #f8fafc;
+  padding: 0 15px;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
 `;
 
-const ModalOverlay = styled.TouchableOpacity`
-  flex: 1;
-  background-color: rgba(0,0,0,0.5);
+const SelectText = styled.Text`
+  color: ${props => props.selected ? portalTheme.text : portalTheme.subtle};
+  font-size: 16px;
+`;
+
+const PrimaryButton = styled.TouchableOpacity`
+  min-height: 54px;
+  border-radius: 14px;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  opacity: ${props => props.disabled ? 0.72 : 1};
+`;
+
+const PrimaryGradient = styled(LinearGradient).attrs({
+  colors: ['#025AA1', '#0077ed'],
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+})`
+  width: 100%;
+  min-height: 54px;
+  align-items: center;
+  justify-content: center;
+`;
+
+const PrimaryButtonText = styled.Text`
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 900;
+`;
+
+const LoginContainer = styled.View`
+  flex-direction: row;
   justify-content: center;
   align-items: center;
+  margin-top: 24px;
+`;
+
+const LoginText = styled.Text`
+  color: ${portalTheme.muted};
+  font-size: 14px;
+  font-weight: 700;
+`;
+
+const LoginLink = styled.TouchableOpacity`
+  margin-left: 5px;
+`;
+
+const LoginLinkText = styled.Text`
+  color: ${portalTheme.primary};
+  font-weight: 900;
+  font-size: 14px;
+`;
+
+const ModalOverlay = styled.TouchableOpacity`
+  flex: 1;
+  background-color: rgba(15, 23, 42, 0.45);
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
 `;
 
 const ModalContent = styled.View`
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  width: 80%;
+  width: 100%;
+  border-radius: 18px;
+  background-color: #ffffff;
+  border-width: 1px;
+  border-color: ${portalTheme.border};
+  padding: 10px;
+`;
+
+const ModalTitle = styled.Text`
+  color: ${portalTheme.text};
+  font-size: 17px;
+  font-weight: 900;
+  padding: 10px 12px 4px;
 `;
 
 const ModalItem = styled.TouchableOpacity`
-  padding: 15px;
+  padding: 15px 12px;
   border-bottom-width: 1px;
-  border-bottom-color: #eee;
+  border-bottom-color: ${portalTheme.border};
 `;
 
 export default function CadastroScreen({ navigation }) {
-    const [nome, setNome] = useState('');
-    const [sexo, setSexo] = useState('');
-    const [telefone, setTelefone] = useState('');
-    const [email, setEmail] = useState('');
-    const [senha, setSenha] = useState('');
-    const [confSenha, setConfSenha] = useState('');
-    const [showSenha, setShowSenha] = useState(false);
-    const [showConfSenha, setShowConfSenha] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [modalSexoVisible, setModalSexoVisible] = useState(false);
+  const [nome, setNome] = useState('');
+  const [sexo, setSexo] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [confSenha, setConfSenha] = useState('');
+  const [showSenha, setShowSenha] = useState(false);
+  const [showConfSenha, setShowConfSenha] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [modalSexoVisible, setModalSexoVisible] = useState(false);
 
-    const { register } = useContext(AuthContext);
+  const { register } = useContext(AuthContext);
 
-    const handleRegister = async () => {
-        if (!nome || !email || !senha || !telefone) {
-            Alert.alert('Erro', 'Por favor, preencha os campos obrigatórios.');
-            return;
-        }
-        if (senha !== confSenha) {
-            Alert.alert('Erro', 'As senhas não coincidem.');
-            return;
-        }
+  const handleRegister = async () => {
+    if (!nome || !email || !senha || !telefone) {
+      Alert.alert('Erro', 'Por favor, preencha os campos obrigatórios.');
+      return;
+    }
+    if (senha !== confSenha) {
+      Alert.alert('Erro', 'As senhas não coincidem.');
+      return;
+    }
 
-        setLoading(true);
-        try {
-            await register(email, senha, {
-                name: nome,
-                sexo,
-                phone: telefone,
-            });
-            Alert.alert('Sucesso', 'Bem-vindo ao Blue App!');
-        } catch (error) {
-            Alert.alert('Erro no Cadastro', error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+    setLoading(true);
+    try {
+      await register(email, senha, {
+        name: nome,
+        sexo,
+        phone: telefone,
+        cadastroCompleto: false,
+      });
+      setTimeout(() => {
+        navigation.navigate('PerfilDadosPessoais', {
+          completeRegistration: true,
+          startEditing: true,
+        });
+      }, 350);
+    } catch (error) {
+      Alert.alert('Erro no Cadastro', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={{ flex: 1 }}
-        >
-            <Container>
-                <Header>
-                    <BackButton onPress={() => navigation.goBack()}>
-                        <Ionicons name="arrow-back" size={24} color="#000" />
-                        <BackText>Voltar</BackText>
-                    </BackButton>
-                </Header>
+  const renderPasswordField = ({ label, value, onChangeText, visible, setVisible, placeholder }) => (
+    <FieldBlock>
+      <Label>{label}</Label>
+      <InputShell>
+        <Input
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={portalTheme.subtle}
+          secureTextEntry={!visible}
+          style={{ paddingRight: 50 }}
+        />
+        <EyeButton onPress={() => setVisible(!visible)}>
+          <Ionicons name={visible ? 'eye-off' : 'eye'} size={22} color={portalTheme.muted} />
+        </EyeButton>
+      </InputShell>
+    </FieldBlock>
+  );
 
-                <TopSection>
-                    <Image
-                        source={require('../../assets/logo.png')}
-                        style={{ width: 280, height: 150, resizeMode: 'contain' }}
-                    />
-                </TopSection>
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <Screen>
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
+          <Hero>
+            <BackButton onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={22} color={portalTheme.primary} />
+            </BackButton>
+            <BrandImage source={require('../../assets/logo-camara-paraipaba.png')} resizeMode="contain" />
+          </Hero>
 
-                <FormSection>
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                        <Label>Nome</Label>
-                        <Input
-                            value={nome}
-                            onChangeText={setNome}
-                            placeholder="Nome Sobrenome"
-                        />
+          <Content>
+            <Title>Criar conta</Title>
+            <Subtitle>Faça seu cadastro para acompanhar solicitações e acessar os serviços digitais.</Subtitle>
 
-                        <Label>Sexo</Label>
-                        <SelectPlaceholder onPress={() => setModalSexoVisible(true)}>
-                            <Text style={{ color: sexo ? '#333' : '#999', fontSize: 16 }}>{sexo || 'Selecione seu sexo'}</Text>
-                            <Ionicons name="chevron-down" size={20} color="#888" />
-                        </SelectPlaceholder>
+            <FieldBlock>
+              <Label>Nome</Label>
+              <Input value={nome} onChangeText={setNome} placeholder="Nome Sobrenome" placeholderTextColor={portalTheme.subtle} />
+            </FieldBlock>
 
-                        <Label>Telefone</Label>
-                        <Input
-                            value={telefone}
-                            onChangeText={setTelefone}
-                            placeholder="(XX) X XXXX-XXXX"
-                            keyboardType="phone-pad"
-                        />
+            <FieldBlock>
+              <Label>Sexo</Label>
+              <SelectPlaceholder onPress={() => setModalSexoVisible(true)}>
+                <SelectText selected={Boolean(sexo)}>{sexo || 'Selecione seu sexo'}</SelectText>
+                <Ionicons name="chevron-down" size={20} color={portalTheme.muted} />
+              </SelectPlaceholder>
+            </FieldBlock>
 
-                        <Label>Email</Label>
-                        <Input
-                            value={email}
-                            onChangeText={setEmail}
-                            placeholder="email@dominio.com"
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                        />
+            <FieldBlock>
+              <Label>Telefone</Label>
+              <Input
+                value={telefone}
+                onChangeText={setTelefone}
+                placeholder="(XX) X XXXX-XXXX"
+                placeholderTextColor={portalTheme.subtle}
+                keyboardType="phone-pad"
+              />
+            </FieldBlock>
 
-                        <Label>Senha</Label>
-                        <View style={{ position: 'relative' }}>
-                            <Input
-                                value={senha}
-                                onChangeText={setSenha}
-                                placeholder="Mín. 6 caracteres"
-                                secureTextEntry={!showSenha}
-                                style={{ paddingRight: 50 }}
-                            />
-                            <TouchableOpacity 
-                                style={{ position: 'absolute', right: 15, top: 15 }}
-                                onPress={() => setShowSenha(!showSenha)}
-                            >
-                                <Ionicons name={showSenha ? "eye-off" : "eye"} size={22} color="#888" />
-                            </TouchableOpacity>
-                        </View>
+            <FieldBlock>
+              <Label>Email</Label>
+              <Input
+                value={email}
+                onChangeText={setEmail}
+                placeholder="email@dominio.com"
+                placeholderTextColor={portalTheme.subtle}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </FieldBlock>
 
-                        <Label>Conf. Senha</Label>
-                        <View style={{ position: 'relative' }}>
-                            <Input
-                                value={confSenha}
-                                onChangeText={setConfSenha}
-                                placeholder="Repita a senha"
-                                secureTextEntry={!showConfSenha}
-                                style={{ paddingRight: 50 }}
-                            />
-                            <TouchableOpacity 
-                                style={{ position: 'absolute', right: 15, top: 15 }}
-                                onPress={() => setShowConfSenha(!showConfSenha)}
-                            >
-                                <Ionicons name={showConfSenha ? "eye-off" : "eye"} size={22} color="#888" />
-                            </TouchableOpacity>
-                        </View>
+            {renderPasswordField({
+              label: 'Senha',
+              value: senha,
+              onChangeText: setSenha,
+              visible: showSenha,
+              setVisible: setShowSenha,
+              placeholder: 'Mín. 6 caracteres',
+            })}
 
-                        <NextButton activeOpacity={0.8} onPress={handleRegister}>
-                            {loading ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <NextButtonText>Próximo</NextButtonText>
-                            )}
-                        </NextButton>
+            {renderPasswordField({
+              label: 'Confirmar senha',
+              value: confSenha,
+              onChangeText: setConfSenha,
+              visible: showConfSenha,
+              setVisible: setShowConfSenha,
+              placeholder: 'Repita a senha',
+            })}
 
-                        <View style={{ height: 40 }} />
-                    </ScrollView>
-                </FormSection>
+            <PrimaryButton activeOpacity={0.86} onPress={handleRegister} disabled={loading}>
+              <PrimaryGradient>
+                {loading ? <ActivityIndicator color="#fff" /> : <PrimaryButtonText>Cadastrar</PrimaryButtonText>}
+              </PrimaryGradient>
+            </PrimaryButton>
 
-                <Modal visible={modalSexoVisible} transparent animationType="fade">
-                    <ModalOverlay onPress={() => setModalSexoVisible(false)}>
-                        <ModalContent>
-                            {['Masculino', 'Feminino', 'Outro', 'Prefiro não dizer'].map((opção) => (
-                                <ModalItem key={opção} onPress={() => {
-                                    setSexo(opção);
-                                    setModalSexoVisible(false);
-                                }}>
-                                    <Text style={{ fontSize: 16 }}>{opção}</Text>
-                                </ModalItem>
-                            ))}
-                        </ModalContent>
-                    </ModalOverlay>
-                </Modal>
-            </Container>
-        </KeyboardAvoidingView>
-    );
+            <LoginContainer>
+              <LoginText>Já possui uma conta?</LoginText>
+              <LoginLink onPress={() => navigation.goBack()}>
+                <LoginLinkText>Entrar</LoginLinkText>
+              </LoginLink>
+            </LoginContainer>
+          </Content>
+        </ScrollView>
+
+        <Modal visible={modalSexoVisible} transparent animationType="fade">
+          <ModalOverlay activeOpacity={1} onPress={() => setModalSexoVisible(false)}>
+            <ModalContent>
+              <ModalTitle>Selecione seu sexo</ModalTitle>
+              {['Feminino', 'Masculino', 'Outro'].map((option) => (
+                <ModalItem
+                  key={option}
+                  onPress={() => {
+                    setSexo(option);
+                    setModalSexoVisible(false);
+                  }}
+                >
+                  <Text style={{ fontSize: 16, color: portalTheme.text }}>{option}</Text>
+                </ModalItem>
+              ))}
+            </ModalContent>
+          </ModalOverlay>
+        </Modal>
+      </Screen>
+    </KeyboardAvoidingView>
+  );
 }
