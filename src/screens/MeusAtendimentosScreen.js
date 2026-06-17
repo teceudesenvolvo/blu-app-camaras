@@ -27,10 +27,8 @@ const isBeforeToday = (date) => {
   return normalizedDate < getStartOfToday();
 };
 
-const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const padDatePart = (value) => String(value).padStart(2, '0');
 const formatLocalDate = (date) => `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
-const formatMonthId = (date) => `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}`;
 const normalizeSlotList = (value) => {
     if (!value) return [];
     if (Array.isArray(value)) return value.filter(Boolean);
@@ -40,10 +38,9 @@ const normalizeSlotList = (value) => {
 const normalizeBookedSlots = (value) => {
     if (!value) return [];
     if (Array.isArray(value)) return value.filter(Boolean);
-    if (typeof value === 'object') return Object.entries(value).map(([, bookedValue]) => (bookedValue === true ? null : bookedValue)).filter(Boolean);
+    if (typeof value === 'object') return Object.entries(value).map(([key, bookedValue]) => (bookedValue === true ? key : bookedValue)).filter(Boolean);
     return [];
 };
-const buildSlotKey = (slot) => String(slot).replace(/[^a-zA-Z0-9_-]/g, '_');
 
 const Container = styled.View`
   flex: 1;
@@ -232,7 +229,8 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
     const [appointmentDate, setAppointmentDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [appointmentTime, setAppointmentTime] = useState('');
-    const [monthConfig, setMonthConfig] = useState(null);
+    const [availability, setAvailability] = useState(null);
+    const [bookedSlots, setBookedSlots] = useState({});
     const [blockedDates, setBlockedDates] = useState([]);
     const [availableTimes, setAvailableTimes] = useState([]);
     const [loadingConfig, setLoadingConfig] = useState(true);
@@ -241,12 +239,22 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const monthRef = doc(firestore, 'balcao-monthly-configs', formatMonthId(appointmentDate));
-                const monthSnap = await getDoc(monthRef);
-                const monthlyData = monthSnap.exists() ? monthSnap.data() : {};
-                setMonthConfig(monthlyData);
+                const availabilityRef = doc(firestore, 'balcao-config', 'availability');
+                const bookedSlotsRef = doc(firestore, 'balcao-config', 'bookedSlots');
+                const blockedDatesRef = doc(firestore, 'balcao-config', 'blockedDates');
 
-                let manualBlocked = monthlyData.blockedDates || monthlyData.dates || [];
+                const [availSnap, bookedSnap, blockedSnap] = await Promise.all([
+                    getDoc(availabilityRef), getDoc(bookedSlotsRef), getDoc(blockedDatesRef)
+                ]);
+
+                if (availSnap.exists()) setAvailability(availSnap.data());
+                if (bookedSnap.exists()) setBookedSlots(bookedSnap.data());
+
+                let manualBlocked = [];
+                if (blockedSnap.exists()) {
+                    const data = blockedSnap.data();
+                    manualBlocked = data.dates || data.blockedDates || [];
+                }
 
                     const currentYear = new Date().getFullYear();
                     const years = [currentYear, currentYear + 1];
@@ -282,10 +290,10 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
         };
 
         fetchConfig();
-    }, [appointmentDate]);
+    }, []);
 
     useEffect(() => {
-        if (!monthConfig) return;
+        if (!availability) return;
 
         if (isBeforeToday(appointmentDate)) {
             setAvailableTimes([]);
@@ -305,15 +313,14 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
             return;
         }
 
-        const dayOfWeek = daysOfWeek[appointmentDate.getDay()];
-        const dayConfig = monthConfig[dayOfWeek] || {};
-        const allSlotsForDay = normalizeSlotList(dayConfig.slots || dayConfig.horarios || dayConfig.availableSlots || dayConfig.availability);
-        const existingBookings = normalizeBookedSlots(dayConfig.bookedSlots?.[dateISO] || dayConfig.booked?.[dateISO] || monthConfig.bookedSlots?.[dateISO]);
+        const dayOfWeek = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+        const allSlotsForDay = normalizeSlotList(availability[dayOfWeek]);
+        const existingBookings = normalizeBookedSlots(bookedSlots[dateISO]);
 
         const freeSlots = allSlotsForDay.filter(slot => !existingBookings.includes(slot));
         setAvailableTimes(freeSlots);
         setAppointmentTime('');
-    }, [appointmentDate, monthConfig, blockedDates]);
+    }, [appointmentDate, availability, bookedSlots, blockedDates]);
 
     const onDateChange = (event, selectedDate) => {
         setShowDatePicker(false);
@@ -338,8 +345,7 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
         const dateISO = formatLocalDate(appointmentDate);
 
         try {
-            const dayName = daysOfWeek[appointmentDate.getDay()];
-            const bookedSlotRef = doc(firestore, 'balcao-monthly-configs', formatMonthId(appointmentDate));
+            const bookedSlotRef = doc(firestore, 'balcao-config', 'bookedSlots');
             const solicitacaoRef = doc(firestore, 'balcao-cidadao', solicitacaoId);
 
             await runTransaction(firestore, async (transaction) => {
@@ -348,8 +354,7 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
                 let existing = [];
                 if (configSnap.exists()) {
                     const data = configSnap.data();
-                    const dayConfig = data[dayName] || {};
-                    existing = normalizeBookedSlots(dayConfig.bookedSlots?.[dateISO] || dayConfig.booked?.[dateISO] || data.bookedSlots?.[dateISO]);
+                    existing = normalizeBookedSlots(data[dateISO]);
                 }
 
                 if (existing.includes(appointmentTime)) {
@@ -363,13 +368,7 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
                 });
 
                 transaction.set(bookedSlotRef, {
-                    [dayName]: {
-                        bookedSlots: {
-                            [dateISO]: {
-                                [buildSlotKey(appointmentTime)]: appointmentTime,
-                            },
-                        },
-                    },
+                    [dateISO]: [...existing, appointmentTime]
                 }, { merge: true });
             });
 
@@ -618,8 +617,8 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
 
   const filteredRequests = requests.filter((item) => {
     if (activeFilter === 'todos') return true;
-    if (activeFilter === 'abertos') return !['Concluído', 'Cancelado'].includes(item.status);
-    if (activeFilter === 'agendados') return ['Agendado', 'Agendamento Liberado'].includes(item.status);
+    if (activeFilter === 'analise') return !['Concluído', 'Cancelado', 'Agendado', 'Agendamento Liberado'].includes(item.status);
+    if (activeFilter === 'agendar') return item.status === 'Agendamento Liberado';
     return true;
   });
 
@@ -637,8 +636,8 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
         <FilterRow>
           {[
             ['todos', 'Todos'],
-            ['abertos', 'Em aberto'],
-            ['agendados', 'Agenda'],
+            ['analise', 'Em Análise'],
+            ['agendar', 'Agendar'],
           ].map(([key, label]) => (
             <FilterButton key={key} active={activeFilter === key} onPress={() => setActiveFilter(key)} activeOpacity={0.82}>
               <FilterGradient active={activeFilter === key}>

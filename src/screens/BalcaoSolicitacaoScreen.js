@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
-import { addDoc, collection, doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, query, setDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
@@ -28,8 +28,6 @@ const isBeforeToday = (date) => {
   return normalizedDate < getStartOfToday();
 };
 
-const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-
 const padDatePart = (value) => String(value).padStart(2, '0');
 
 const formatLocalDate = (date) => {
@@ -37,12 +35,6 @@ const formatLocalDate = (date) => {
   const month = padDatePart(date.getMonth() + 1);
   const day = padDatePart(date.getDate());
   return `${year}-${month}-${day}`;
-};
-
-const getMonthId = (date) => {
-  const year = date.getFullYear();
-  const month = padDatePart(date.getMonth() + 1);
-  return `${year}-${month}`;
 };
 
 const normalizeSlotList = (value) => {
@@ -57,13 +49,11 @@ const normalizeBookedSlots = (value) => {
   if (Array.isArray(value)) return value.filter(Boolean);
   if (typeof value === 'object') {
     return Object.entries(value)
-      .map(([, bookedValue]) => (bookedValue === true ? null : bookedValue))
+      .map(([key, bookedValue]) => (bookedValue === true ? key : bookedValue))
       .filter(Boolean);
   }
   return [];
 };
-
-const buildSlotKey = (slot) => String(slot).replace(/[^a-zA-Z0-9_-]/g, '_');
 
 const Container = styled.ScrollView`
   flex: 1;
@@ -451,27 +441,19 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
     setAvailableSlots([]);
 
     try {
-      const dayName = daysOfWeek[selectedDate.getDay()];
+      const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
       const dateStr = formatLocalDate(selectedDate);
-      const monthId = getMonthId(selectedDate);
 
-      const docRef = doc(firestore, 'balcao-monthly-configs', monthId);
+      const docRef = doc(firestore, 'balcao-config', flavorId);
       const snapshot = await getDoc(docRef);
 
       if (snapshot.exists()) {
-        const monthConfig = snapshot.data();
-        const dayConfig = monthConfig[dayName] || {};
+        const config = snapshot.data();
         const baseSlots = normalizeSlotList(
-          dayConfig.slots ||
-          dayConfig.horarios ||
-          dayConfig.availableSlots ||
-          dayConfig.availability ||
-          monthConfig[`${dayName}Slots`],
+          config.availability?.[dayName]
         );
         const booked = normalizeBookedSlots(
-          dayConfig.bookedSlots?.[dateStr] ||
-          dayConfig.booked?.[dateStr] ||
-          monthConfig.bookedSlots?.[dateStr],
+          config.bookedSlots?.[dateStr],
         );
 
         const freeSlots = baseSlots.filter(slot => !booked.includes(slot));
@@ -1019,21 +1001,11 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
 
   const bookTimeSlot = async (dateStr, slot) => {
     try {
-      const date = new Date(`${dateStr}T00:00:00`);
-      const dayName = daysOfWeek[date.getDay()];
-      const monthId = getMonthId(date);
-      const slotKey = buildSlotKey(slot);
-      const docRef = doc(firestore, 'balcao-monthly-configs', monthId);
+      const docRef = doc(firestore, 'balcao-config', flavorId);
 
-      await setDoc(docRef, {
-        [dayName]: {
-          bookedSlots: {
-            [dateStr]: {
-              [slotKey]: slot,
-            },
-          },
-        },
-      }, { merge: true });
+      await updateDoc(docRef, {
+        [`bookedSlots.${dateStr}.${slot}`]: slot
+      });
       console.log(`Horário ${slot} agendado com sucesso em ${dateStr}`);
     } catch (error) {
       console.error("Erro ao salvar horário agendado:", error);

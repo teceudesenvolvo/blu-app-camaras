@@ -3,7 +3,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -36,10 +36,8 @@ const isBeforeToday = (date) => {
     return normalizedDate < getStartOfToday();
 };
 
-const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const padDatePart = (value) => String(value).padStart(2, '0');
 const formatLocalDate = (date) => `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
-const formatMonthId = (date) => `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}`;
 const normalizeSlotList = (value) => {
     if (!value) return [];
     if (Array.isArray(value)) return value.filter(Boolean);
@@ -49,10 +47,9 @@ const normalizeSlotList = (value) => {
 const normalizeBookedSlots = (value) => {
     if (!value) return [];
     if (Array.isArray(value)) return value.filter(Boolean);
-    if (typeof value === 'object') return Object.entries(value).map(([, bookedValue]) => (bookedValue === true ? null : bookedValue)).filter(Boolean);
+    if (typeof value === 'object') return Object.entries(value).map(([key, bookedValue]) => (bookedValue === true ? key : bookedValue)).filter(Boolean);
     return [];
 };
-const buildSlotKey = (slot) => String(slot).replace(/[^a-zA-Z0-9_-]/g, '_');
 
 const Container = styled.View`
   flex: 1;
@@ -305,7 +302,8 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
     const [appointmentDate, setAppointmentDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [appointmentTime, setAppointmentTime] = useState('');
-    const [monthConfig, setMonthConfig] = useState(null);
+    const [availability, setAvailability] = useState(null);
+    const [bookedSlots, setBookedSlots] = useState({});
     const [blockedDates, setBlockedDates] = useState([]);
     const [availableTimes, setAvailableTimes] = useState([]);
     const [loadingConfig, setLoadingConfig] = useState(false);
@@ -375,15 +373,54 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
         }
     }, [status, appointmentDate]);
 
+    useEffect(() => {
+        if (!availability) return;
+
+        if (isBeforeToday(appointmentDate)) {
+            setAvailableTimes([]);
+            setAppointmentTime('');
+            return;
+        }
+
+        const day = padDatePart(appointmentDate.getDate());
+        const month = padDatePart(appointmentDate.getMonth() + 1);
+        const dateISO = formatLocalDate(appointmentDate);
+        const dateBR = `${day}/${month}/${appointmentDate.getFullYear()}`;
+
+        if (blockedDates.includes(dateBR)) {
+            setAvailableTimes([]);
+            setAppointmentTime('');
+            return;
+        }
+
+        const dayOfWeek = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+        const allSlots = normalizeSlotList(availability[dayOfWeek]);
+        const booked = normalizeBookedSlots(bookedSlots[dateISO]);
+
+        const freeSlots = allSlots.filter(s => !booked.includes(s));
+        setAvailableTimes(freeSlots);
+        setAppointmentTime('');
+    }, [appointmentDate, availability, bookedSlots, blockedDates]);
+
     const fetchAgendamentoConfig = async () => {
         setLoadingConfig(true);
         try {
-            const monthRef = doc(firestore, 'balcao-monthly-configs', formatMonthId(appointmentDate));
-            const monthSnap = await getDoc(monthRef);
-            const monthlyData = monthSnap.exists() ? monthSnap.data() : {};
-            setMonthConfig(monthlyData);
+            const availabilityRef = doc(firestore, 'balcao-config', 'availability');
+            const bookedSlotsRef = doc(firestore, 'balcao-config', 'bookedSlots');
+            const blockedDatesRef = doc(firestore, 'balcao-config', 'blockedDates');
 
-            let manualBlocked = monthlyData.dates || monthlyData.blockedDates || [];
+            const [availSnap, bookedSnap, blockedSnap] = await Promise.all([
+                getDoc(availabilityRef), getDoc(bookedSlotsRef), getDoc(blockedDatesRef)
+            ]);
+
+            if (availSnap.exists()) setAvailability(availSnap.data());
+            if (bookedSnap.exists()) setBookedSlots(bookedSnap.data());
+
+            let manualBlocked = [];
+            if (blockedSnap.exists()) {
+                const data = blockedSnap.data();
+                manualBlocked = data.dates || data.blockedDates || [];
+            }
 
             // BrasilAPI Holidays
             const currentYear = new Date().getFullYear();
@@ -428,38 +465,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                 return;
             }
             setAppointmentDate(selectedDate);
-            updateAvailableTimes(selectedDate);
         }
-    };
-
-    const updateAvailableTimes = (date) => {
-        if (!monthConfig) return;
-
-        if (isBeforeToday(date)) {
-            setAvailableTimes([]);
-            setAppointmentTime('');
-            return;
-        }
-
-        const day = padDatePart(date.getDate());
-        const month = padDatePart(date.getMonth() + 1);
-        const dateISO = formatLocalDate(date);
-        const dateBR = `${day}/${month}/${date.getFullYear()}`;
-
-        if (blockedDates.includes(dateBR)) {
-            setAvailableTimes([]);
-            Alert.alert("Data Indisponível", "Este dia não está disponível para agendamento (feriado ou bloqueado).");
-            return;
-        }
-
-        const dayOfWeek = daysOfWeek[date.getDay()];
-        const dayConfig = monthConfig[dayOfWeek] || {};
-        const allSlots = normalizeSlotList(dayConfig.slots || dayConfig.horarios || dayConfig.availableSlots || dayConfig.availability);
-        const booked = normalizeBookedSlots(dayConfig.bookedSlots?.[dateISO] || dayConfig.booked?.[dateISO] || monthConfig.bookedSlots?.[dateISO]);
-
-        const freeSlots = allSlots.filter(s => !booked.includes(s));
-        setAvailableTimes(freeSlots);
-        setAppointmentTime('');
     };
 
     // 4. Confirmar Agendamento
@@ -479,34 +485,27 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
         setScheduling(true);
         try {
             const dateISO = formatLocalDate(appointmentDate);
-            const dayName = daysOfWeek[appointmentDate.getDay()];
-            const configRef = doc(firestore, 'balcao-monthly-configs', formatMonthId(appointmentDate));
+            const configRef = doc(firestore, 'balcao-config', 'bookedSlots');
 
             // Check race condition
             const configSnap = await getDoc(configRef);
             let existing = [];
             if (configSnap.exists()) {
                 const data = configSnap.data();
-                const dayConfig = data[dayName] || {};
-                existing = normalizeBookedSlots(dayConfig.bookedSlots?.[dateISO] || dayConfig.booked?.[dateISO] || data.bookedSlots?.[dateISO]);
+                existing = normalizeBookedSlots(data[dateISO]);
             }
 
             if (existing.includes(appointmentTime)) {
                 Alert.alert("Erro", "Este horário acaba de ser ocupado. Por favor, escolha outro.");
                 setScheduling(false);
-                updateAvailableTimes(appointmentDate);
+                // Recarrega as configurações para atualizar a lista de horários
+                fetchAgendamentoConfig();
                 return;
             }
 
-            await setDoc(configRef, {
-                [dayName]: {
-                    bookedSlots: {
-                        [dateISO]: {
-                            [buildSlotKey(appointmentTime)]: appointmentTime,
-                        },
-                    },
-                },
-            }, { merge: true });
+            await updateDoc(configRef, {
+                [dateISO]: [...existing, appointmentTime]
+            });
 
             // Update Document
             const fsDocRef = doc(firestore, 'balcao-cidadao', solicitacaoId);
