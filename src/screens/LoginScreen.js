@@ -1,9 +1,7 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
-import * as Google from 'expo-auth-session/providers/google';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,8 +14,6 @@ import { AuthContext } from '../context/AuthContext';
 import { portalTheme } from '../styles/portalTheme';
 
 WebBrowser.maybeCompleteAuthSession();
-
-const googleAuth = Constants.expoConfig?.extra?.googleAuth || {};
 
 const Screen = styled.View`
   flex: 1;
@@ -154,20 +150,6 @@ const SignupLinkText = styled.Text`
   font-size: 14px;
 `;
 
-const SocialButton = styled.TouchableOpacity`
-  width: 54px;
-  height: 54px;
-  border-radius: 27px;
-  align-self: center;
-  align-items: center;
-  justify-content: center;
-  background-color: #ffffff;
-  border-width: 1px;
-  border-color: ${portalTheme.border};
-  margin-top: 16px;
-  opacity: ${props => props.disabled ? 0.56 : 1};
-`;
-
 const FooterText = styled.Text`
   color: ${portalTheme.subtle};
   font-size: 12px;
@@ -180,39 +162,7 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const { login, loginWithGoogle, resetPassword } = useContext(AuthContext);
-
-  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
-    iosClientId: googleAuth.iosClientId,
-    androidClientId: googleAuth.androidClientId,
-    webClientId: googleAuth.webClientId,
-    selectAccount: true,
-  });
-
-  useEffect(() => {
-    const signIn = async () => {
-      if (googleResponse?.type !== 'success') return;
-
-      const idToken = googleResponse.params?.id_token || googleResponse.authentication?.idToken;
-      if (!idToken) {
-        Alert.alert('Erro', 'Não foi possível validar sua conta Google.');
-        setGoogleLoading(false);
-        return;
-      }
-
-      try {
-        await loginWithGoogle(idToken);
-      } catch (error) {
-        console.error('Erro no login com Google:', error);
-        Alert.alert('Erro', 'Não foi possível entrar com Google.');
-      } finally {
-        setGoogleLoading(false);
-      }
-    };
-
-    signIn();
-  }, [googleResponse, loginWithGoogle]);
+  const { login, resetPassword } = useContext(AuthContext);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -242,22 +192,6 @@ export default function LoginScreen({ navigation }) {
     } catch (error) {
       console.error(error);
       Alert.alert('Erro', 'Não foi possível enviar o e-mail de redefinição.');
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    if (!googleRequest) return;
-
-    setGoogleLoading(true);
-    try {
-      const result = await promptGoogleAsync();
-      if (result.type !== 'success') {
-        setGoogleLoading(false);
-      }
-    } catch (error) {
-      console.error('Erro ao abrir login Google:', error);
-      setGoogleLoading(false);
-      Alert.alert('Erro', 'Não foi possível abrir o login com Google.');
     }
   };
 
@@ -310,19 +244,6 @@ export default function LoginScreen({ navigation }) {
                 {loading ? <ActivityIndicator color="#ffffff" /> : <PrimaryButtonText>Continuar</PrimaryButtonText>}
               </PrimaryGradient>
             </PrimaryButton>
-
-            <SocialButton
-              activeOpacity={0.78}
-              onPress={handleGoogleLogin}
-              disabled={!googleRequest || googleLoading}
-              accessibilityLabel="Entrar com Google"
-            >
-              {googleLoading ? (
-                <ActivityIndicator color={portalTheme.primary} />
-              ) : (
-                <MaterialCommunityIcons name="google" size={25} color="#ea4335" />
-              )}
-            </SocialButton>
 
             <SignupContainer>
               <SignupText>Não possui uma conta?</SignupText>

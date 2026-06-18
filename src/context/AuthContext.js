@@ -1,18 +1,16 @@
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
 import { createContext, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 
 
 import {
     createUserWithEmailAndPassword,
-    GoogleAuthProvider,
     onAuthStateChanged,
     sendPasswordResetEmail,
-    signInWithCredential,
     signInWithEmailAndPassword,
     signOut
 } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, serverTimestamp as firestoreTimestamp, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp as firestoreTimestamp, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { auth, firestore } from '../../services/firebaseConfig';
 
 // 🔔 Expo Notifications
@@ -28,7 +26,6 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
     const [currentLoginActivityId, setCurrentLoginActivityId] = useState(null);
-    const [pendingGoogleProfileCompletion, setPendingGoogleProfileCompletion] = useState(false);
     const lastRecordedLoginRef = useRef(null);
 
     // 🔐 OBSERVADOR DE LOGIN
@@ -223,47 +220,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const loginWithGoogle = async (idToken) => {
-        if (!idToken) {
-            throw new Error('Token do Google não informado.');
-        }
-
-        try {
-            const credential = GoogleAuthProvider.credential(idToken);
-            const { user: googleUser } = await signInWithCredential(auth, credential);
-            const userRef = doc(firestore, 'users', googleUser.uid);
-            const userSnap = await getDoc(userRef);
-
-            if (!userSnap.exists()) {
-                await setDoc(userRef, {
-                    name: googleUser.displayName || '',
-                    email: googleUser.email || '',
-                    avatarBase64: googleUser.photoURL || '',
-                    authProvider: 'google',
-                    cadastroCompleto: false,
-                    googleProfilePending: true,
-                    createdAt: firestoreTimestamp(),
-                    flavorId,
-                });
-                setPendingGoogleProfileCompletion(true);
-                return { isNewGoogleUser: true };
-            }
-
-            const userData = userSnap.data();
-            const shouldCompleteProfile = userData.authProvider === 'google' && userData.googleProfilePending === true && userData.cadastroCompleto !== true;
-            setPendingGoogleProfileCompletion(shouldCompleteProfile);
-
-            await updateDoc(userRef, {
-                lastLoginAt: firestoreTimestamp(),
-            });
-
-            return { isNewGoogleUser: false };
-        } catch (error) {
-            console.error('Erro login Google:', error);
-            throw error;
-        }
-    };
-
     // 🆕 REGISTRO
     const register = async (email, password, extraData = {}) => {
         try {
@@ -294,7 +250,6 @@ export const AuthProvider = ({ children }) => {
         try {
             lastRecordedLoginRef.current = null;
             setCurrentLoginActivityId(null);
-            setPendingGoogleProfileCompletion(false);
             await signOut(auth);
         } catch (error) {
             console.error('Erro logout:', error);
@@ -311,23 +266,16 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const clearPendingGoogleProfileCompletion = () => {
-        setPendingGoogleProfileCompletion(false);
-    };
-
     return (
         <AuthContext.Provider value={{
             user,
             loading,
             login,
-            loginWithGoogle,
             register,
             logout,
             resetPassword,
             unreadCount,
             currentLoginActivityId,
-            pendingGoogleProfileCompletion,
-            clearPendingGoogleProfileCompletion
         }}>
             {children}
         </AuthContext.Provider>

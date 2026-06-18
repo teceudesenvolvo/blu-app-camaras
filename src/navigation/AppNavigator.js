@@ -1,8 +1,14 @@
-import React, { useEffect } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
-import { Dimensions, View, TouchableOpacity, StyleSheet } from 'react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { BlurView } from 'expo-blur';
+import Constants from 'expo-constants';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Notifications from 'expo-notifications';
+import * as QuickActions from 'expo-quick-actions';
+import React, { useEffect } from 'react';
+import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
     interpolate,
     useAnimatedStyle,
@@ -11,45 +17,39 @@ import Animated, {
     withSpring,
     withTiming,
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
-import * as QuickActions from 'expo-quick-actions';
 
 // 1. Telas da BottomBar
-import HomeScreen from '../screens/Home';
 import AtendimentosScreen from '../screens/AtendimentosScreen';
+import HomeScreen from '../screens/Home';
+import PerfilScreen from '../screens/PerfilScreen';
 import ProcuradoriaScreen from '../screens/ProcuradoriaScreen';
 import TvCamaraScreen from '../screens/TvCamaraScreen';
-import PerfilScreen from '../screens/PerfilScreen';
 
 // 2. Telas Internas (Escondem a BottomBar)
-import VereadoresScreen from '../screens/VereadoresScreen';
-import PielScreen from '../screens/Piel';
-import LicitacoesScreen from '../screens/LicitacoesScreen';
 import AtendimentoJuridicoScreen from '../screens/AtendimentoJuridicoScreen';
-import OuvidoriaMunicipalScreen from '../screens/OuvidoriaMunicipalScreen';
 import BalcaoCidadaoScreen from '../screens/BalcaoCidadaoScreen';
-import NotificacoesScreen from '../screens/NotificacoesScreen';
+import BalcaoDetalheScreen from '../screens/BalcaoDetalheScreen';
+import BalcaoSolicitacaoScreen from '../screens/BalcaoSolicitacaoScreen';
+import CadastroScreen from '../screens/CadastroScreen';
 import ChatMensagensScreen from '../screens/ChatMensagensScreen';
+import ContatoConfiancaScreen from '../screens/ContatoConfiancaScreen';
+import LicitacoesScreen from '../screens/LicitacoesScreen';
+import LoginScreen from '../screens/LoginScreen';
+import MeusAtendimentosScreen from '../screens/MeusAtendimentosScreen';
+import NoticiaDetalheScreen from '../screens/NoticiaDetalheScreen';
+import NotificacoesScreen from '../screens/NotificacoesScreen';
+import OuvidoriaDetalheScreen from '../screens/OuvidoriaDetalheScreen';
+import OuvidoriaMunicipalScreen from '../screens/OuvidoriaMunicipalScreen';
+import PanicLocationScreen from '../screens/PanicLocationScreen';
+import PerfilBeneficiariosScreen from '../screens/PerfilBeneficiariosScreen';
 import PerfilDadosPessoaisScreen from '../screens/PerfilDadosPessoaisScreen';
 import PerfilSegurancaScreen from '../screens/PerfilSegurancaScreen';
-import PerfilBeneficiariosScreen from '../screens/PerfilBeneficiariosScreen';
-import ProcuradoriaSolicitacaoScreen from '../screens/ProcuradoriaSolicitacaoScreen';
-import BalcaoSolicitacaoScreen from '../screens/BalcaoSolicitacaoScreen';
-import ContatoConfiancaScreen from '../screens/ContatoConfiancaScreen';
-import MeusAtendimentosScreen from '../screens/MeusAtendimentosScreen';
-import LoginScreen from '../screens/LoginScreen';
-import CadastroScreen from '../screens/CadastroScreen';
-import NoticiaDetalheScreen from '../screens/NoticiaDetalheScreen';
-import OuvidoriaDetalheScreen from '../screens/OuvidoriaDetalheScreen';
-import BalcaoDetalheScreen from '../screens/BalcaoDetalheScreen';
+import PielScreen from '../screens/Piel';
 import ProcuradoriaDetalheScreen from '../screens/ProcuradoriaDetalheScreen';
-import PanicLocationScreen from '../screens/PanicLocationScreen';
+import ProcuradoriaSolicitacaoScreen from '../screens/ProcuradoriaSolicitacaoScreen';
+import VereadoresScreen from '../screens/VereadoresScreen';
 
-import { AuthProvider, AuthContext } from '../context/AuthContext';
+import { AuthContext, AuthProvider } from '../context/AuthContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -293,7 +293,7 @@ function BottomTabNavigator() {
 
 // 5. STACK NAVIGATOR PRINCIPAL
 function NavigationContent() {
-    const { user, loading, pendingGoogleProfileCompletion, clearPendingGoogleProfileCompletion } = React.useContext(AuthContext);
+    const { user, loading } = React.useContext(AuthContext);
     const navigation = useNavigation();
 
     useEffect(() => {
@@ -358,20 +358,6 @@ function NavigationContent() {
         const subscription = QuickActions.addListener(openShortcut);
         return () => subscription?.remove?.();
     }, [navigation, user]);
-
-    useEffect(() => {
-        if (!user || !pendingGoogleProfileCompletion) return;
-
-        const timer = setTimeout(() => {
-            navigation.navigate('PerfilDadosPessoais', {
-                completeRegistration: true,
-                startEditing: true,
-            });
-            clearPendingGoogleProfileCompletion?.();
-        }, 250);
-
-        return () => clearTimeout(timer);
-    }, [clearPendingGoogleProfileCompletion, navigation, pendingGoogleProfileCompletion, user]);
 
     if (loading) {
         return null; // Or a splash screen

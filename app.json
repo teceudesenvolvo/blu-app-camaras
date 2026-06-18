@@ -2,8 +2,7 @@
   "expo": {
     "name": "CM Paraipaba",
     "slug": "cm-paraipaba",
-    "version": "2.0.0",
-    "scheme": "com.googleusercontent.apps.1070248841383-vg1efk3b9sah1h9aoplq7e1mvtdq80se",
+    "version": "2.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -89,10 +88,6 @@
         "secondary": "#f9c204",
         "background": "#f8fafc",
         "text": "#0f172a"
-      },
-      "googleAuth": {
-        "iosClientId": "1070248841383-vg1efk3b9sah1h9aoplq7e1mvtdq80se.apps.googleusercontent.com",
-        "reversedClientId": "com.googleusercontent.apps.1070248841383-vg1efk3b9sah1h9aoplq7e1mvtdq80se"
       }
     },
     "runtimeVersion": {
