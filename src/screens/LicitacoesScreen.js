@@ -179,7 +179,7 @@ export default function LicitacoesScreen() {
   const [totalPages, setTotalPages] = useState(1);
 
   const [year, setYear] = useState(new Date().getFullYear());
-  const [modality, setModality] = useState(MODALIDADES[0]);
+  const [modality, setModality] = useState(MODALIDADES[1]);
 
   const [isYearModalVisible, setYearModalVisible] = useState(false);
   const [isModalityModalVisible, setModalityModalVisible] = useState(false);

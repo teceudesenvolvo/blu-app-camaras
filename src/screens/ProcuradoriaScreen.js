@@ -1,8 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { useContext, useState } from 'react';
+import { addDoc, collection, doc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert } from 'react-native';
 import styled from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
@@ -138,6 +138,24 @@ const FabGradient = styled(LinearGradient).attrs({
 export default function ProcuradoriaScreen({ navigation }) {
   const { user } = useContext(AuthContext);
   const [panicLoading, setPanicLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+
+    return onSnapshot(
+      doc(firestore, 'users', user.uid),
+      (snapshot) => {
+        setUserProfile(snapshot.exists() ? snapshot.data() : null);
+      },
+      (error) => {
+        console.error('Erro ao carregar perfil para Procuradoria:', error);
+      },
+    );
+  }, [user?.uid]);
+
+  const userSex = String(userProfile?.sexo || userProfile?.gender || '').trim().toLowerCase();
+  const canUsePanicButton = ['feminino', 'feminina', 'mulher', 'female'].includes(userSex);
 
   const handlePanic = async () => {
     Alert.alert(
@@ -203,24 +221,28 @@ export default function ProcuradoriaScreen({ navigation }) {
       />
 
       <ContentContainer showsVerticalScrollIndicator={false}>
-        <PanicButton activeOpacity={0.86} onPress={handlePanic} disabled={panicLoading}>
-          <PanicGradient>
-            {panicLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="shield-alert-outline" size={24} color="#fff" />
-                <ButtonText withIcon>Botão do Pânico</ButtonText>
-              </>
-            )}
-          </PanicGradient>
-        </PanicButton>
+        {canUsePanicButton ? (
+          <PanicButton activeOpacity={0.86} onPress={handlePanic} disabled={panicLoading}>
+            <PanicGradient>
+              {panicLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="shield-alert-outline" size={24} color="#fff" />
+                  <ButtonText withIcon>Botão do Pânico</ButtonText>
+                </>
+              )}
+            </PanicGradient>
+          </PanicButton>
+        ) : null}
 
-        <WomanButton activeOpacity={0.86} onPress={() => navigation.navigate('ContatoConfianca')}>
-          <WomanGradient>
-            <ButtonText>Gerenciar Contato de Confiança</ButtonText>
-          </WomanGradient>
-        </WomanButton>
+        {canUsePanicButton ? (
+          <WomanButton activeOpacity={0.86} onPress={() => navigation.navigate('ContatoConfianca')}>
+            <WomanGradient>
+              <ButtonText>Gerenciar Contato de Confiança</ButtonText>
+            </WomanGradient>
+          </WomanButton>
+        ) : null}
 
         <PortalCard>
           <InfoTitle>O que é a Procuradoria da Mulher?</InfoTitle>

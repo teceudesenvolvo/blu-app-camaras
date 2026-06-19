@@ -219,6 +219,16 @@ const getNewsSummary = (item) => {
   return stripHtml(rawSummary);
 };
 
+const isPublishedNews = (item = {}) => {
+  const status = String(item.status || item.situacao || '').trim().toLowerCase();
+
+  if (item.publicado === true || item.published === true || item.isPublished === true) return true;
+  if (['publicado', 'publicada', 'published'].includes(status)) return true;
+  if (['rascunho', 'draft'].includes(status)) return false;
+
+  return false;
+};
+
 // --- TELA PRINCIPAL ---
 
 const HomeScreen = ({ navigation }) => {
@@ -230,9 +240,12 @@ const HomeScreen = ({ navigation }) => {
     const fetchNews = async () => {
       try {
         const newsRef = collection(firestore, 'noticias');
-        const newsQuery = query(newsRef, orderBy('createdAt', 'desc'), limit(6));
+        const newsQuery = query(newsRef, orderBy('createdAt', 'desc'), limit(12));
         const snapshot = await getDocs(newsQuery);
-        const data = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+        const data = snapshot.docs
+          .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+          .filter(isPublishedNews)
+          .slice(0, 6);
         setNews(data);
       } catch (error) {
         console.error("Falha ao buscar notícias:", error);

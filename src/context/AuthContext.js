@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
     const [currentLoginActivityId, setCurrentLoginActivityId] = useState(null);
     const lastRecordedLoginRef = useRef(null);
 
@@ -186,6 +187,7 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         if (!user) {
             setUnreadCount(0);
+            setUnreadMessagesCount(0);
             return;
         }
 
@@ -198,13 +200,25 @@ export const AuthProvider = ({ children }) => {
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             let count = 0;
+            let messageCount = 0;
             snapshot.forEach((docSnap) => {
                 const notif = docSnap.data();
                 if (notif.read !== true && notif.isRead !== true) {
                     count++;
+
+                    const description = String(notif.descricaoNotification || '').toLowerCase();
+                    const isMessageNotification =
+                        description.includes('mensagem') ||
+                        description.includes('respondeu') ||
+                        description.includes('administrador');
+
+                    if (isMessageNotification) {
+                        messageCount++;
+                    }
                 }
             });
             setUnreadCount(count);
+            setUnreadMessagesCount(messageCount);
         });
 
         return () => unsubscribe();
@@ -275,6 +289,7 @@ export const AuthProvider = ({ children }) => {
             logout,
             resetPassword,
             unreadCount,
+            unreadMessagesCount,
             currentLoginActivityId,
         }}>
             {children}

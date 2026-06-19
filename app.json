@@ -49,31 +49,7 @@
       "expo-font",
       "expo-router",
       "expo-web-browser",
-      [
-        "expo-quick-actions",
-        {
-          "iosActions": [
-            {
-              "id": "new-balcao",
-              "title": "Nova solicitação",
-              "subtitle": "Balcão do Cidadão",
-              "icon": "compose",
-              "params": {
-                "screen": "BalcaoSolicitacao"
-              }
-            },
-            {
-              "id": "tv-camara",
-              "title": "TV Câmara",
-              "subtitle": "Assistir no app",
-              "icon": "play",
-              "params": {
-                "screen": "TvCamara"
-              }
-            }
-          ]
-        }
-      ]
+      "expo-quick-actions"
     ],
     "extra": {
       "eas": {

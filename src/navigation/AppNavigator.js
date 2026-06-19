@@ -93,7 +93,7 @@ const getNotificationRoute = (data = {}) => {
     return null;
 };
 
-const LiquidTabItem = ({ icon, label, isFocused, onPress, primaryColor, compact }) => {
+const LiquidTabItem = ({ icon, isFocused, onPress, primaryColor, compact, showBadge }) => {
     const focusProgress = useSharedValue(isFocused ? 1 : 0);
 
     React.useEffect(() => {
@@ -121,10 +121,10 @@ const LiquidTabItem = ({ icon, label, isFocused, onPress, primaryColor, compact 
             style={styles.tabButton}
             activeOpacity={0.72}
         >
-            <Animated.View style={iconStyle}>
+            <Animated.View style={[iconStyle, styles.iconWrap]}>
                 <MaterialCommunityIcons name={icon} size={compact ? 31 : 26} color={isFocused ? primaryColor : '#111827'} />
+                {showBadge ? <View style={styles.messageBadge} /> : null}
             </Animated.View>
-            {!compact ? <View style={styles.tabLabelWrap}><Animated.Text style={[styles.tabLabel, isFocused && { color: '#0f172a' }]}>{label}</Animated.Text></View> : null}
             {!compact ? <Animated.View style={[styles.activeDot, { backgroundColor: primaryColor }, dotStyle]} /> : null}
         </TouchableOpacity>
     );
@@ -132,6 +132,7 @@ const LiquidTabItem = ({ icon, label, isFocused, onPress, primaryColor, compact 
 
 // 3. O COMPONENTE DA BARRA
 const LiquidTabBar = ({ state, descriptors, navigation }) => {
+    const { unreadMessagesCount } = React.useContext(AuthContext);
     const { theme } = Constants.expoConfig.extra;
     const primaryColor = theme?.primary || '#025AA1';
     const pillRoutes = state.routes.slice(0, -1);
@@ -239,15 +240,15 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                     const isFocused = state.index === index;
                     const { options } = descriptors[route.key];
                     const icon = options.tabBarIconName || 'help-circle';
-                    const label = options.tabBarLabel || route.name;
+                    const showBadge = route.name === 'Mensagens' && unreadMessagesCount > 0;
 
                     return (
                         <LiquidTabItem
                             key={route.key}
                             icon={icon}
-                            label={label}
                             isFocused={isFocused}
                             primaryColor={primaryColor}
+                            showBadge={showBadge}
                             onPress={() => navigation.navigate(route.name)}
                         />
                     );
@@ -317,7 +318,7 @@ function NavigationContent() {
                 title: 'Nova solicitação',
                 subtitle: 'Balcão do Cidadão',
                 icon: 'compose',
-                params: { screen: 'BalcaoSolicitacao' },
+                params: { screen: 'BalcaoCidadao' },
             },
             {
                 id: 'tv-camara',
@@ -337,8 +338,8 @@ function NavigationContent() {
                 return;
             }
 
-            if (actionId === 'new-balcao' || screen === 'BalcaoSolicitacao') {
-                navigation.navigate('BalcaoSolicitacao', { serviceName: 'Informações Gerais' });
+            if (actionId === 'new-balcao' || screen === 'BalcaoCidadao' || screen === 'BalcaoSolicitacao') {
+                navigation.navigate('BalcaoCidadao');
                 return;
             }
 
@@ -485,20 +486,11 @@ const styles = StyleSheet.create({
         height: '100%',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingTop: 8,
-        paddingBottom: 10,
-        gap: 3,
+        paddingTop: 0,
+        paddingBottom: 0,
     },
-    tabLabelWrap: {
-        minHeight: 20,
-        justifyContent: 'center',
-    },
-    tabLabel: {
-        color: '#111827',
-        fontSize: 11,
-        lineHeight: 14,
-        fontWeight: '800',
-        textAlign: 'center',
+    iconWrap: {
+        position: 'relative',
     },
     profileButtonOuter: {
         width: 82,
@@ -524,5 +516,16 @@ const styles = StyleSheet.create({
         width: 5,
         height: 5,
         borderRadius: 3,
+    },
+    messageBadge: {
+        position: 'absolute',
+        top: -3,
+        right: -5,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#dc2626',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.92)',
     },
 });

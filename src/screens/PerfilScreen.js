@@ -19,10 +19,6 @@ const Container = styled(PortalBackground)`
   flex: 1;
 `;
 
-const Scroll = styled.ScrollView`
-  flex: 1;
-`;
-
 const Cover = styled(LinearGradient).attrs({
   colors: portalGradients.primary,
   start: { x: 0, y: 0 },
@@ -161,7 +157,8 @@ const StatLabel = styled.Text`
 `;
 
 const Section = styled.View`
-  padding: 0 18px 14px;
+  flex: 1;
+  padding: 0 18px;
 `;
 
 const SectionTitle = styled.Text`
@@ -180,6 +177,10 @@ const TimelineCard = styled.TouchableOpacity`
   border-color: ${portalTheme.border};
   padding: 13px;
   margin-bottom: 10px;
+`;
+
+const TimelineList = styled.FlatList`
+  flex: 1;
 `;
 
 const TimelineIcon = styled.View`
@@ -417,115 +418,117 @@ export default function PerfilScreen({ navigation }) {
 
   return (
     <Container>
-      <Scroll showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 130 }}>
-        <Cover>
-          <HeaderActions>
-            <HeaderButton onPress={handleLogout}>
-              <HeaderButtonText>Sair</HeaderButtonText>
-            </HeaderButton>
-          </HeaderActions>
-        </Cover>
+      <Cover>
+        <HeaderActions>
+          <HeaderButton onPress={handleLogout}>
+            <HeaderButtonText>Sair</HeaderButtonText>
+          </HeaderButton>
+        </HeaderActions>
+      </Cover>
 
-        <ProfileCard>
-          <AvatarButton activeOpacity={0.75} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
-            <AvatarBox>
-              <AvatarImage source={avatarSource} />
-            </AvatarBox>
-            <EditIconCircle>
-              <MaterialCommunityIcons name="account-edit-outline" size={17} color="#fff" />
-            </EditIconCircle>
-          </AvatarButton>
+      <ProfileCard>
+        <AvatarButton activeOpacity={0.75} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
+          <AvatarBox>
+            <AvatarImage source={avatarSource} />
+          </AvatarBox>
+          <EditIconCircle>
+            <MaterialCommunityIcons name="account-edit-outline" size={17} color="#fff" />
+          </EditIconCircle>
+        </AvatarButton>
 
-          <ProfileName>{userData?.name || user?.displayName || 'Usuário'}</ProfileName>
-          <ProfileEmail>{user?.email || userData?.email || 'Email não informado'}</ProfileEmail>
-          <RolePill>
-            <RoleText>{form.tipo || userData?.tipo || 'Cidadão'}</RoleText>
-          </RolePill>
+        <ProfileName>{userData?.name || user?.displayName || 'Usuário'}</ProfileName>
+        <ProfileEmail>{user?.email || userData?.email || 'Email não informado'}</ProfileEmail>
+        <RolePill>
+          <RoleText>{form.tipo || userData?.tipo || 'Cidadão'}</RoleText>
+        </RolePill>
 
-          <StatsRow>
-            <StatBox onPress={() => navigation.navigate('MeusAtendimentos', { source: 'balcao-cidadao' })}>
-              <StatNumber>{stats.balcao}</StatNumber>
-              <StatLabel>Balcão</StatLabel>
-            </StatBox>
-            <StatBox onPress={() => navigation.navigate('MeusAtendimentos', { source: 'ouvidoria' })}>
-              <StatNumber>{stats.ouvidoria}</StatNumber>
-              <StatLabel>Ouvidoria</StatLabel>
-            </StatBox>
-            <StatBox onPress={() => navigation.navigate('MeusAtendimentos', { source: 'procuradoria-mulher' })}>
-              <StatNumber>{stats.procuradoria}</StatNumber>
-              <StatLabel>Mulher</StatLabel>
-            </StatBox>
-            <StatBox>
-              <StatNumber>{stats.total}</StatNumber>
-              <StatLabel>Total</StatLabel>
-            </StatBox>
-          </StatsRow>
+        <StatsRow>
+          <StatBox onPress={() => navigation.navigate('MeusAtendimentos', { source: 'balcao-cidadao' })}>
+            <StatNumber>{stats.balcao}</StatNumber>
+            <StatLabel>Balcão</StatLabel>
+          </StatBox>
+          <StatBox onPress={() => navigation.navigate('MeusAtendimentos', { source: 'ouvidoria' })}>
+            <StatNumber>{stats.ouvidoria}</StatNumber>
+            <StatLabel>Ouvidoria</StatLabel>
+          </StatBox>
+          <StatBox onPress={() => navigation.navigate('MeusAtendimentos', { source: 'procuradoria-mulher' })}>
+            <StatNumber>{stats.procuradoria}</StatNumber>
+            <StatLabel>Mulher</StatLabel>
+          </StatBox>
+          <StatBox>
+            <StatNumber>{stats.total}</StatNumber>
+            <StatLabel>Total</StatLabel>
+          </StatBox>
+        </StatsRow>
 
-          <ProfileActions>
-            <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
-              <ProfileActionIcon>
-                <Ionicons name="person-outline" size={19} color={portalTheme.primary} />
-              </ProfileActionIcon>
-              <ProfileActionTextGroup>
-                <ProfileActionTitle>Dados pessoais</ProfileActionTitle>
-                <ProfileActionSubtitle>Cadastro, endereço e foto de perfil</ProfileActionSubtitle>
-              </ProfileActionTextGroup>
-              <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
-            </ProfileAction>
+        <ProfileActions>
+          <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
+            <ProfileActionIcon>
+              <Ionicons name="person-outline" size={19} color={portalTheme.primary} />
+            </ProfileActionIcon>
+            <ProfileActionTextGroup>
+              <ProfileActionTitle>Dados pessoais</ProfileActionTitle>
+              <ProfileActionSubtitle>Cadastro, endereço e foto de perfil</ProfileActionSubtitle>
+            </ProfileActionTextGroup>
+            <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
+          </ProfileAction>
 
-            <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilBeneficiarios')}>
-              <ProfileActionIcon bg="rgba(15, 118, 110, 0.1)">
-                <MaterialCommunityIcons name="account-heart-outline" size={20} color="#0f766e" />
-              </ProfileActionIcon>
-              <ProfileActionTextGroup>
-                <ProfileActionTitle>Beneficiários</ProfileActionTitle>
-                <ProfileActionSubtitle>Pessoas vinculadas ao Balcão</ProfileActionSubtitle>
-              </ProfileActionTextGroup>
-              <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
-            </ProfileAction>
+          <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilBeneficiarios')}>
+            <ProfileActionIcon bg="rgba(15, 118, 110, 0.1)">
+              <MaterialCommunityIcons name="account-heart-outline" size={20} color="#0f766e" />
+            </ProfileActionIcon>
+            <ProfileActionTextGroup>
+              <ProfileActionTitle>Beneficiários</ProfileActionTitle>
+              <ProfileActionSubtitle>Pessoas vinculadas ao Balcão</ProfileActionSubtitle>
+            </ProfileActionTextGroup>
+            <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
+          </ProfileAction>
 
-            <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilSeguranca')}>
-              <ProfileActionIcon bg="rgba(124, 58, 237, 0.1)">
-                <Ionicons name="shield-checkmark-outline" size={19} color="#7c3aed" />
-              </ProfileActionIcon>
-              <ProfileActionTextGroup>
-                <ProfileActionTitle>Segurança</ProfileActionTitle>
-                <ProfileActionSubtitle>Senha e atividades de login</ProfileActionSubtitle>
-              </ProfileActionTextGroup>
-              <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
-            </ProfileAction>
-          </ProfileActions>
-        </ProfileCard>
+          <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilSeguranca')}>
+            <ProfileActionIcon bg="rgba(124, 58, 237, 0.1)">
+              <Ionicons name="shield-checkmark-outline" size={19} color="#7c3aed" />
+            </ProfileActionIcon>
+            <ProfileActionTextGroup>
+              <ProfileActionTitle>Segurança</ProfileActionTitle>
+              <ProfileActionSubtitle>Senha e atividades de login</ProfileActionSubtitle>
+            </ProfileActionTextGroup>
+            <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
+          </ProfileAction>
+        </ProfileActions>
+      </ProfileCard>
 
-        <Section>
-          <SectionTitle>Atendimentos recentes</SectionTitle>
-          {visibleRequests.length === 0 ? (
+      <Section>
+        <SectionTitle>Atendimentos recentes</SectionTitle>
+        <TimelineList
+          data={visibleRequests}
+          keyExtractor={(item) => `${item.originCollection}-${item.id}`}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 130 }}
+          ListEmptyComponent={(
             <PortalCard>
               <TimelineMeta>Você ainda não possui atendimentos registrados.</TimelineMeta>
             </PortalCard>
-          ) : (
-            visibleRequests.map((item) => {
-              const status = getStatusInfo(item.status);
-
-              return (
-                <TimelineCard key={`${item.originCollection}-${item.id}`} activeOpacity={0.78} onPress={() => openRequest(item)}>
-                  <TimelineIcon bg={item.sourceBg}>
-                    <MaterialCommunityIcons name={item.sourceIcon} size={22} color={item.sourceColor} />
-                  </TimelineIcon>
-                  <TimelineInfo>
-                    <TimelineTitle numberOfLines={2}>{getRequestTitle(item)}</TimelineTitle>
-                    <TimelineMeta>{item.sourceLabel} • {formatDate(item.sortDate)}</TimelineMeta>
-                  </TimelineInfo>
-                  <StatusPill bg={status.bg}>
-                    <StatusText color={status.color}>{status.label}</StatusText>
-                  </StatusPill>
-                </TimelineCard>
-              );
-            })
           )}
-        </Section>
+          renderItem={({ item }) => {
+            const status = getStatusInfo(item.status);
 
-      </Scroll>
+            return (
+              <TimelineCard activeOpacity={0.78} onPress={() => openRequest(item)}>
+                <TimelineIcon bg={item.sourceBg}>
+                  <MaterialCommunityIcons name={item.sourceIcon} size={22} color={item.sourceColor} />
+                </TimelineIcon>
+                <TimelineInfo>
+                  <TimelineTitle numberOfLines={2}>{getRequestTitle(item)}</TimelineTitle>
+                  <TimelineMeta>{item.sourceLabel} • {formatDate(item.sortDate)}</TimelineMeta>
+                </TimelineInfo>
+                <StatusPill bg={status.bg}>
+                  <StatusText color={status.color}>{status.label}</StatusText>
+                </StatusPill>
+              </TimelineCard>
+            );
+          }}
+        />
+      </Section>
     </Container>
   );
 }
