@@ -5,14 +5,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { collection, deleteDoc, doc, getDoc, onSnapshot, query, runTransaction, where } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
 
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
-const textColor = '#0f172a';
-const mutedColor = '#64748b';
 
 const getStartOfToday = () => {
   const today = new Date();
@@ -44,14 +41,14 @@ const normalizeBookedSlots = (value) => {
 
 const Container = styled.View`
   flex: 1;
-  background-color: #f8fbff;
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
-const Header = styled(LinearGradient).attrs({
-  colors: ['#f8fbff', '#eef5fb', '#ffffff'],
+const Header = styled(LinearGradient).attrs(({ theme }) => ({
+  colors: theme.gradients.page,
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   padding: 54px 20px 22px;
 `;
 
@@ -59,7 +56,7 @@ const BackButton = styled.TouchableOpacity`
   width: 42px;
   height: 42px;
   border-radius: 21px;
-  background-color: rgba(255, 255, 255, 0.82);
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(16,37,54,0.9)' : 'rgba(255,255,255,0.82)'};
   align-items: center;
   justify-content: center;
   margin-bottom: 18px;
@@ -69,11 +66,11 @@ const HeaderTitle = styled.Text`
   font-size: 28px;
   line-height: 34px;
   font-weight: 900;
-  color: ${textColor};
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 const HeaderSubtitle = styled.Text`
-  color: ${mutedColor};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 14px;
   line-height: 20px;
   font-weight: 700;
@@ -96,13 +93,13 @@ const FilterButton = styled.TouchableOpacity`
   min-height: 42px;
   border-radius: 14px;
   overflow: hidden;
-  background-color: ${props => props.active ? primaryColor : '#ffffff'};
+  background-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.card};
   border-width: 1px;
-  border-color: ${props => props.active ? primaryColor : '#dbe3ee'};
+  border-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.border};
 `;
 
 const FilterGradient = styled(LinearGradient).attrs(props => ({
-  colors: props.active ? [primaryColor, '#0077ed'] : ['#ffffff', '#f8fafc'],
+  colors: props.active ? props.theme.gradients.primary : [props.theme.portal.card, props.theme.portal.page],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
 }))`
@@ -112,13 +109,13 @@ const FilterGradient = styled(LinearGradient).attrs(props => ({
 `;
 
 const FilterText = styled.Text`
-  color: ${props => props.active ? '#ffffff' : mutedColor};
+  color: ${({ active, theme }) => active ? '#ffffff' : theme.portal.muted};
   font-size: 12px;
   font-weight: 900;
 `;
 
 const RequestCard = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 16px;
   padding: 14px;
   margin-bottom: 12px;
@@ -130,14 +127,14 @@ const RequestCard = styled.View`
   shadow-radius: 4px;
   elevation: 2;
   border-width: 1px;
-  border-color: #e2e8f0;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const IconWrapper = styled.View`
   width: 45px;
   height: 45px;
   border-radius: 22.5px;
-  background-color: ${props => props.bgColor || primaryColor + '15'};
+  background-color: ${({ bgColor, theme }) => bgColor || `${theme.portal.primary}15`};
   justify-content: center;
   align-items: center;
   margin-right: 15px;
@@ -150,18 +147,18 @@ const InfoSection = styled.View`
 const RequestTitle = styled.Text`
   font-size: 15px;
   font-weight: 900;
-  color: ${textColor};
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 4px;
 `;
 
 const RequestDate = styled.Text`
   font-size: 12px;
-  color: #888;
+  color: ${({ theme }) => theme.portal.muted};
   margin-bottom: 2px;
 `;
 
 const StatusTag = styled.View`
-  background-color: ${props => props.bgColor || '#e0e0e0'};
+  background-color: ${({ bgColor, theme }) => bgColor || theme.portal.pageAlt};
   padding: 5px 9px;
   border-radius: 999px;
   align-self: flex-start;
@@ -171,7 +168,7 @@ const StatusTag = styled.View`
 const StatusText = styled.Text`
   font-size: 10px;
   font-weight: bold;
-  color: ${props => props.textColor || '#666'};
+  color: ${({ textColor, theme }) => textColor || theme.portal.muted};
   text-transform: uppercase;
 `;
 
@@ -179,13 +176,13 @@ const FormContainer = styled.View`
   margin-top: 15px;
   padding-top: 15px;
   border-top-width: 1px;
-  border-color: #eee;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const Label = styled.Text`
   font-size: 13px;
   font-weight: bold;
-  color: #444;
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 8px;
 `;
 
@@ -199,21 +196,21 @@ const SlotContainer = styled.View`
 const SlotButton = styled.TouchableOpacity`
   padding: 8px 12px;
   border-radius: 20px;
-  background-color: ${props => props.selected ? primaryColor : '#f5f5f5'};
+  background-color: ${({ selected, theme }) => selected ? theme.portal.primary : theme.portal.pageAlt};
   margin-right: 8px;
   margin-bottom: 8px;
   border-width: 1px;
-  border-color: ${props => props.selected ? primaryColor : '#ddd'};
+  border-color: ${({ selected, theme }) => selected ? theme.portal.primary : theme.portal.border};
 `;
 
 const SlotText = styled.Text`
-  color: ${props => props.selected ? '#fff' : '#666'};
+  color: ${({ selected, theme }) => selected ? '#fff' : theme.portal.text};
   font-size: 12px;
   font-weight: 600;
 `;
 
 const SubmitBtn = styled.TouchableOpacity`
-  background-color: ${primaryColor};
+  background-color: ${({ theme }) => theme.portal.primary};
   padding: 10px;
   border-radius: 8px;
   align-items: center;
@@ -226,6 +223,7 @@ const SubmitBtnText = styled.Text`
 `;
 
 const AgendamentoInlineForm = ({ solicitacaoId }) => {
+    const theme = useTheme();
     const [appointmentDate, setAppointmentDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [appointmentTime, setAppointmentTime] = useState('');
@@ -383,7 +381,7 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
     if (loadingConfig) {
         return (
             <FormContainer>
-                <ActivityIndicator size="small" color={primaryColor} />
+                <ActivityIndicator size="small" color={theme.portal.primary} />
             </FormContainer>
         );
     }
@@ -393,10 +391,10 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
             <Label>Escolha a Data</Label>
             <TouchableOpacity
                 onPress={() => setShowDatePicker(true)}
-                style={{ padding: 10, backgroundColor: '#f5f5f5', borderRadius: 8, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between', borderWidth: 1, borderColor: '#eee' }}
+                style={{ padding: 10, backgroundColor: theme.portal.pageAlt, borderRadius: 8, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between', borderWidth: 1, borderColor: theme.portal.border }}
             >
-                <Text style={{color: '#333'}}>{appointmentDate.toLocaleDateString('pt-BR')}</Text>
-                <Ionicons name="calendar" size={18} color={primaryColor} />
+                <Text style={{ color: theme.portal.text }}>{appointmentDate.toLocaleDateString('pt-BR')}</Text>
+                <Ionicons name="calendar" size={18} color={theme.portal.primary} />
             </TouchableOpacity>
 
             {showDatePicker && (
@@ -422,7 +420,7 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
                         </SlotButton>
                     ))
                 ) : (
-                    <Text style={{ color: '#888', fontStyle: 'italic', fontSize: 12 }}>
+                    <Text style={{ color: theme.portal.muted, fontStyle: 'italic', fontSize: 12 }}>
                         Nenhum horário disponível para esta data.
                     </Text>
                 )}
@@ -436,6 +434,7 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
 };
 
 export default function MeusAtendimentosScreen({ navigation, route }) {
+  const theme = useTheme();
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState([]);
@@ -509,13 +508,13 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
 
     const getStatusInfo = (status) => {
     switch (status) {
-      case 'Concluído': return { color: '#2e7d32', label: 'Concluído' };
-      case 'Agendado': return { color: '#2e7d32', label: 'Agendado' };
-      case 'Agendamento Liberado': return { color: '#004a99', label: 'Agendar Agora' };
+      case 'Concluído': return { color: theme.mode === 'dark' ? '#4ade80' : '#2e7d32', label: 'Concluído' };
+      case 'Agendado': return { color: theme.mode === 'dark' ? '#4ade80' : '#2e7d32', label: 'Agendado' };
+      case 'Agendamento Liberado': return { color: theme.portal.primary, label: 'Agendar Agora' };
       case 'Pendente': return { color: '#f9c204', label: 'Em Análise' };
-      case 'Recebida': return { color: '#004a99', label: 'Recebida' };
-      case 'Documentação Reenviada': return { color: '#004a99', label: 'Doc. Enviada' };
-      case 'Manifestação Atualizada': return { color: '#004a99', label: 'Atualizada' };
+      case 'Recebida': return { color: theme.portal.primary, label: 'Recebida' };
+      case 'Documentação Reenviada': return { color: theme.portal.primary, label: 'Doc. Enviada' };
+      case 'Manifestação Atualizada': return { color: theme.portal.primary, label: 'Atualizada' };
       case 'Cancelado': return { color: '#dc2626', label: 'Cancelado' };
       default: return { color: '#a21caf', label: status || 'Aguardando' };
     }
@@ -575,23 +574,23 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
           </IconWrapper>
           <InfoSection>
             <RequestTitle numberOfLines={1}>{titleDisplay}</RequestTitle>
-            {subTypeDisplay ? <Text style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>{subTypeDisplay}</Text> : null}
+            {subTypeDisplay ? <Text style={{ fontSize: 12, color: theme.portal.muted, marginBottom: 2 }}>{subTypeDisplay}</Text> : null}
             <RequestDate>{dateStr}</RequestDate>
             <StatusTag bgColor={statusInfo.color + '20'}>
               <StatusText textColor={statusInfo.color}>{statusInfo.label}</StatusText>
             </StatusTag>
           </InfoSection>
-          <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          <Ionicons name="chevron-forward" size={20} color={theme.portal.subtle} />
         </RequestCard>
         {item.status === 'Agendamento Liberado' && (
-          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 15, marginTop: -10, marginBottom: 15, marginHorizontal: 0, elevation: 1 }}>
-             <Text style={{ fontSize: 14, fontWeight: 'bold', color: primaryColor, marginBottom: 5 }}>Realizar Agendamento</Text>
-             <Text style={{ fontSize: 12, color: '#666' }}>Sua documentação foi aprovada. Por favor, escolha um horário para o atendimento presencial.</Text>
+          <View style={{ backgroundColor: theme.portal.card, borderColor: theme.portal.border, borderWidth: 1, borderRadius: 12, padding: 15, marginTop: -10, marginBottom: 15, marginHorizontal: 0, elevation: 1 }}>
+             <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.portal.primary, marginBottom: 5 }}>Realizar Agendamento</Text>
+             <Text style={{ fontSize: 12, color: theme.portal.muted }}>Sua documentação foi aprovada. Por favor, escolha um horário para o atendimento presencial.</Text>
              <AgendamentoInlineForm solicitacaoId={item.id} />
           </View>
         )}
         {item.status === 'Cancelado' && (
-          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 15, marginTop: 10, marginBottom: 15, elevation: 1 }}>
+          <View style={{ backgroundColor: theme.portal.card, borderColor: theme.portal.border, borderWidth: 1, borderRadius: 12, padding: 15, marginTop: 10, marginBottom: 15, elevation: 1 }}>
             <TouchableOpacity
               onPress={() => confirmDeleteRequest(item)}
               disabled={deletingId === item.id}
@@ -626,7 +625,7 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
     <Container>
       <Header>
         <BackButton onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color={primaryColor} />
+          <Ionicons name="arrow-back" size={22} color={theme.portal.primary} />
         </BackButton>
         <HeaderTitle>Meus Atendimentos</HeaderTitle>
         <HeaderSubtitle>Acompanhe solicitações, mensagens, documentos e agendamentos.</HeaderSubtitle>
@@ -647,7 +646,7 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
           ))}
         </FilterRow>
         {loading ? (
-          <ActivityIndicator size="large" color={primaryColor} />
+          <ActivityIndicator size="large" color={theme.portal.primary} />
         ) : (
           <FlatList
             data={filteredRequests}
@@ -657,7 +656,7 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
             contentContainerStyle={{ paddingBottom: 130 }}
             ListEmptyComponent={
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}>
-                <Text style={{ color: '#888' }}>Nenhum atendimento encontrado.</Text>
+                <Text style={{ color: theme.portal.muted }}>Nenhum atendimento encontrado.</Text>
               </View>
             }
           />

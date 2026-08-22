@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
 
@@ -12,14 +12,14 @@ const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
 const Container = styled.View`
   flex: 1;
-  background-color: #fcf4f8;
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
 const Header = styled.View`
   flex-direction: row;
   align-items: center;
   padding: 50px 20px 20px 20px;
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
 `;
 
 const BackButton = styled.TouchableOpacity`
@@ -31,7 +31,7 @@ const HeaderTitle = styled.Text`
   text-align: center;
   font-size: 18px;
   font-weight: 700;
-  color: #111;
+  color: ${({ theme }) => theme.portal.text};
   margin-right: 30px;
 `;
 
@@ -40,7 +40,9 @@ const Content = styled.View`
 `;
 
 const Card = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
   border-radius: 20px;
   padding: 25px;
   shadow-color: #000;
@@ -52,7 +54,7 @@ const Card = styled.View`
 
 const InfoText = styled.Text`
   font-size: 14px;
-  color: #666;
+  color: ${({ theme }) => theme.portal.muted};
   text-align: center;
   line-height: 20px;
   margin-bottom: 25px;
@@ -61,16 +63,18 @@ const InfoText = styled.Text`
 const Label = styled.Text`
   font-size: 14px;
   font-weight: 700;
-  color: #333;
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 8px;
 `;
 
 const Input = styled.TextInput`
-  background-color: #f5f5f5;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
   border-radius: 10px;
   padding: 15px;
   font-size: 16px;
-  color: #333;
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 20px;
 `;
 
@@ -90,6 +94,7 @@ const SaveButtonText = styled.Text`
 `;
 
 export default function ContatoConfiancaScreen({ navigation }) {
+    const theme = useTheme();
     const { user } = useContext(AuthContext);
     const [email, setEmail] = useState('');
     const [telefone, setTelefone] = useState('');
@@ -120,10 +125,13 @@ export default function ContatoConfiancaScreen({ navigation }) {
 
         setSaving(true);
         try {
+            const normalizedEmail = String(email || '').trim().toLowerCase();
             const configRef = doc(firestore, 'procuradoria-mulher-btn-panico', user.uid);
             await setDoc(configRef, {
-                email,
+                email: normalizedEmail,
                 telefone,
+                flavorId,
+                userId: user.uid,
                 updatedAt: serverTimestamp()
             });
             Alert.alert('Sucesso', 'Contato de emergência salvo com sucesso!');
@@ -138,8 +146,8 @@ export default function ContatoConfiancaScreen({ navigation }) {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#a21caf" />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.portal.page }}>
+                <ActivityIndicator size="large" color={theme.portal.primary} />
             </View>
         );
     }
@@ -152,7 +160,7 @@ export default function ContatoConfiancaScreen({ navigation }) {
             <Container>
                 <Header>
                     <BackButton onPress={() => navigation.goBack()}>
-                        <Ionicons name="arrow-back" size={24} color="#333" />
+                        <Ionicons name="arrow-back" size={24} color={theme.portal.text} />
                     </BackButton>
                     <HeaderTitle>Contato de Confiança</HeaderTitle>
                 </Header>
@@ -170,6 +178,7 @@ export default function ContatoConfiancaScreen({ navigation }) {
                             placeholder="Digite o e-mail"
                             keyboardType="email-address"
                             autoCapitalize="none"
+                            placeholderTextColor={theme.portal.subtle}
                         />
 
                         <Label>Telefone do Contato</Label>
@@ -178,6 +187,7 @@ export default function ContatoConfiancaScreen({ navigation }) {
                             onChangeText={setTelefone}
                             placeholder="Digite o telefone"
                             keyboardType="phone-pad"
+                            placeholderTextColor={theme.portal.subtle}
                         />
 
                         <SaveButton activeOpacity={0.8} onPress={handleSave} disabled={saving}>

@@ -13,15 +13,12 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
-const textColor = '#0f172a';
-const mutedColor = '#64748b';
 
 const getStartOfToday = () => {
     const today = new Date();
@@ -53,14 +50,14 @@ const normalizeBookedSlots = (value) => {
 
 const Container = styled.View`
   flex: 1;
-  background-color: #f8fbff;
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
-const Header = styled(LinearGradient).attrs({
-  colors: ['#f8fbff', '#eef5fb', '#ffffff'],
+const Header = styled(LinearGradient).attrs(({ theme }) => ({
+  colors: theme.gradients.page,
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   padding: 54px 20px 18px;
 `;
 
@@ -68,7 +65,7 @@ const BackButton = styled.TouchableOpacity`
   width: 42px;
   height: 42px;
   border-radius: 21px;
-  background-color: rgba(255, 255, 255, 0.82);
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(16,37,54,0.9)' : 'rgba(255,255,255,0.82)'};
   align-items: center;
   justify-content: center;
   margin-bottom: 18px;
@@ -78,11 +75,11 @@ const HeaderTitle = styled.Text`
   font-size: 26px;
   line-height: 32px;
   font-weight: 900;
-  color: ${textColor};
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 const HeaderSubtitle = styled.Text`
-  color: ${mutedColor};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 14px;
   line-height: 20px;
   font-weight: 700;
@@ -109,11 +106,11 @@ const TabButton = styled.TouchableOpacity`
   border-radius: 16px;
   overflow: hidden;
   border-width: 1px;
-  border-color: ${props => props.active ? primaryColor : '#dbe3ee'};
+  border-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.border};
 `;
 
 const TabGradient = styled(LinearGradient).attrs(props => ({
-  colors: props.active ? [primaryColor, '#0077ed'] : ['#ffffff', '#f8fafc'],
+  colors: props.active ? props.theme.gradients.primary : [props.theme.portal.card, props.theme.portal.pageAlt],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
 }))`
@@ -124,14 +121,14 @@ const TabGradient = styled(LinearGradient).attrs(props => ({
 `;
 
 const TabText = styled.Text`
-  color: ${props => props.active ? '#ffffff' : mutedColor};
+  color: ${({ active, theme }) => active ? '#ffffff' : theme.portal.muted};
   font-size: 14px;
   font-weight: 900;
   margin-left: 7px;
 `;
 
 const Section = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 16px;
   padding: 18px;
   margin-bottom: 14px;
@@ -141,16 +138,16 @@ const Section = styled.View`
   shadow-radius: 4px;
   elevation: 2;
   border-width: 1px;
-  border-color: #e2e8f0;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const SectionTitle = styled.Text`
   font-size: 16px;
   font-weight: 900;
-  color: ${textColor};
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 15px;
   border-bottom-width: 1px;
-  border-bottom-color: #f0f0f0;
+  border-bottom-color: ${({ theme }) => theme.portal.border};
   padding-bottom: 8px;
 `;
 
@@ -160,14 +157,14 @@ const InfoRow = styled.View`
 
 const Label = styled.Text`
   font-size: 12px;
-  color: #888;
+  color: ${({ theme }) => theme.portal.muted};
   margin-bottom: 2px;
   text-transform: uppercase;
 `;
 
 const Value = styled.Text`
   font-size: 15px;
-  color: #333;
+  color: ${({ theme }) => theme.portal.text};
   font-weight: 500;
 `;
 
@@ -186,17 +183,17 @@ const StatusText = styled.Text`
 `;
 
 const FileCard = styled.View`
-  background-color: #f9fafb;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   border-radius: 8px;
   padding: 10px;
   margin-bottom: 12px;
   border-width: 1px;
-  border-color: #e5e7eb;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const FileCardTitle = styled.Text`
   font-size: 13px;
-  color: #4b5563;
+  color: ${({ theme }) => theme.portal.muted};
   font-weight: bold;
   margin-bottom: 5px;
 `;
@@ -204,7 +201,9 @@ const FileCardTitle = styled.Text`
 const UploadButton = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
-  background-color: #e5e7eb;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
   padding: 6px 12px;
   border-radius: 6px;
   align-self: flex-start;
@@ -213,7 +212,7 @@ const UploadButton = styled.TouchableOpacity`
 
 const UploadButtonText = styled.Text`
   font-size: 12px;
-  color: #374151;
+  color: ${({ theme }) => theme.portal.text};
   margin-left: 5px;
 `;
 
@@ -231,16 +230,18 @@ const MessageBubble = styled.View`
   margin-bottom: 10px;
   max-width: 85%;
   align-self: ${props => props.isUser ? 'flex-end' : 'flex-start'};
-  background-color: ${props => props.isUser ? primaryColor : '#f0f0f0'};
+  background-color: ${({ isUser, theme }) => isUser ? theme.portal.primary : theme.portal.pageAlt};
+  border-width: ${props => props.isUser ? '0' : '1px'};
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const MessageText = styled.Text`
-  color: ${props => props.isUser ? '#fff' : '#333'};
+  color: ${({ isUser, theme }) => isUser ? '#fff' : theme.portal.text};
   font-size: 14px;
 `;
 
 const MessageTime = styled.Text`
-  color: ${props => props.isUser ? 'rgba(255,255,255,0.7)' : '#888'};
+  color: ${({ isUser, theme }) => isUser ? 'rgba(255,255,255,0.7)' : theme.portal.muted};
   font-size: 10px;
   margin-top: 4px;
   align-self: flex-end;
@@ -249,18 +250,19 @@ const MessageTime = styled.Text`
 const InputRow = styled.View`
   flex-direction: row;
   align-items: center;
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 25px;
   padding: 5px 15px;
   margin-top: 10px;
   border-width: 1px;
-  border-color: #ddd;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
-const ChatInput = styled.TextInput`
+const ChatInput = styled.TextInput.attrs(({ theme }) => ({ placeholderTextColor: theme.portal.subtle }))`
   flex: 1;
   padding: 10px;
   font-size: 15px;
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 // Estilos para Agendamento
@@ -273,20 +275,21 @@ const SlotContainer = styled.View`
 const SlotButton = styled.TouchableOpacity`
   padding: 8px 12px;
   border-radius: 20px;
-  background-color: ${props => props.selected ? primaryColor : '#f5f5f5'};
+  background-color: ${({ selected, theme }) => selected ? theme.portal.primary : theme.portal.pageAlt};
   margin-right: 8px;
   margin-bottom: 8px;
   border-width: 1px;
-  border-color: ${props => props.selected ? primaryColor : '#ddd'};
+  border-color: ${({ selected, theme }) => selected ? theme.portal.primary : theme.portal.border};
 `;
 
 const SlotText = styled.Text`
-  color: ${props => props.selected ? '#fff' : '#666'};
+  color: ${({ selected, theme }) => selected ? '#fff' : theme.portal.text};
   font-size: 12px;
   font-weight: 600;
 `;
 
 export default function BalcaoDetalheScreen({ route, navigation }) {
+    const theme = useTheme();
     const { user } = useContext(AuthContext);
     const { item } = route.params;
     const { userName, userPhone, tipo, status: currentStatus, createdAt, id: solicitacaoId } = item;
@@ -639,7 +642,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
         <Container>
             <Header>
                 <BackButton onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={22} color={primaryColor} />
+                    <Ionicons name="arrow-back" size={22} color={theme.portal.primary} />
                 </BackButton>
                 <HeaderTitle>Atendimento</HeaderTitle>
                 <HeaderSubtitle>Consulte dados, mensagens, agenda e documentos enviados.</HeaderSubtitle>
@@ -654,7 +657,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                     ].map(([key, label, icon]) => (
                         <TabButton key={key} active={activeTab === key} onPress={() => setActiveTab(key)} activeOpacity={0.84}>
                             <TabGradient active={activeTab === key}>
-                                <Ionicons name={icon} size={18} color={activeTab === key ? '#ffffff' : mutedColor} />
+                                <Ionicons name={icon} size={18} color={activeTab === key ? '#ffffff' : theme.portal.muted} />
                                 <TabText active={activeTab === key}>{label}</TabText>
                             </TabGradient>
                         </TabButton>
@@ -676,11 +679,11 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                         <Value>{formatDate(createdAt)}</Value>
                     </InfoRow>
                     {status === 'Agendado' && (
-                        <View style={{ marginTop: 10, padding: 10, backgroundColor: '#f0f9ff', borderRadius: 8 }}>
-                            <Text style={{ fontSize: 13, fontWeight: '700', color: '#0369a1' }}>
+                        <View style={{ marginTop: 10, padding: 10, backgroundColor: theme.portal.pageAlt, borderRadius: 8, borderWidth: 1, borderColor: theme.portal.border }}>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: theme.portal.primary }}>
                                 <Ionicons name="calendar-outline" size={16} /> Agendado para:
                             </Text>
-                            <Text style={{ fontSize: 14, color: '#0369a1' }}>
+                            <Text style={{ fontSize: 14, color: theme.portal.text }}>
                                 {item.appointmentDate} às {item.appointmentTime}
                             </Text>
                         </View>
@@ -691,16 +694,16 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                     <Section>
                         <SectionTitle>Realizar Agendamento</SectionTitle>
                         {loadingConfig ? (
-                            <ActivityIndicator color={primaryColor} />
+                            <ActivityIndicator color={theme.portal.primary} />
                         ) : (
                             <>
                                 <Label>Selecione a Data</Label>
                                 <TouchableOpacity
                                     onPress={() => setShowDatePicker(true)}
-                                    style={{ padding: 12, backgroundColor: '#f5f5f5', borderRadius: 8, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between' }}
+                                    style={{ padding: 12, backgroundColor: theme.portal.pageAlt, borderRadius: 8, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between', borderWidth: 1, borderColor: theme.portal.border }}
                                 >
                                     <Text>{appointmentDate.toLocaleDateString('pt-BR')}</Text>
-                                    <Ionicons name="calendar" size={20} color={primaryColor} />
+                                    <Ionicons name="calendar" size={20} color={theme.portal.primary} />
                                 </TouchableOpacity>
 
                                 {showDatePicker && (
@@ -726,7 +729,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                                             </SlotButton>
                                         ))
                                     ) : (
-                                        <Text style={{ color: '#888', fontStyle: 'italic', fontSize: 13 }}>
+                                        <Text style={{ color: theme.portal.muted, fontStyle: 'italic', fontSize: 13 }}>
                                             Nenhum horário disponível para esta data.
                                         </Text>
                                     )}
@@ -736,7 +739,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                                     onPress={handleScheduleSubmit}
                                     disabled={scheduling || !appointmentTime}
                                     style={{
-                                        backgroundColor: primaryColor,
+                                        backgroundColor: theme.portal.primary,
                                         padding: 15,
                                         borderRadius: 8,
                                         marginTop: 15,
@@ -810,7 +813,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                                 </MessageBubble>
                             ))
                         ) : (
-                            <Text style={{ color: '#888', textAlign: 'center', marginVertical: 20 }}>Nenhuma mensagem trocada.</Text>
+                            <Text style={{ color: theme.portal.muted, textAlign: 'center', marginVertical: 20 }}>Nenhuma mensagem trocada.</Text>
                         )}
                     </View>
 
@@ -822,7 +825,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                             multiline
                         />
                         <TouchableOpacity onPress={handleSendMessage}>
-                            <Ionicons name="send" size={24} color={primaryColor} />
+                            <Ionicons name="send" size={24} color={theme.portal.primary} />
                         </TouchableOpacity>
                     </InputRow>
                 </Section>
@@ -832,8 +835,8 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                 {(!isCancelled && !(dadosSolicitacao?.anexos?.arquivos_adicionais || rootAnexos?.arquivos_adicionais)) && (
                     <Section>
                         <SectionTitle>Adicionar arquivos</SectionTitle>
-                        <UploadButton onPress={() => handleFileUpdate('arquivos_adicionais')} disabled={uploading || isCancelled} style={{ backgroundColor: '#e5e7eb', padding: 12, borderRadius: 8, width: '100%', justifyContent: 'center', opacity: (uploading || isCancelled) ? 0.6 : 1 }}>
-                            {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="add-circle-outline" size={20} color="#374151" />}
+                        <UploadButton onPress={() => handleFileUpdate('arquivos_adicionais')} disabled={uploading || isCancelled} style={{ padding: 12, borderRadius: 8, width: '100%', justifyContent: 'center', opacity: (uploading || isCancelled) ? 0.6 : 1 }}>
+                            {uploading ? <ActivityIndicator size="small" color={theme.portal.muted} /> : <Ionicons name="add-circle-outline" size={20} color={theme.portal.text} />}
                             <UploadButtonText style={{ fontSize: 14 }}>{uploading ? 'Enviando...' : 'Anexar Outros Arquivos'}</UploadButtonText>
                         </UploadButton>
                     </Section>
@@ -862,7 +865,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                                                     source={{ uri }}
                                                     resizeMode="contain"
                                                 />
-                                                <Text style={{ fontSize: 12, color: '#2563eb', marginBottom: 5 }}>
+                                                <Text style={{ fontSize: 12, color: theme.portal.primary, marginBottom: 5 }}>
                                                     <Ionicons name="document-attach" /> {fileName}
                                                 </Text>
                                             </View>
@@ -870,7 +873,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                                     })}
                                     {!isCancelled && (
                                         <UploadButton onPress={() => handleFileUpdate(field)} disabled={uploading || isCancelled} style={{ opacity: (uploading || isCancelled) ? 0.6 : 1 }}>
-                                            {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="cloud-upload-outline" size={16} color="#374151" />}
+                                            {uploading ? <ActivityIndicator size="small" color={theme.portal.muted} /> : <Ionicons name="cloud-upload-outline" size={16} color={theme.portal.text} />}
                                             <UploadButtonText>{uploading ? 'Enviando...' : 'Substituir Arquivo'}</UploadButtonText>
                                         </UploadButton>
                                     )}
@@ -883,7 +886,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                 {!((dadosSolicitacao?.anexos && Object.keys(dadosSolicitacao.anexos).length > 0) || rootAnexos) && (
                     <Section>
                         <SectionTitle>Documentação e Anexos</SectionTitle>
-                        <Text style={{ color: mutedColor, fontWeight: '700', lineHeight: 20 }}>
+                        <Text style={{ color: theme.portal.muted, fontWeight: '700', lineHeight: 20 }}>
                             Nenhum arquivo enviado para este atendimento.
                         </Text>
                     </Section>

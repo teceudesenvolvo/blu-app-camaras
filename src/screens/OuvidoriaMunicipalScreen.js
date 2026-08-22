@@ -4,26 +4,25 @@ import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc, doc, onSnapshot, serverTimestamp as firestoreTimestamp, setDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Text, View } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
-const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
 const Container = styled.ScrollView`
   flex: 1;
-  background-color: ${backgroundColor};
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
 const HeaderContainer = styled.View`
   flex-direction: row;
   align-items: center;
   padding: 72px 20px 20px 20px;
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
 `;
 
 const BackButton = styled.TouchableOpacity`
@@ -33,14 +32,14 @@ const BackButton = styled.TouchableOpacity`
 const HeaderTitle = styled.Text`
   font-size: 22px;
   font-weight: 900;
-  color: #111;
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 const HeaderSubtitle = styled.Text`
   margin-top: 5px;
   font-size: 14px;
   line-height: 20px;
-  color: #64748b;
+  color: ${({ theme }) => theme.portal.muted};
 `;
 
 const HeaderTextGroup = styled.View`
@@ -48,7 +47,9 @@ const HeaderTextGroup = styled.View`
 `;
 
 const FormContainer = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
   border-radius: 12px;
   padding: 20px;
   margin: 15px 20px 40px 20px;
@@ -61,12 +62,12 @@ const FormContainer = styled.View`
 
 const StepText = styled.Text`
   font-size: 14px;
-  color: #888;
+  color: ${({ theme }) => theme.portal.muted};
   margin-bottom: 15px;
 `;
 
 const ServiceInfoCard = styled.View`
-  background-color: #eef2ff;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   padding: 15px;
   border-radius: 8px;
   border-left-width: 4px;
@@ -77,13 +78,13 @@ const ServiceInfoCard = styled.View`
 const ServiceInfoTitle = styled.Text`
   font-size: 14px;
   font-weight: 700;
-  color: ${primaryColor};
+  color: ${({ theme }) => theme.portal.primary};
   margin-bottom: 5px;
 `;
 
 const ServiceInfoSub = styled.Text`
   font-size: 12px;
-  color: #666;
+  color: ${({ theme }) => theme.portal.muted};
 `;
 
 const InputGroup = styled.View`
@@ -93,26 +94,26 @@ const InputGroup = styled.View`
 const Label = styled.Text`
   font-size: 13px;
   font-weight: 600;
-  color: #444;
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 8px;
 `;
 
-const Input = styled.TextInput`
-  background-color: #f5f6fa;
+const Input = styled.TextInput.attrs(({ theme }) => ({ placeholderTextColor: theme.portal.subtle }))`
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   border-radius: 8px;
   padding: 12px 15px;
   font-size: 14px;
-  color: #333;
+  color: ${({ theme }) => theme.portal.text};
   border-width: 1px;
-  border-color: #eee;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const SelectPlaceholder = styled.TouchableOpacity`
-  background-color: #f5f6fa;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   border-radius: 8px;
   padding: 12px 15px;
   border-width: 1px;
-  border-color: #eee;
+  border-color: ${({ theme }) => theme.portal.border};
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
@@ -120,11 +121,11 @@ const SelectPlaceholder = styled.TouchableOpacity`
 
 const SelectText = styled.Text`
   font-size: 14px;
-  color: #333;
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 const ConfirmButton = styled.TouchableOpacity`
-  background-color: ${primaryColor};
+  background-color: ${({ theme }) => theme.portal.primary};
   padding: 15px;
   border-radius: 8px;
   align-items: center;
@@ -154,7 +155,7 @@ const AttachmentButton = styled.TouchableOpacity`
   align-items: center;
   padding: 10px;
   border-width: 1px;
-  border-color: #ddd;
+  border-color: ${({ theme }) => theme.portal.border};
   border-style: dashed;
   border-radius: 8px;
   margin-top: 5px;
@@ -162,7 +163,7 @@ const AttachmentButton = styled.TouchableOpacity`
 
 const AttachmentText = styled.Text`
   margin-left: 10px;
-  color: #666;
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 14px;
 `;
 
@@ -181,7 +182,9 @@ const ModalOverlay = styled.TouchableOpacity`
 `;
 
 const ModalContent = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
   border-radius: 12px;
   padding: 20px;
   width: 80%;
@@ -190,13 +193,14 @@ const ModalContent = styled.View`
 const ModalItem = styled.TouchableOpacity`
   padding: 15px;
   border-bottom-width: 1px;
-  border-bottom-color: #eee;
+  border-bottom-color: ${({ theme }) => theme.portal.border};
 `;
 
 const MANIFESTATION_TYPES = ['Elogio', 'Reclamação', 'Sugestão', 'Denúncia', 'Solicitação'];
 const IDENTIFICATION_TYPES = ['Identificar-se', 'Anônimo'];
 
 export default function OuvidoriaMunicipalScreen({ navigation }) {
+    const theme = useTheme();
     const { user } = useContext(AuthContext);
     const [loading, setLoading] = useState(false);
     const [profileData, setProfileData] = useState(null);
@@ -321,7 +325,7 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
         <Container showsVerticalScrollIndicator={false}>
             <HeaderContainer>
                 <BackButton onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
+                    <Ionicons name="arrow-back" size={24} color={theme.portal.text} />
                 </BackButton>
                 <HeaderTextGroup>
                     <HeaderTitle>Ouvidoria</HeaderTitle>
@@ -340,8 +344,8 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
                 <InputGroup>
                     <Label>Tipo de Manifestação *</Label>
                     <SelectPlaceholder onPress={() => setModalTipoVisible(true)}>
-                        <SelectText style={{ color: tipo === 'Selecione...' ? '#888' : '#333' }}>{tipo}</SelectText>
-                        <Ionicons name="chevron-down" size={16} color="#888" />
+                        <SelectText style={{ color: tipo === 'Selecione...' ? theme.portal.subtle : theme.portal.text }}>{tipo}</SelectText>
+                        <Ionicons name="chevron-down" size={16} color={theme.portal.muted} />
                     </SelectPlaceholder>
                 </InputGroup>
 
@@ -349,7 +353,7 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
                     <Label>Identificação</Label>
                     <SelectPlaceholder onPress={() => setModalIdentVisible(true)}>
                         <SelectText>{identificacao}</SelectText>
-                        <Ionicons name="chevron-down" size={16} color="#888" />
+                        <Ionicons name="chevron-down" size={16} color={theme.portal.muted} />
                     </SelectPlaceholder>
                 </InputGroup>
 
@@ -409,7 +413,7 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
                         ))}
                     </View>
                     <AttachmentButton onPress={pickImage}>
-                        <Ionicons name="camera-outline" size={20} color={primaryColor} />
+                        <Ionicons name="camera-outline" size={20} color={theme.portal.primary} />
                         <AttachmentText>Adicionar Foto</AttachmentText>
                     </AttachmentButton>
                 </InputGroup>

@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Text } from 'react-native';
 import styled from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
-import { uploadFileToStorage } from '../../services/storageService';
+import { uploadProfileImageToStorage } from '../../services/storageService';
 import {
   PortalBackground,
   PortalCard,
@@ -45,13 +45,13 @@ const NoticeTextGroup = styled.View`
 `;
 
 const NoticeTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 14px;
   font-weight: 900;
 `;
 
 const NoticeText = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 13px;
   line-height: 18px;
   font-weight: 700;
@@ -67,9 +67,9 @@ const AvatarButton = styled.TouchableOpacity`
   width: 106px;
   height: 106px;
   border-radius: 53px;
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-width: 3px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   align-items: center;
   justify-content: center;
 `;
@@ -80,6 +80,15 @@ const AvatarImage = styled.Image`
   border-radius: 47px;
 `;
 
+const AvatarPlaceholder = styled.View`
+  width: 94px;
+  height: 94px;
+  border-radius: 47px;
+  background-color: #e5e7eb;
+  align-items: center;
+  justify-content: center;
+`;
+
 const CameraBadge = styled.View`
   position: absolute;
   right: 0;
@@ -87,11 +96,11 @@ const CameraBadge = styled.View`
   width: 32px;
   height: 32px;
   border-radius: 16px;
-  background-color: ${portalTheme.secondary};
+  background-color: ${({ theme }) => theme.portal.secondary};
   align-items: center;
   justify-content: center;
   border-width: 2px;
-  border-color: #ffffff;
+  border-color: ${({ theme }) => theme.portal.card};
 `;
 
 const Field = styled.View`
@@ -99,16 +108,10 @@ const Field = styled.View`
 `;
 
 const Label = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 13px;
   font-weight: 900;
   margin-bottom: 7px;
-`;
-
-const Value = styled.Text`
-  color: ${portalTheme.text};
-  font-size: 15px;
-  font-weight: 700;
 `;
 
 const ActionRow = styled.View`
@@ -123,7 +126,7 @@ const ActionButton = styled.TouchableOpacity`
   overflow: hidden;
   align-items: center;
   justify-content: center;
-  background-color: ${props => props.danger ? '#fff1f2' : 'transparent'};
+  background-color: ${({ danger, theme }) => danger ? (theme.mode === 'dark' ? 'rgba(190, 24, 93, 0.18)' : '#fff1f2') : 'transparent'};
   border-width: ${props => props.danger ? '1px' : '0'};
   border-color: #fecdd3;
   margin-left: ${props => props.second ? '10px' : '0'};
@@ -156,30 +159,32 @@ const SecurityButton = styled.TouchableOpacity`
   margin-bottom: 16px;
 `;
 
-const SecurityGradient = styled(LinearGradient).attrs({
-  colors: ['#e0f2fe', '#dbeafe', '#ffffff'],
+const SecurityGradient = styled(LinearGradient).attrs(({ theme }) => ({
+  colors: theme.mode === 'dark'
+    ? ['rgba(56,167,240,0.18)', 'rgba(16,37,54,0.94)', 'rgba(7,19,31,0.92)']
+    : ['#e0f2fe', '#dbeafe', '#ffffff'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   width: 100%;
   min-height: 50px;
   border-radius: 14px;
   border-width: 1px;
-  border-color: ${portalTheme.primary};
+  border-color: ${({ theme }) => theme.portal.primary};
   align-items: center;
   justify-content: center;
   flex-direction: row;
 `;
 
 const SecurityText = styled.Text`
-  color: ${portalTheme.primary};
+  color: ${({ theme }) => theme.portal.primary};
   font-size: 14px;
   font-weight: 900;
   margin-left: 8px;
 `;
 
 const SectionTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 16px;
   font-weight: 900;
   margin: 16px 0 12px;
@@ -189,8 +194,8 @@ const SelectField = styled.TouchableOpacity`
   min-height: 52px;
   border-radius: 12px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
-  background-color: #ffffff;
+  border-color: ${({ theme }) => theme.portal.border};
+  background-color: ${({ theme }) => theme.portal.card};
   padding: 0 14px;
   flex-direction: row;
   align-items: center;
@@ -212,14 +217,14 @@ const ModalOverlay = styled.TouchableOpacity`
 
 const ModalCard = styled.View`
   border-radius: 18px;
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   padding: 10px;
 `;
 
 const ModalTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 17px;
   font-weight: 900;
   padding: 10px 12px 4px;
@@ -228,7 +233,7 @@ const ModalTitle = styled.Text`
 const ModalItem = styled.TouchableOpacity`
   padding: 15px 12px;
   border-bottom-width: 1px;
-  border-bottom-color: ${portalTheme.border};
+  border-bottom-color: ${({ theme }) => theme.portal.border};
 `;
 
 const sexOptions = ['Feminino', 'Masculino', 'Outro', 'Prefiro não informar'];
@@ -250,11 +255,22 @@ const addressFields = [
   ['state', 'Estado', 'UF'],
 ];
 
+const getAvatarUri = (form = {}, userData = {}) => {
+  const safeForm = form || {};
+  const safeUserData = userData || {};
+
+  return safeForm.avatarUri ||
+    safeForm.avatarUrl ||
+    safeUserData.avatarUrl ||
+    safeForm.avatarBase64 ||
+    safeUserData.avatarBase64 ||
+    null;
+};
+
 export default function PerfilDadosPessoaisScreen({ navigation, route }) {
   const { user } = useContext(AuthContext);
   const [userData, setUserData] = useState(null);
   const [form, setForm] = useState({});
-  const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [selectModal, setSelectModal] = useState(null);
@@ -267,22 +283,14 @@ export default function PerfilDadosPessoaisScreen({ navigation, route }) {
       if (snapshot.exists()) {
         const data = snapshot.data();
         setUserData(data);
-        if (!isEditing) setForm(data);
+        setForm(current => Object.keys(current).length ? current : data);
       }
     });
 
     return () => unsubscribe();
-  }, [user, isEditing]);
-
-  useEffect(() => {
-    if (route?.params?.startEditing) {
-      setIsEditing(true);
-    }
-  }, [route?.params?.startEditing]);
+  }, [user]);
 
   const pickAvatar = async () => {
-    if (!isEditing) return;
-
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -312,17 +320,20 @@ export default function PerfilDadosPessoaisScreen({ navigation, route }) {
       const dataToSave = { ...form };
 
       if (dataToSave.avatarUri && !dataToSave.avatarUri.startsWith('http')) {
-        const downloadUrl = await uploadFileToStorage(dataToSave.avatarUri, `${flavorId}/perfil/${user.uid}/avatar`);
-        dataToSave.avatarBase64 = downloadUrl;
-        delete dataToSave.avatarUri;
+        const uploadedAvatar = await uploadProfileImageToStorage(dataToSave.avatarUri, user.uid, flavorId);
+        dataToSave.avatarUrl = uploadedAvatar.url;
+        dataToSave.avatarPath = uploadedAvatar.path;
+        dataToSave.avatarBase64 = uploadedAvatar.url;
+        dataToSave.avatarUpdatedAt = serverTimestamp();
       }
+
+      delete dataToSave.avatarUri;
 
       await updateDoc(doc(firestore, 'users', user.uid), {
         ...dataToSave,
         cadastroCompleto: true,
         googleProfilePending: false,
       });
-      setIsEditing(false);
       Alert.alert('Sucesso', completionMode ? 'Cadastro concluído com sucesso.' : 'Dados pessoais atualizados.');
     } catch (error) {
       console.error('Erro ao salvar dados pessoais:', error);
@@ -334,7 +345,6 @@ export default function PerfilDadosPessoaisScreen({ navigation, route }) {
 
   const cancel = () => {
     setForm(userData || {});
-    setIsEditing(false);
   };
 
   const handleCpfChange = (text) => {
@@ -376,52 +386,38 @@ export default function PerfilDadosPessoaisScreen({ navigation, route }) {
     }
   };
 
-  const avatarSource = form.avatarUri
-    ? { uri: form.avatarUri }
-    : form.avatarBase64
-      ? { uri: form.avatarBase64 }
-      : userData?.avatarBase64
-        ? { uri: userData.avatarBase64 }
-        : require('../../assets/logo.png');
+  const avatarUri = getAvatarUri(form, userData);
 
   const renderEditableField = ([key, label, placeholder, keyboardType]) => (
     <Field key={key}>
       <Label>{key === 'cep' && cepLoading ? 'CEP - buscando...' : label}</Label>
-      {isEditing ? (
-        <PortalInput
-          value={form[key]}
-          placeholder={placeholder}
-          onChangeText={
-            key === 'cpf'
-              ? handleCpfChange
-              : key === 'cep'
-                ? handleCepChange
-                : key === 'phone'
-                  ? handlePhoneChange
-                  : (text) => setForm({ ...form, [key]: text })
-          }
-          onBlur={key === 'cpf' ? handleCpfBlur : key === 'cep' ? handleCepBlur : undefined}
-          keyboardType={keyboardType}
-          maxLength={key === 'state' ? 2 : undefined}
-          autoCapitalize={key === 'state' ? 'characters' : 'sentences'}
-        />
-      ) : (
-        <Value>{userData?.[key] || 'Não informado'}</Value>
-      )}
+      <PortalInput
+        value={form[key] || ''}
+        placeholder={placeholder}
+        onChangeText={
+          key === 'cpf'
+            ? handleCpfChange
+            : key === 'cep'
+              ? handleCepChange
+              : key === 'phone'
+                ? handlePhoneChange
+                : (text) => setForm({ ...form, [key]: text })
+        }
+        onBlur={key === 'cpf' ? handleCpfBlur : key === 'cep' ? handleCepBlur : undefined}
+        keyboardType={keyboardType}
+        maxLength={key === 'state' ? 2 : undefined}
+        autoCapitalize={key === 'state' ? 'characters' : 'sentences'}
+      />
     </Field>
   );
 
   const renderSelectField = (key, label, options) => (
     <Field>
       <Label>{label}</Label>
-      {isEditing ? (
-        <SelectField onPress={() => setSelectModal({ key, label, options })}>
-          <SelectText selected={Boolean(form[key])}>{form[key] || `Selecione ${label.toLowerCase()}`}</SelectText>
-          <Ionicons name="chevron-down" size={20} color={portalTheme.muted} />
-        </SelectField>
-      ) : (
-        <Value>{userData?.[key] || 'Não informado'}</Value>
-      )}
+      <SelectField onPress={() => setSelectModal({ key, label, options })}>
+        <SelectText selected={Boolean(form[key])}>{form[key] || `Selecione ${label.toLowerCase()}`}</SelectText>
+        <Ionicons name="chevron-down" size={20} color={portalTheme.muted} />
+      </SelectField>
     </Field>
   );
 
@@ -447,8 +443,14 @@ export default function PerfilDadosPessoaisScreen({ navigation, route }) {
 
           <PortalCard>
             <AvatarRow>
-              <AvatarButton activeOpacity={isEditing ? 0.75 : 1} onPress={pickAvatar}>
-                <AvatarImage source={avatarSource} />
+              <AvatarButton activeOpacity={0.75} onPress={pickAvatar}>
+                {avatarUri ? (
+                  <AvatarImage source={{ uri: avatarUri }} />
+                ) : (
+                  <AvatarPlaceholder>
+                    <Ionicons name="person" size={46} color="#94a3b8" />
+                  </AvatarPlaceholder>
+                )}
                 <CameraBadge>
                   <Ionicons name="camera-outline" size={18} color="#ffffff" />
                 </CameraBadge>
@@ -456,16 +458,14 @@ export default function PerfilDadosPessoaisScreen({ navigation, route }) {
             </AvatarRow>
 
             <ActionRow>
-              <ActionButton onPress={isEditing ? save : () => setIsEditing(true)} disabled={saving}>
+              <ActionButton onPress={save} disabled={saving}>
                 <ActionGradient>
-                  {saving ? <ActivityIndicator color="#fff" /> : <ActionText>{isEditing ? 'Salvar' : 'Editar'}</ActionText>}
+                  {saving ? <ActivityIndicator color="#fff" /> : <ActionText>Salvar</ActionText>}
                 </ActionGradient>
               </ActionButton>
-              {isEditing ? (
-                <ActionButton second danger onPress={cancel}>
-                  <ActionText danger>Cancelar</ActionText>
-                </ActionButton>
-              ) : null}
+              <ActionButton second danger onPress={cancel}>
+                <ActionText danger>Cancelar</ActionText>
+              </ActionButton>
             </ActionRow>
 
             <SecurityButton activeOpacity={0.78} onPress={() => navigation.navigate('PerfilSeguranca')}>

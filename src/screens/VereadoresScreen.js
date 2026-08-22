@@ -5,13 +5,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View, useWindowDimensions } from 'react-native';
 import RenderHtml from 'react-native-render-html';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 
 import { collection, getDocs } from 'firebase/firestore';
 import { getDownloadURL, ref as storageRef } from 'firebase/storage';
 import { firestore, storage } from '../../services/firebaseConfig';
 
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 const genericBiographies = [
   'Parlamentar da Câmara Municipal de Paraipaba, atuando na representação da população e no acompanhamento das demandas do município.',
@@ -21,26 +20,26 @@ const genericBiographies = [
 
 const Container = styled.View`
   flex: 1;
-  background-color: #f8fbff;
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
-const Header = styled(LinearGradient).attrs({
-  colors: ['#f8fbff', '#eef5fb', '#ffffff'],
+const Header = styled(LinearGradient).attrs(({ theme }) => ({
+  colors: theme.gradients.page,
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   padding: 54px 20px 18px;
 `;
 
 const HeaderTitle = styled.Text`
-  color: #0f172a;
+  color: ${({ theme }) => theme.portal.text};
   font-size: 28px;
   line-height: 34px;
   font-weight: 900;
 `;
 
 const HeaderSubtitle = styled.Text`
-  color: #64748b;
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 14px;
   line-height: 20px;
   font-weight: 700;
@@ -51,7 +50,7 @@ const BackButton = styled.TouchableOpacity`
   width: 42px;
   height: 42px;
   border-radius: 21px;
-  background-color: rgba(255, 255, 255, 0.82);
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(16,37,54,0.9)' : 'rgba(255,255,255,0.82)'};
   align-items: center;
   justify-content: center;
   margin-bottom: 18px;
@@ -70,7 +69,7 @@ const AvatarContainer = styled.TouchableOpacity`
 `;
 
 const AvatarRing = styled(LinearGradient).attrs(props => ({
-  colors: props.selected ? ['#025AA1', '#0077ed'] : ['#ffffff', '#eef5fb'],
+  colors: props.selected ? props.theme.gradients.primary : [props.theme.portal.card, props.theme.portal.pageAlt],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
 }))`
@@ -78,7 +77,7 @@ const AvatarRing = styled(LinearGradient).attrs(props => ({
   height: 72px;
   border-radius: 36px;
   border-width: 2px;
-  border-color: ${props => props.selected ? 'rgba(2, 90, 161, 0.35)' : '#e2e8f0'};
+  border-color: ${({ selected, theme }) => selected ? theme.portal.primary : theme.portal.border};
   justify-content: center;
   align-items: center;
   margin-bottom: 6px;
@@ -88,12 +87,12 @@ const AvatarPhoto = styled.Image`
   width: 60px;
   height: 60px;
   border-radius: 30px;
-  background-color: #eee;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
 `;
 
 const AvatarName = styled.Text`
   font-size: 11px;
-  color: ${props => props.selected ? primaryColor : '#64748b'};
+  color: ${({ selected, theme }) => selected ? theme.portal.primary : theme.portal.muted};
   text-align: center;
   font-weight: 900;
 `;
@@ -106,8 +105,8 @@ const DetailsContainer = styled.ScrollView`
 const GlassCard = styled(BlurView)`
   border-radius: 22px;
   overflow: hidden;
-  background-color: rgba(255, 255, 255, 0.78);
-  border-color: #e2e8f0;
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(16,37,54,0.9)' : 'rgba(255,255,255,0.78)'};
+  border-color: ${({ theme }) => theme.portal.border};
   border-width: 1px;
   padding: 16px;
   margin-bottom: 25px;
@@ -123,7 +122,7 @@ const ProfileImage = styled.Image`
   width: 104px;
   height: 126px;
   border-radius: 18px;
-  background-color: #ccc;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   margin-right: 15px;
 `;
 
@@ -136,13 +135,13 @@ const ProfileName = styled.Text`
   font-size: 19px;
   line-height: 24px;
   font-weight: 800;
-  color: #0f172a;
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 10px;
 `;
 
 const ProfileDetail = styled.Text`
   font-size: 14px;
-  color: #64748b;
+  color: ${({ theme }) => theme.portal.muted};
   margin-bottom: 4px;
   font-weight: 700;
 `;
@@ -150,13 +149,13 @@ const ProfileDetail = styled.Text`
 const SectionTitle = styled.Text`
   font-size: 18px;
   font-weight: 900;
-  color: #0f172a;
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 15px;
 `;
 
 const BiographyText = styled.Text`
   font-size: 15px;
-  color: #555;
+  color: ${({ theme }) => theme.portal.text};
   line-height: 24px;
   text-align: justify;
 `;
@@ -186,15 +185,16 @@ const resolveAvatarUrl = async (avatarUrl) => {
 };
 
 export default function VereadoresScreen({ navigation }) {
+  const theme = useTheme();
   const [vereadores, setVereadores] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
   const { width } = useWindowDimensions();
 
   const tagsStyles = {
-    p: { fontSize: 15, lineHeight: 24, color: '#555', textAlign: 'justify', marginBottom: 10 },
-    strong: { fontWeight: 'bold', color: '#333' },
-    a: { color: primaryColor, textDecorationLine: 'underline' }
+    p: { fontSize: 15, lineHeight: 24, color: theme.portal.text, textAlign: 'justify', marginBottom: 10 },
+    strong: { fontWeight: 'bold', color: theme.portal.text },
+    a: { color: theme.portal.primary, textDecorationLine: 'underline' }
   };
 
   // Função para retornar um texto genérico baseado no ID do vereador
@@ -263,7 +263,7 @@ export default function VereadoresScreen({ navigation }) {
     <Container>
       <Header>
         <BackButton onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="arrow-left" size={23} color={primaryColor} />
+          <MaterialCommunityIcons name="arrow-left" size={23} color={theme.portal.primary} />
         </BackButton>
         <HeaderTitle>Vereadores</HeaderTitle>
         <HeaderSubtitle>Conheça os parlamentares da Câmara Municipal de Paraipaba.</HeaderSubtitle>
@@ -271,7 +271,7 @@ export default function VereadoresScreen({ navigation }) {
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={primaryColor} />
+          <ActivityIndicator size="large" color={theme.portal.primary} />
         </View>
       ) : (
         <>
@@ -292,7 +292,7 @@ export default function VereadoresScreen({ navigation }) {
           {/* Content Area */}
           {selectedVereador && (
             <DetailsContainer showsVerticalScrollIndicator={false}>
-              <GlassCard intensity={80} tint="default">
+              <GlassCard intensity={80} tint={theme.mode === 'dark' ? 'dark' : 'light'}>
                 <ProfileRow>
                   <ProfileImage source={getAvatarSource(selectedVereador.resolvedAvatarUrl || selectedVereador.avatarUrl || selectedVereador.avatarBase64)} />
                   <ProfileInfo>
@@ -310,7 +310,7 @@ export default function VereadoresScreen({ navigation }) {
                   contentWidth={width - 40}
                   source={{ html: selectedVereador.biografia }}
                   tagsStyles={tagsStyles}
-                  baseStyle={{ color: '#555' }}
+                  baseStyle={{ color: theme.portal.text }}
                 />
               ) : (
                 <BiographyText>{getGenericBio(selectedVereador.id)}</BiographyText>

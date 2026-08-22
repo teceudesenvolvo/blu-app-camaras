@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { collection, doc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import {
   PortalBackground,
@@ -43,10 +43,10 @@ const Content = styled.View`
 `;
 
 const ConversationCard = styled.TouchableOpacity`
-  background-color: ${portalTheme.card};
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 14px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   margin-bottom: 12px;
   padding: 14px;
   shadow-color: #0f172a;
@@ -76,21 +76,21 @@ const ConversationInfo = styled.View`
 `;
 
 const ConversationTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 15px;
   line-height: 19px;
   font-weight: 900;
 `;
 
 const ConversationMeta = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 12px;
   font-weight: 800;
   margin-top: 4px;
 `;
 
 const LastMessage = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 13px;
   line-height: 18px;
   margin-top: 7px;
@@ -102,7 +102,7 @@ const EmptyState = styled.View`
 `;
 
 const EmptyText = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 14px;
   line-height: 20px;
   font-weight: 800;
@@ -120,9 +120,9 @@ const ChatHeaderButton = styled.TouchableOpacity`
   border-radius: 21px;
   align-items: center;
   justify-content: center;
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   margin-right: 12px;
 `;
 
@@ -133,23 +133,23 @@ const MessagesList = styled.FlatList`
 const MessageBubble = styled.View`
   max-width: 82%;
   align-self: ${props => props.isUser ? 'flex-end' : 'flex-start'};
-  background-color: ${props => props.isUser ? portalTheme.primary : '#ffffff'};
+  background-color: ${({ isUser, theme }) => isUser ? theme.portal.primary : theme.portal.card};
   border-width: ${props => props.isUser ? '0' : '1px'};
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   border-radius: 16px;
   padding: 10px 12px;
   margin-bottom: 10px;
 `;
 
 const MessageText = styled.Text`
-  color: ${props => props.isUser ? '#ffffff' : portalTheme.text};
+  color: ${({ isUser, theme }) => isUser ? '#ffffff' : theme.portal.text};
   font-size: 14px;
   line-height: 20px;
   font-weight: 700;
 `;
 
 const MessageTime = styled.Text`
-  color: ${props => props.isUser ? 'rgba(255,255,255,0.75)' : portalTheme.subtle};
+  color: ${({ isUser, theme }) => isUser ? 'rgba(255,255,255,0.75)' : theme.portal.subtle};
   font-size: 10px;
   font-weight: 800;
   margin-top: 5px;
@@ -160,9 +160,9 @@ const InputWrap = styled.View`
   flex-direction: row;
   align-items: flex-end;
   padding: 10px 14px 118px;
-  background-color: rgba(248, 251, 255, 0.96);
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(7, 19, 31, 0.96)' : 'rgba(248, 251, 255, 0.96)'};
   border-top-width: 1px;
-  border-top-color: ${portalTheme.border};
+  border-top-color: ${({ theme }) => theme.portal.border};
 `;
 
 const ChatInput = styled.TextInput`
@@ -170,11 +170,11 @@ const ChatInput = styled.TextInput`
   min-height: 46px;
   max-height: 120px;
   border-radius: 16px;
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   padding: 12px 14px;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 15px;
 `;
 
@@ -185,7 +185,7 @@ const SendButton = styled.TouchableOpacity`
   align-items: center;
   justify-content: center;
   margin-left: 10px;
-  background-color: ${portalTheme.primary};
+  background-color: ${({ theme }) => theme.portal.primary};
   opacity: ${props => props.disabled ? 0.55 : 1};
 `;
 
@@ -227,6 +227,7 @@ function getConversationTitle(item) {
 }
 
 export default function ChatMensagensScreen({ navigation }) {
+  const theme = useTheme();
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [bySource, setBySource] = useState({});
@@ -335,7 +336,7 @@ export default function ChatMensagensScreen({ navigation }) {
           <PortalHeader compact>
             <PortalHeaderRow>
               <ChatHeaderButton onPress={() => setSelectedConversation(null)} activeOpacity={0.75}>
-                <Ionicons name="arrow-back" size={22} color={portalTheme.primary} />
+                <Ionicons name="arrow-back" size={22} color={theme.portal.primary} />
               </ChatHeaderButton>
               <PortalTitleGroup>
                 <PortalTitle>{selectedFreshConversation.sourceLabel}</PortalTitle>
@@ -367,7 +368,7 @@ export default function ChatMensagensScreen({ navigation }) {
                 value={messageText}
                 onChangeText={setMessageText}
                 multiline
-                placeholderTextColor={portalTheme.subtle}
+                placeholderTextColor={theme.portal.subtle}
               />
               <SendButton onPress={handleSend} disabled={sending || !messageText.trim()}>
                 {sending ? (
@@ -388,7 +389,7 @@ export default function ChatMensagensScreen({ navigation }) {
       <PortalHeader compact>
         <PortalHeaderRow>
           <HeaderBadge>
-            <Ionicons name="chatbubbles-outline" size={22} color={portalTheme.primary} />
+            <Ionicons name="chatbubbles-outline" size={22} color={theme.portal.primary} />
           </HeaderBadge>
           <PortalTitleGroup>
             <PortalTitle>Mensagens</PortalTitle>
@@ -398,7 +399,7 @@ export default function ChatMensagensScreen({ navigation }) {
       </PortalHeader>
 
       {loading ? (
-        <ActivityIndicator size="large" color={portalTheme.primary} style={{ marginTop: 24 }} />
+        <ActivityIndicator size="large" color={theme.portal.primary} style={{ marginTop: 24 }} />
       ) : (
         <List
           data={conversations}
@@ -407,7 +408,7 @@ export default function ChatMensagensScreen({ navigation }) {
           ListHeaderComponent={<Content />}
           ListEmptyComponent={
             <EmptyState>
-              <MaterialCommunityIcons name="message-text-outline" size={40} color={portalTheme.primary} />
+              <MaterialCommunityIcons name="message-text-outline" size={40} color={theme.portal.primary} />
               <EmptyText>Nenhuma conversa encontrada. As mensagens aparecerão aqui quando houver retorno em seus atendimentos.</EmptyText>
             </EmptyState>
           }
@@ -426,7 +427,7 @@ export default function ChatMensagensScreen({ navigation }) {
                       <ConversationMeta>{item.sourceLabel} • {formatDate(item.lastMessage?.timestamp || item.lastMessage?.createdAt || item.lastMessage?.data)}</ConversationMeta>
                       <LastMessage numberOfLines={2}>{text || 'Mensagem disponível'}</LastMessage>
                     </ConversationInfo>
-                    <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
+                    <Ionicons name="chevron-forward" size={20} color={theme.portal.muted} />
                   </ConversationRow>
                 </ConversationCard>
               </Content>

@@ -4,27 +4,25 @@ import * as ImagePicker from 'expo-image-picker';
 import { doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
 const Container = styled.View`
   flex: 1;
-  background-color: ${backgroundColor};
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
 const Header = styled.View`
   flex-direction: row;
   align-items: center;
   padding: 50px 20px 20px 20px;
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-bottom-width: 1px;
-  border-bottom-color: #eee;
+  border-bottom-color: ${({ theme }) => theme.portal.border};
 `;
 
 const BackButton = styled.TouchableOpacity`
@@ -36,7 +34,7 @@ const HeaderTitle = styled.Text`
   text-align: center;
   font-size: 18px;
   font-weight: 700;
-  color: #111;
+  color: ${({ theme }) => theme.portal.text};
   margin-right: 30px;
 `;
 
@@ -46,7 +44,9 @@ const Content = styled.ScrollView`
 `;
 
 const Section = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
@@ -60,10 +60,10 @@ const Section = styled.View`
 const SectionTitle = styled.Text`
   font-size: 16px;
   font-weight: 700;
-  color: ${primaryColor};
+  color: ${({ theme }) => theme.portal.primary};
   margin-bottom: 15px;
   border-bottom-width: 1px;
-  border-bottom-color: #f0f0f0;
+  border-bottom-color: ${({ theme }) => theme.portal.border};
   padding-bottom: 8px;
 `;
 
@@ -73,14 +73,14 @@ const InfoRow = styled.View`
 
 const Label = styled.Text`
   font-size: 12px;
-  color: #888;
+  color: ${({ theme }) => theme.portal.muted};
   margin-bottom: 2px;
   text-transform: uppercase;
 `;
 
 const Value = styled.Text`
   font-size: 15px;
-  color: #333;
+  color: ${({ theme }) => theme.portal.text};
   font-weight: 500;
 `;
 
@@ -106,17 +106,17 @@ const AttachmentContainer = styled.View`
 `;
 
 const FileCard = styled.View`
-  background-color: #f9fafb;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   border-radius: 8px;
   padding: 10px;
   margin-bottom: 12px;
   border-width: 1px;
-  border-color: #e5e7eb;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const FileCardTitle = styled.Text`
   font-size: 13px;
-  color: #4b5563;
+  color: ${({ theme }) => theme.portal.muted};
   font-weight: bold;
   margin-bottom: 5px;
 `;
@@ -124,7 +124,9 @@ const FileCardTitle = styled.Text`
 const UploadButton = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
-  background-color: #e5e7eb;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
   padding: 6px 12px;
   border-radius: 6px;
   align-self: flex-start;
@@ -133,7 +135,7 @@ const UploadButton = styled.TouchableOpacity`
 
 const UploadButtonText = styled.Text`
   font-size: 12px;
-  color: #374151;
+  color: ${({ theme }) => theme.portal.text};
   margin-left: 5px;
 `;
 
@@ -151,16 +153,18 @@ const MessageBubble = styled.View`
   margin-bottom: 10px;
   max-width: 85%;
   align-self: ${props => props.isUser ? 'flex-end' : 'flex-start'};
-  background-color: ${props => props.isUser ? primaryColor : '#f0f0f0'};
+  background-color: ${({ isUser, theme }) => isUser ? theme.portal.primary : theme.portal.pageAlt};
+  border-width: ${props => props.isUser ? '0' : '1px'};
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const MessageText = styled.Text`
-  color: ${props => props.isUser ? '#fff' : '#333'};
+  color: ${({ isUser, theme }) => isUser ? '#fff' : theme.portal.text};
   font-size: 14px;
 `;
 
 const MessageTime = styled.Text`
-  color: ${props => props.isUser ? 'rgba(255,255,255,0.7)' : '#888'};
+  color: ${({ isUser, theme }) => isUser ? 'rgba(255,255,255,0.7)' : theme.portal.muted};
   font-size: 10px;
   margin-top: 4px;
   align-self: flex-end;
@@ -169,21 +173,23 @@ const MessageTime = styled.Text`
 const InputRow = styled.View`
   flex-direction: row;
   align-items: center;
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 25px;
   padding: 5px 15px;
   margin-top: 10px;
   border-width: 1px;
-  border-color: #ddd;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
-const ChatInput = styled.TextInput`
+const ChatInput = styled.TextInput.attrs(({ theme }) => ({ placeholderTextColor: theme.portal.subtle }))`
   flex: 1;
   padding: 10px;
   font-size: 15px;
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 export default function OuvidoriaDetalheScreen({ route, navigation }) {
+    const theme = useTheme();
     const { user } = useContext(AuthContext);
     const { item } = route.params;
     const { dadosManifestacao: initialDados, dadosUsuario, dataManifestacao: initialData, status: initialStatus, id: solicitacaoId } = item;
@@ -366,7 +372,7 @@ export default function OuvidoriaDetalheScreen({ route, navigation }) {
         <Container>
             <Header>
                 <BackButton onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
+                    <Ionicons name="arrow-back" size={24} color={theme.portal.text} />
                 </BackButton>
                 <HeaderTitle>Detalhes da Ouvidoria</HeaderTitle>
             </Header>
@@ -447,7 +453,7 @@ export default function OuvidoriaDetalheScreen({ route, navigation }) {
                                 </MessageBubble>
                             ))
                         ) : (
-                            <Text style={{ color: '#888', textAlign: 'center', marginVertical: 20 }}>Nenhuma mensagem trocada.</Text>
+                            <Text style={{ color: theme.portal.muted, textAlign: 'center', marginVertical: 20 }}>Nenhuma mensagem trocada.</Text>
                         )}
                     </View>
 
@@ -459,7 +465,7 @@ export default function OuvidoriaDetalheScreen({ route, navigation }) {
                             multiline
                         />
                         <TouchableOpacity onPress={handleSendMessage}>
-                            <Ionicons name="send" size={24} color={primaryColor} />
+                            <Ionicons name="send" size={24} color={theme.portal.primary} />
                         </TouchableOpacity>
                     </InputRow>
                 </Section>
@@ -489,14 +495,14 @@ export default function OuvidoriaDetalheScreen({ route, navigation }) {
                                                     source={{ uri }}
                                                     resizeMode="contain"
                                                 />
-                                                <Text style={{ fontSize: 12, color: '#2563eb', marginBottom: 5 }}>
+                                                <Text style={{ fontSize: 12, color: theme.portal.primary, marginBottom: 5 }}>
                                                     <Ionicons name="document-attach" /> {fileName}
                                                 </Text>
                                             </View>
                                         );
                                     })}
                                     <UploadButton onPress={() => handleFileUpdate(field)} disabled={uploading}>
-                                        {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="cloud-upload-outline" size={16} color="#374151" />}
+                                        {uploading ? <ActivityIndicator size="small" color={theme.portal.muted} /> : <Ionicons name="cloud-upload-outline" size={16} color={theme.portal.text} />}
                                         <UploadButtonText>{uploading ? 'Enviando...' : 'Substituir Arquivo'}</UploadButtonText>
                                     </UploadButton>
                                 </FileCard>
@@ -507,8 +513,8 @@ export default function OuvidoriaDetalheScreen({ route, navigation }) {
 
                 {(!(dadosManifestacao?.anexos?.arquivos_adicionais || (rootAnexos && !Array.isArray(rootAnexos) && rootAnexos.arquivos_adicionais))) && (
                     <Section>
-                        <UploadButton onPress={() => handleFileUpdate('arquivos_adicionais')} disabled={uploading} style={{ backgroundColor: '#e5e7eb', padding: 12, borderRadius: 8, width: '100%', justifyContent: 'center' }}>
-                            {uploading ? <ActivityIndicator size="small" color="#666" /> : <Ionicons name="add-circle-outline" size={20} color="#374151" />}
+                        <UploadButton onPress={() => handleFileUpdate('arquivos_adicionais')} disabled={uploading} style={{ padding: 12, borderRadius: 8, width: '100%', justifyContent: 'center' }}>
+                            {uploading ? <ActivityIndicator size="small" color={theme.portal.muted} /> : <Ionicons name="add-circle-outline" size={20} color={theme.portal.text} />}
                             <UploadButtonText style={{ fontSize: 14 }}>{uploading ? 'Enviando...' : 'Anexar Outros Arquivos'}</UploadButtonText>
                         </UploadButton>
                     </Section>

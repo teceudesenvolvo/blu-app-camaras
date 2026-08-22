@@ -66,6 +66,23 @@ const initializeMailTransport = async () => {
     return mailTransport;
 };
 
+function normalizeEmail(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+async function findUserIdByEmail(email) {
+    const targetEmail = normalizeEmail(email);
+    if (!targetEmail) return null;
+
+    const userQuery = await admin.firestore().collection('users')
+        .where('email', '==', targetEmail)
+        .limit(1)
+        .get();
+
+    if (userQuery.empty) return null;
+    return userQuery.docs[0].id;
+}
+
 // --- Helper to send push notifications ---
 async function sendPushNotificationToUser(userId, title, body, data) {
     try {
@@ -192,19 +209,7 @@ const handlePanicAlert = onDocumentCreated(
             }
 
             // Envia Push para o contato (Busca otimizada por Query)
-            const targetEmail = String(contact.email || '').toLowerCase();
-            let contactUserId = null;
-
-            if (targetEmail) {
-                const userQuery = await admin.firestore().collection('users')
-                    .where('email', '==', targetEmail)
-                    .limit(1)
-                    .get();
-                
-                if (!userQuery.empty) {
-                    contactUserId = userQuery.docs[0].id;
-                }
-            }
+            const contactUserId = await findUserIdByEmail(contact.email);
 
             // Nota: Para busca por telefone, recomenda-se salvar um campo 'normalizedPhone' no Firestore 
             // para permitir consultas indexadas (.where) em vez de varrer a coleção inteira.
@@ -216,7 +221,15 @@ const handlePanicAlert = onDocumentCreated(
                     flavorId, 
                     '🆘 PEDIDO DE SOCORRO!', 
                     `${victim.name || 'Uma pessoa'} precisa de ajuda urgente! Veja a localização.`,
-                    { screen: 'PanicLocation', lat: alert.lat, lng: alert.lng, victimName: victim.name }
+                    {
+                        screen: 'PanicLocation',
+                        type: 'panic-alert',
+                        alarm: true,
+                        lat: alert.lat,
+                        lng: alert.lng,
+                        victimName: victim.name,
+                        address: alert.address || '',
+                    }
                 );
             }
 
@@ -229,6 +242,80 @@ const handlePanicAlert = onDocumentCreated(
 );
 
 exports.handlePanicAlert = handlePanicAlert;
+
+exports.onTrustedContactWritten = onDocumentWritten(
+    {
+        document: "procuradoria-mulher-btn-panico/{userId}",
+        secrets: [gmailAppPassword],
+    },
+    async (event) => {
+        const after = event.data?.after?.data();
+        if (!after) return null;
+
+        const before = event.data?.before?.data();
+        const contactEmail = normalizeEmail(after.email);
+        const previousEmail = normalizeEmail(before?.email);
+
+        if (!contactEmail || contactEmail === previousEmail) {
+            return null;
+        }
+
+        const ownerUserId = event.params.userId;
+        const flavorId = after.flavorId || 'paraipaba';
+
+        try {
+            const ownerDoc = await admin.firestore().collection('users').doc(ownerUserId).get();
+            const owner = ownerDoc.exists ? ownerDoc.data() : {};
+            const ownerName = owner.name || owner.displayName || 'Uma usuária';
+            const appStoreUrl = 'https://apps.apple.com/app/id6769832252';
+            const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.blutecnologias.appcamara';
+            const html = `
+                <p>Olá,</p>
+                <p><strong>${ownerName}</strong> adicionou você como contato de confiança no aplicativo <strong>CM Paraipaba</strong>.</p>
+                <p>Se ela acionar o Botão do Pânico, você receberá um alerta no aplicativo com a localização enviada.</p>
+                <p>Para receber o alarme no celular, baixe o app, faça login/cadastro com este mesmo e-mail e permita notificações.</p>
+                <p>
+                    <a href="${appStoreUrl}">Baixar na App Store</a><br/>
+                    <a href="${playStoreUrl}">Baixar no Google Play</a>
+                </p>
+            `;
+
+            const transport = await initializeMailTransport();
+            await transport.sendMail({
+                from: `"CM Paraipaba" <${gmailEmail.value()}>`,
+                to: contactEmail,
+                subject: 'Você foi adicionado como contato de confiança',
+                html,
+            });
+
+            const contactUserId = await findUserIdByEmail(contactEmail);
+            if (contactUserId) {
+                await addFirestoreNotification(
+                    contactUserId,
+                    flavorId,
+                    'Contato de confiança',
+                    `${ownerName} adicionou você como contato de confiança no CM Paraipaba.`,
+                    {
+                        screen: 'Procuradoria',
+                        type: 'trusted-contact-invite',
+                    }
+                );
+            }
+
+            await event.data.after.ref.set({
+                email: contactEmail,
+                inviteEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+                trustedContactUserId: contactUserId || null,
+            }, { merge: true });
+
+            console.log(`Convite de contato de confiança enviado para ${contactEmail}.`);
+            return { success: true };
+        } catch (error) {
+            console.error('Erro ao enviar convite para contato de confiança:', error);
+            return null;
+        }
+    }
+);
 
 // 2. Envio de Notificações Gerais via Firestore - v2 API
 exports.sendPushNotificationFirestore = onDocumentCreated(

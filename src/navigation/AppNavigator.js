@@ -3,12 +3,12 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BlurView } from 'expo-blur';
-import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import * as QuickActions from 'expo-quick-actions';
 import React, { useEffect } from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useTheme } from 'styled-components/native';
 import Animated, {
     interpolate,
     useAnimatedStyle,
@@ -27,6 +27,7 @@ import TvCamaraScreen from '../screens/TvCamaraScreen';
 
 // 2. Telas Internas (Escondem a BottomBar)
 import AtendimentoJuridicoScreen from '../screens/AtendimentoJuridicoScreen';
+import AvaliarAtendimentoScreen from '../screens/AvaliarAtendimentoScreen';
 import BalcaoCidadaoScreen from '../screens/BalcaoCidadaoScreen';
 import BalcaoDetalheScreen from '../screens/BalcaoDetalheScreen';
 import BalcaoSolicitacaoScreen from '../screens/BalcaoSolicitacaoScreen';
@@ -57,6 +58,16 @@ const Stack = createNativeStackNavigator();
 const { width } = Dimensions.get('window');
 
 const getNotificationRoute = (data = {}) => {
+    if (data.type === 'service-evaluation') {
+        return {
+            name: 'AvaliarAtendimento',
+            params: {
+                protocolo: data.protocolo || data.solicitacaoId,
+                notificationId: data.notificationId,
+            },
+        };
+    }
+
     if (data.screen === 'TvCamara') {
         return {
             name: 'TvCamara',
@@ -93,7 +104,7 @@ const getNotificationRoute = (data = {}) => {
     return null;
 };
 
-const LiquidTabItem = ({ icon, isFocused, onPress, primaryColor, compact, showBadge }) => {
+const LiquidTabItem = ({ icon, isFocused, onPress, primaryColor, inactiveColor, compact, showBadge }) => {
     const focusProgress = useSharedValue(isFocused ? 1 : 0);
 
     React.useEffect(() => {
@@ -122,7 +133,7 @@ const LiquidTabItem = ({ icon, isFocused, onPress, primaryColor, compact, showBa
             activeOpacity={0.72}
         >
             <Animated.View style={[iconStyle, styles.iconWrap]}>
-                <MaterialCommunityIcons name={icon} size={compact ? 31 : 26} color={isFocused ? primaryColor : '#111827'} />
+                <MaterialCommunityIcons name={icon} size={compact ? 31 : 26} color={isFocused ? primaryColor : inactiveColor} />
                 {showBadge ? <View style={styles.messageBadge} /> : null}
             </Animated.View>
             {!compact ? <Animated.View style={[styles.activeDot, { backgroundColor: primaryColor }, dotStyle]} /> : null}
@@ -133,8 +144,9 @@ const LiquidTabItem = ({ icon, isFocused, onPress, primaryColor, compact, showBa
 // 3. O COMPONENTE DA BARRA
 const LiquidTabBar = ({ state, descriptors, navigation }) => {
     const { unreadMessagesCount } = React.useContext(AuthContext);
-    const { theme } = Constants.expoConfig.extra;
-    const primaryColor = theme?.primary || '#025AA1';
+    const appTheme = useTheme();
+    const primaryColor = appTheme.portal.primary;
+    const isDark = appTheme.mode === 'dark';
     const pillRoutes = state.routes.slice(0, -1);
     const profileRoute = state.routes[state.routes.length - 1];
     const pillWidth = width - 128;
@@ -188,15 +200,16 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
 
     return (
         <View style={styles.navContainer}>
-            <BlurView intensity={96} tint="light" style={[styles.blur, { width: pillWidth }]}>
+            <BlurView intensity={96} tint={isDark ? 'dark' : 'light'} style={[styles.blur, { width: pillWidth }]}>
                 <LinearGradient
                     pointerEvents="none"
-                    colors={['rgba(255,255,255,0.86)', 'rgba(255,255,255,0.42)', 'rgba(255,255,255,0.22)']}
+                    colors={isDark
+                        ? ['rgba(16,37,54,0.92)', 'rgba(7,19,31,0.72)', 'rgba(41,65,84,0.46)']
+                        : ['rgba(255,255,255,0.86)', 'rgba(255,255,255,0.42)', 'rgba(255,255,255,0.22)']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={StyleSheet.absoluteFillObject}
                 />
-                <View pointerEvents="none" style={styles.glassHighlight} />
                 <View pointerEvents="none" style={styles.glassGlowLeft} />
                 {state.index < pillRoutes.length ? (
                     <>
@@ -227,7 +240,9 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                             ]}
                         >
                             <LinearGradient
-                                colors={['rgba(255,255,255,0.98)', `${primaryColor}28`, 'rgba(255,255,255,0.48)']}
+                                colors={isDark
+                                    ? ['rgba(56,167,240,0.38)', `${primaryColor}38`, 'rgba(16,37,54,0.72)']
+                                    : ['rgba(255,255,255,0.98)', `${primaryColor}28`, 'rgba(255,255,255,0.48)']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                                 style={styles.bubbleGradient}
@@ -248,6 +263,7 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                             icon={icon}
                             isFocused={isFocused}
                             primaryColor={primaryColor}
+                            inactiveColor={appTheme.portal.text}
                             showBadge={showBadge}
                             onPress={() => navigation.navigate(route.name)}
                         />
@@ -256,11 +272,13 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
             </BlurView>
 
             <TouchableOpacity activeOpacity={0.76} onPress={() => navigation.navigate(profileRoute.name)} style={styles.profileButtonOuter}>
-                <BlurView intensity={96} tint="light" style={styles.profileButton}>
+                <BlurView intensity={96} tint={isDark ? 'dark' : 'light'} style={styles.profileButton}>
                     <LinearGradient
                         colors={state.index === state.routes.length - 1
                             ? ['rgba(125, 211, 252, 0.96)', 'rgba(16, 185, 129, 0.56)', 'rgba(255,255,255,0.55)']
-                            : ['rgba(255,255,255,0.88)', 'rgba(255,255,255,0.42)', 'rgba(255,255,255,0.24)']}
+                            : isDark
+                                ? ['rgba(16,37,54,0.94)', 'rgba(7,19,31,0.72)', 'rgba(41,65,84,0.5)']
+                                : ['rgba(255,255,255,0.88)', 'rgba(255,255,255,0.42)', 'rgba(255,255,255,0.24)']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={StyleSheet.absoluteFillObject}
@@ -268,7 +286,7 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                     <MaterialCommunityIcons
                         name={descriptors[profileRoute.key].options.tabBarIconName || 'account-outline'}
                         size={34}
-                        color={state.index === state.routes.length - 1 ? primaryColor : '#111827'}
+                        color={state.index === state.routes.length - 1 ? primaryColor : appTheme.portal.text}
                     />
                 </BlurView>
             </TouchableOpacity>
@@ -392,6 +410,7 @@ function NavigationContent() {
                     <Stack.Screen name="NoticiaDetalhe" component={NoticiaDetalheScreen} />
                     <Stack.Screen name="OuvidoriaDetalhe" component={OuvidoriaDetalheScreen} />
                     <Stack.Screen name="BalcaoDetalhe" component={BalcaoDetalheScreen} />
+                    <Stack.Screen name="AvaliarAtendimento" component={AvaliarAtendimentoScreen} />
                     <Stack.Screen name="ProcuradoriaDetalhe" component={ProcuradoriaDetalheScreen} />
                     <Stack.Screen name="PanicLocation" component={PanicLocationScreen} />
                 </>
@@ -425,8 +444,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 41,
         overflow: 'hidden',
-        borderWidth: 1.5,
-        borderColor: 'rgba(255,255,255,0.9)',
+        borderWidth: 0,
         shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 18 },
         shadowOpacity: 0.18,
@@ -453,16 +471,14 @@ const styles = StyleSheet.create({
     },
     trail: {
         position: 'absolute',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.45)',
+        borderWidth: 0,
     },
     bubble: {
         position: 'absolute',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.85)',
+        borderWidth: 0,
         shadowColor: '#025AA1',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.18,
@@ -497,8 +513,7 @@ const styles = StyleSheet.create({
         height: 82,
         borderRadius: 41,
         overflow: 'hidden',
-        borderWidth: 1.5,
-        borderColor: 'rgba(255,255,255,0.9)',
+        borderWidth: 0,
         shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 18 },
         shadowOpacity: 0.18,

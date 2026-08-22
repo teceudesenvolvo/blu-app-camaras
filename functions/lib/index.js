@@ -73,6 +73,71 @@ function getPublicPlaylistVideo(item) {
         position: item.snippet?.position ?? null,
     };
 }
+function getFeedText(value) {
+    if (typeof value === "string") {
+        return value;
+    }
+    if (value && typeof value === "object" && "#text" in value) {
+        return String(value["#text"] ?? "");
+    }
+    return "";
+}
+function getPublicFeedVideo(entry, position) {
+    const videoId = getFeedText(entry.videoId) || getFeedText(entry.id).split(":").pop() || "";
+    const title = getFeedText(entry.title) || "Vídeo da TV Câmara";
+    if (!videoId) {
+        return null;
+    }
+    const group = entry.group && typeof entry.group === "object"
+        ? entry.group
+        : {};
+    const thumbnails = normalizeArray(group.thumbnail);
+    const thumbnailUrl = thumbnails
+        .map((thumbnail) => String(thumbnail?.["@_url"] ?? ""))
+        .find(Boolean) || null;
+    return {
+        videoId,
+        title,
+        description: getFeedText(group.description),
+        thumbnailUrl,
+        publishedAt: getFeedText(entry.published) || getFeedText(entry.updated) || null,
+        position,
+    };
+}
+async function fetchPublicYoutubeFeedVideos(params) {
+    const feedUrls = [
+        params.playlistId
+            ? `https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(params.playlistId)}`
+            : "",
+        params.channelId
+            ? `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(params.channelId)}`
+            : "",
+    ].filter(Boolean);
+    for (const feedUrl of feedUrls) {
+        const feedResponse = await fetch(feedUrl);
+        if (!feedResponse.ok) {
+            firebase_functions_1.logger.warn("Feed público do YouTube retornou erro.", {
+                feedUrl,
+                status: feedResponse.status,
+            });
+            continue;
+        }
+        const xml = await feedResponse.text();
+        const parser = new fast_xml_parser_1.XMLParser({
+            ignoreAttributes: false,
+            removeNSPrefix: true,
+        });
+        const parsed = parser.parse(xml);
+        const entries = normalizeArray(parsed?.feed?.entry);
+        const videos = entries
+            .map((entry, index) => getPublicFeedVideo(entry, index))
+            .filter((video) => Boolean(video));
+        if (videos.length > 0) {
+            return videos;
+        }
+    }
+    return [];
+}
 async function createYoutubeClient() {
     const clientId = readSecret(youtubeClientId, "YOUTUBE_CLIENT_ID");
     const clientSecret = readSecret(youtubeClientSecret, "YOUTUBE_CLIENT_SECRET");
@@ -310,6 +375,7 @@ exports.listarVideosTvCamara = (0, https_1.onRequest)({
         youtubeClientId,
         youtubeClientSecret,
         youtubeRefreshToken,
+        youtubeChannelId,
         youtubePlaylistId,
     ],
 }, async (request, response) => {
@@ -356,6 +422,35 @@ exports.listarVideosTvCamara = (0, https_1.onRequest)({
         firebase_functions_1.logger.error("Falha ao listar videos da TV Camara.", {
             error: getApiErrorMessage(error),
         });
+        try {
+            const fallbackVideos = await fetchPublicYoutubeFeedVideos({
+                playlistId: youtubePlaylistId.value()?.trim(),
+                channelId: youtubeChannelId.value()?.trim(),
+            });
+            if (fallbackVideos.length > 0) {
+                fallbackVideos.sort((firstVideo, secondVideo) => {
+                    const firstTime = firstVideo.publishedAt ? Date.parse(firstVideo.publishedAt) : 0;
+                    const secondTime = secondVideo.publishedAt ? Date.parse(secondVideo.publishedAt) : 0;
+                    return secondTime - firstTime;
+                });
+                firebase_functions_1.logger.warn("Lista pública da TV Câmara carregada via feed público.", {
+                    videosCount: fallbackVideos.length,
+                    reason: getApiErrorMessage(error),
+                });
+                response.set("Cache-Control", "public, max-age=180, s-maxage=180");
+                response.json({
+                    ok: true,
+                    fallback: "youtube-public-feed",
+                    videos: fallbackVideos,
+                });
+                return;
+            }
+        }
+        catch (fallbackError) {
+            firebase_functions_1.logger.error("Fallback público da TV Câmara também falhou.", {
+                error: getApiErrorMessage(fallbackError),
+            });
+        }
         response.status(500).json({
             ok: false,
             error: "Falha ao carregar videos da TV Camara.",

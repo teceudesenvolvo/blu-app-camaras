@@ -3,12 +3,12 @@ import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, View } from 'react-native';
 import styled from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { PortalBackground } from '../components/PortalScaffold';
 import { AuthContext } from '../context/AuthContext';
-import { portalGradients, portalTheme } from '../styles/portalTheme';
+import { portalGradients } from '../styles/portalTheme';
 
 const { width } = Dimensions.get('window');
 const primaryColor = Constants.expoConfig.extra?.theme?.primary || '#004a99';
@@ -22,8 +22,16 @@ const Container = styled.ScrollView`
 const Header = styled.View`
   flex-direction: row;
   justify-content: space-between;
+  align-items: flex-start;
+  padding: 62px 22px 18px;
+`;
+
+const NotificationButton = styled.TouchableOpacity`
+  position: relative;
+  width: 44px;
+  height: 44px;
   align-items: center;
-  padding: 58px 22px 16px;
+  justify-content: center;
 `;
 
 const Badge = styled.View`
@@ -47,19 +55,27 @@ const BadgeText = styled.Text`
 `;
 
 const WelcomeContainer = styled.View`
-  padding: 0px 22px;
+  flex: 1;
+  padding-right: 16px;
 `;
 
 const WelcomeText = styled.Text`
   font-size: 16px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-weight: 700;
 `;
 
 const BoldText = styled.Text`
   font-size: 28px;
   font-weight: 800;
-  color: ${portalTheme.text}; 
+  color: ${({ theme }) => theme.portal.text};
+`;
+
+const InstitutionText = styled.Text`
+  margin-top: 5px;
+  font-size: 12px;
+  color: ${({ theme }) => theme.portal.subtle};
+  font-weight: 700;
 `;
 
 const QuickMenu = styled.View`
@@ -78,7 +94,7 @@ const IconCircle = styled.View`
   width: 56px;
   height: 56px;
   border-radius: 28px;
-  background-color: #FFF;
+  background-color: ${({ theme }) => theme.portal.card};
   justify-content: center;
   align-items: center;
   margin-bottom: 10px;
@@ -89,7 +105,7 @@ const IconCircle = styled.View`
   shadow-offset: 0px 4px;
   shadow-opacity: 0.12;
   shadow-radius: 8px;
-  border: 1px solid ${portalTheme.border};
+  border: 1px solid ${({ theme }) => theme.portal.border};
 `;
 
 const GradientIconCircle = styled(LinearGradient)`
@@ -108,7 +124,7 @@ const GradientIconCircle = styled(LinearGradient)`
 
 const MenuLabel = styled.Text`
   font-size: 11px;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-weight: 800;
   text-align: center;
   line-height: 14px;
@@ -121,7 +137,7 @@ const SectionHeader = styled.View`
 const SectionTitle = styled.Text`
   font-size: 22px;
   font-weight: 700;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 const NewsGrid = styled.View`
@@ -133,11 +149,11 @@ const NewsGrid = styled.View`
 
 const NewsCard = styled.TouchableOpacity`
   width: 47%;
-  background-color: #FFF;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 12px;
   margin-bottom: 20px;
   overflow: hidden;
-  border: 1px solid ${portalTheme.border};
+  border: 1px solid ${({ theme }) => theme.portal.border};
   elevation: 3;
   shadow-color: #000;
   shadow-offset: 0px 2px;
@@ -147,7 +163,7 @@ const NewsCard = styled.TouchableOpacity`
 const NewsImage = styled.Image`
   width: 100%;
   height: 115px;
-  background-color: ${portalTheme.pageAlt};
+  background-color: ${({ theme }) => theme.portal.pageAlt};
 `;
 
 const NewsContent = styled.View`
@@ -157,14 +173,14 @@ const NewsContent = styled.View`
 const NewsTitle = styled.Text`
   font-size: 14px;
   font-weight: 700;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   line-height: 18px;
 `;
 
 const NewsSummary = styled.Text`
   margin-top: 7px;
   font-size: 12px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   line-height: 16px;
 `;
 
@@ -260,13 +276,13 @@ const HomeScreen = ({ navigation }) => {
   return (
     <PortalBackground>
     <Container showsVerticalScrollIndicator={false}>
-      {/* HEADER COM LOGO DINÂMICA */}
       <Header>
-        <Image
-          source={require('../../assets/logo-camara-paraipaba.png')}
-          style={{ width: 74, height: 74, resizeMode: 'contain', marginLeft: -4 }}
-        />
-        <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Notificacoes')}>
+        <WelcomeContainer>
+          <WelcomeText>Olá, seja</WelcomeText>
+          <BoldText>Bem-vindo</BoldText>
+          <InstitutionText>Câmara Municipal de Paraipaba</InstitutionText>
+        </WelcomeContainer>
+        <NotificationButton activeOpacity={0.6} onPress={() => navigation.navigate('Notificacoes')}>
           <View>
             <Ionicons name="notifications" size={26} color={primaryColor} />
             {unreadCount > 0 && (
@@ -275,13 +291,8 @@ const HomeScreen = ({ navigation }) => {
               </Badge>
             )}
           </View>
-        </TouchableOpacity>
+        </NotificationButton>
       </Header>
-
-      <WelcomeContainer>
-        <WelcomeText>Olá, seja</WelcomeText>
-        <BoldText>Bem-vindo</BoldText>
-      </WelcomeContainer>
 
       {/* MENU DE ACESSO RÁPIDO - BACKGROUND CIRCULAR BRANCO COM ÍCONE COLORIDO */}
       <QuickMenu>

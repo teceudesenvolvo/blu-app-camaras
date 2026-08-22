@@ -9,20 +9,19 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { AuthContext } from '../context/AuthContext';
-import { portalTheme } from '../styles/portalTheme';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const Screen = styled.View`
   flex: 1;
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
 `;
 
 const Hero = styled.View`
   min-height: 238px;
-  background-color: #eef2f6;
+  background-color: ${({ theme }) => theme.mode === 'dark' ? theme.portal.pageAlt : '#eef2f6'};
   align-items: center;
   justify-content: center;
   border-bottom-left-radius: 34px;
@@ -41,7 +40,7 @@ const BrandImage = styled.Image`
 `;
 
 const Title = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 26px;
   line-height: 32px;
   font-weight: 900;
@@ -49,7 +48,7 @@ const Title = styled.Text`
 `;
 
 const Subtitle = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 15px;
   line-height: 22px;
   font-weight: 700;
@@ -63,7 +62,7 @@ const FieldBlock = styled.View`
 `;
 
 const Label = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 13px;
   font-weight: 900;
   margin-bottom: 8px;
@@ -77,10 +76,10 @@ const Input = styled.TextInput`
   min-height: 54px;
   border-radius: 14px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
-  background-color: #f8fafc;
+  border-color: ${({ theme }) => theme.portal.border};
+  background-color: ${({ theme }) => theme.portal.page};
   padding: 0 15px;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 16px;
 `;
 
@@ -96,7 +95,7 @@ const ForgotPassword = styled.TouchableOpacity`
 `;
 
 const ForgotPasswordText = styled.Text`
-  color: ${portalTheme.primary};
+  color: ${({ theme }) => theme.portal.primary};
   font-size: 13px;
   font-weight: 900;
 `;
@@ -110,11 +109,11 @@ const PrimaryButton = styled.TouchableOpacity`
   opacity: ${props => props.disabled ? 0.72 : 1};
 `;
 
-const PrimaryGradient = styled(LinearGradient).attrs({
-  colors: ['#025AA1', '#0077ed'],
+const PrimaryGradient = styled(LinearGradient).attrs(({ theme }) => ({
+  colors: theme.gradients.primary,
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   width: 100%;
   min-height: 54px;
   align-items: center;
@@ -135,7 +134,7 @@ const SignupContainer = styled.View`
 `;
 
 const SignupText = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 14px;
   font-weight: 700;
 `;
@@ -145,19 +144,20 @@ const SignupLink = styled.TouchableOpacity`
 `;
 
 const SignupLinkText = styled.Text`
-  color: ${portalTheme.primary};
+  color: ${({ theme }) => theme.portal.primary};
   font-weight: 900;
   font-size: 14px;
 `;
 
 const FooterText = styled.Text`
-  color: ${portalTheme.subtle};
+  color: ${({ theme }) => theme.portal.subtle};
   font-size: 12px;
   text-align: center;
   margin-top: 34px;
 `;
 
 export default function LoginScreen({ navigation }) {
+  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -212,7 +212,7 @@ export default function LoginScreen({ navigation }) {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="email@dominio.com"
-                placeholderTextColor={portalTheme.subtle}
+                placeholderTextColor={theme.portal.subtle}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -225,12 +225,12 @@ export default function LoginScreen({ navigation }) {
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Senha"
-                  placeholderTextColor={portalTheme.subtle}
+                  placeholderTextColor={theme.portal.subtle}
                   secureTextEntry={!showPassword}
                   style={{ paddingRight: 50 }}
                 />
                 <EyeButton onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color={portalTheme.muted} />
+                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color={theme.portal.muted} />
                 </EyeButton>
               </InputShell>
             </FieldBlock>

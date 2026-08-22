@@ -11,6 +11,7 @@ import {
   PortalCard,
 } from '../components/PortalScaffold';
 import { AuthContext } from '../context/AuthContext';
+import { useThemePreference } from '../context/ThemePreferenceContext';
 import { portalGradients, portalTheme } from '../styles/portalTheme';
 
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
@@ -19,11 +20,11 @@ const Container = styled(PortalBackground)`
   flex: 1;
 `;
 
-const Cover = styled(LinearGradient).attrs({
-  colors: portalGradients.primary,
+const Cover = styled(LinearGradient).attrs(({ theme }) => ({
+  colors: theme.gradients?.primary || portalGradients.primary,
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   padding: 64px 20px 72px;
   border-bottom-left-radius: 28px;
   border-bottom-right-radius: 28px;
@@ -68,8 +69,8 @@ const AvatarBox = styled.View`
   height: 108px;
   border-radius: 54px;
   border-width: 4px;
-  border-color: #ffffff;
-  background-color: #ffffff;
+  border-color: ${({ theme }) => theme.portal.card};
+  background-color: ${({ theme }) => theme.portal.card};
   justify-content: center;
   align-items: center;
   shadow-color: #0f172a;
@@ -85,6 +86,15 @@ const AvatarImage = styled.Image`
   border-radius: 48px;
 `;
 
+const AvatarPlaceholder = styled.View`
+  width: 96px;
+  height: 96px;
+  border-radius: 48px;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
+  align-items: center;
+  justify-content: center;
+`;
+
 const EditIconCircle = styled.View`
   position: absolute;
   bottom: 2px;
@@ -92,23 +102,23 @@ const EditIconCircle = styled.View`
   width: 32px;
   height: 32px;
   border-radius: 16px;
-  background-color: ${portalTheme.secondary};
+  background-color: ${({ theme }) => theme.portal.secondary};
   justify-content: center;
   align-items: center;
   border-width: 2px;
-  border-color: #ffffff;
+  border-color: ${({ theme }) => theme.portal.card};
 `;
 
 const ProfileName = styled.Text`
   font-size: 23px;
   font-weight: 900;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   text-align: center;
 `;
 
 const ProfileEmail = styled.Text`
   margin-top: 4px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 13px;
   font-weight: 700;
   text-align: center;
@@ -122,7 +132,7 @@ const RolePill = styled.View`
 `;
 
 const RoleText = styled.Text`
-  color: ${portalTheme.primary};
+  color: ${({ theme }) => theme.portal.primary};
   font-size: 12px;
   font-weight: 900;
 `;
@@ -138,18 +148,18 @@ const StatBox = styled.TouchableOpacity`
   align-items: center;
   padding: 12px 6px;
   border-radius: 14px;
-  background-color: #f8fafc;
+  background-color: ${({ theme }) => theme.portal.page};
   margin: 0 4px;
 `;
 
 const StatNumber = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 20px;
   font-weight: 900;
 `;
 
 const StatLabel = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 11px;
   font-weight: 800;
   margin-top: 3px;
@@ -162,7 +172,7 @@ const Section = styled.View`
 `;
 
 const SectionTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 18px;
   font-weight: 900;
   margin: 12px 0;
@@ -171,10 +181,10 @@ const SectionTitle = styled.Text`
 const TimelineCard = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 14px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   padding: 13px;
   margin-bottom: 10px;
 `;
@@ -198,14 +208,14 @@ const TimelineInfo = styled.View`
 `;
 
 const TimelineTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 14px;
   line-height: 18px;
   font-weight: 900;
 `;
 
 const TimelineMeta = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 12px;
   font-weight: 700;
   margin-top: 4px;
@@ -232,8 +242,8 @@ const ProfileAction = styled.TouchableOpacity`
   min-height: 52px;
   border-radius: 14px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
-  background-color: #f8fafc;
+  border-color: ${({ theme }) => theme.portal.border};
+  background-color: ${({ theme }) => theme.portal.page};
   flex-direction: row;
   align-items: center;
   padding: 0 13px;
@@ -255,17 +265,72 @@ const ProfileActionTextGroup = styled.View`
 `;
 
 const ProfileActionTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 14px;
   font-weight: 900;
 `;
 
 const ProfileActionSubtitle = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 12px;
   font-weight: 700;
   margin-top: 2px;
 `;
+
+const ThemeSettings = styled.View`
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top-width: 1px;
+  border-top-color: ${({ theme }) => theme.portal.border};
+`;
+
+const ThemeSettingsTitle = styled.Text`
+  color: ${({ theme }) => theme.portal.text};
+  font-size: 14px;
+  font-weight: 900;
+`;
+
+const ThemeSettingsSubtitle = styled.Text`
+  margin-top: 3px;
+  color: ${({ theme }) => theme.portal.muted};
+  font-size: 12px;
+  font-weight: 700;
+`;
+
+const ThemeOptions = styled.View`
+  flex-direction: row;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 4px;
+  border-radius: 14px;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
+`;
+
+const ThemeOption = styled.TouchableOpacity`
+  flex: 1;
+  min-height: 54px;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  background-color: ${({ selected, theme }) => selected ? theme.portal.card : 'transparent'};
+  border-width: ${({ selected }) => selected ? '1px' : '0px'};
+  border-color: ${({ theme }) => theme.portal.border};
+`;
+
+const ThemeOptionText = styled.Text`
+  margin-top: 4px;
+  color: ${({ selected, theme }) => selected ? theme.portal.primary : theme.portal.muted};
+  font-size: 11px;
+  font-weight: 900;
+`;
+
+const THEME_OPTIONS = [
+  { key: 'automatic', label: 'Automático', icon: 'time-outline' },
+  { key: 'light', label: 'Claro', icon: 'sunny-outline' },
+  { key: 'dark', label: 'Escuro', icon: 'moon-outline' },
+];
 
 const COLLECTIONS = [
   { key: 'balcao-cidadao', label: 'Balcão', icon: 'card-account-details-outline', color: portalTheme.primary, bg: 'rgba(2, 90, 161, 0.1)' },
@@ -307,8 +372,21 @@ function getRequestTitle(item) {
   return item.tipoServico || item.tipoManifestacao || item.assunto || item.serviceName || item.description || 'Solicitação';
 }
 
+function getAvatarUri(form = {}, userData = {}) {
+  const safeForm = form || {};
+  const safeUserData = userData || {};
+
+  return safeForm.avatarUri ||
+    safeForm.avatarUrl ||
+    safeUserData.avatarUrl ||
+    safeForm.avatarBase64 ||
+    safeUserData.avatarBase64 ||
+    null;
+}
+
 export default function PerfilScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
+  const { themePreference, setThemePreference } = useThemePreference();
   const [userData, setUserData] = useState(null);
   const [form, setForm] = useState({});
   const [requests, setRequests] = useState([]);
@@ -406,13 +484,7 @@ export default function PerfilScreen({ navigation }) {
     navigation.navigate(destination, { item });
   };
 
-  const avatarSource = form.avatarUri
-    ? { uri: form.avatarUri }
-    : form.avatarBase64
-      ? { uri: form.avatarBase64 }
-      : userData?.avatarBase64
-        ? { uri: userData.avatarBase64 }
-        : require('../../assets/logo.png');
+  const avatarUri = getAvatarUri(form, userData);
 
   const visibleRequests = requests.slice(0, 5);
 
@@ -427,10 +499,16 @@ export default function PerfilScreen({ navigation }) {
       </Cover>
 
       <ProfileCard>
-        <AvatarButton activeOpacity={0.75} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
-          <AvatarBox>
-            <AvatarImage source={avatarSource} />
-          </AvatarBox>
+          <AvatarButton activeOpacity={0.75} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
+            <AvatarBox>
+              {avatarUri ? (
+                <AvatarImage source={{ uri: avatarUri }} />
+              ) : (
+                <AvatarPlaceholder>
+                  <Ionicons name="person" size={48} color="#94a3b8" />
+                </AvatarPlaceholder>
+              )}
+            </AvatarBox>
           <EditIconCircle>
             <MaterialCommunityIcons name="account-edit-outline" size={17} color="#fff" />
           </EditIconCircle>
@@ -494,6 +572,30 @@ export default function PerfilScreen({ navigation }) {
             </ProfileActionTextGroup>
             <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
           </ProfileAction>
+
+          <ThemeSettings>
+            <ThemeSettingsTitle>Aparência</ThemeSettingsTitle>
+            <ThemeSettingsSubtitle>Escolha como o tema será exibido neste dispositivo.</ThemeSettingsSubtitle>
+            <ThemeOptions accessibilityRole="radiogroup">
+              {THEME_OPTIONS.map(option => {
+                const selected = themePreference === option.key;
+                return (
+                  <ThemeOption
+                    key={option.key}
+                    selected={selected}
+                    activeOpacity={0.72}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    accessibilityLabel={`Tema ${option.label}`}
+                    onPress={() => setThemePreference(option.key)}
+                  >
+                    <Ionicons name={option.icon} size={20} color={selected ? portalTheme.primary : portalTheme.muted} />
+                    <ThemeOptionText selected={selected}>{option.label}</ThemeOptionText>
+                  </ThemeOption>
+                );
+              })}
+            </ThemeOptions>
+          </ThemeSettings>
         </ProfileActions>
       </ProfileCard>
 

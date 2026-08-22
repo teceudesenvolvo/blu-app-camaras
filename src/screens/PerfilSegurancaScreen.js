@@ -27,7 +27,7 @@ const Content = styled.View`
 `;
 
 const SectionTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 18px;
   font-weight: 900;
   margin: 18px 0 12px;
@@ -38,7 +38,7 @@ const Field = styled.View`
 `;
 
 const Label = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 13px;
   font-weight: 900;
   margin-bottom: 7px;
@@ -53,7 +53,7 @@ const SaveButton = styled.TouchableOpacity`
   border-radius: 14px;
   align-items: center;
   justify-content: center;
-  background-color: ${portalTheme.primary};
+  background-color: ${({ theme }) => theme.portal.primary};
   margin-top: 8px;
   opacity: ${props => props.disabled ? 0.72 : 1};
 `;
@@ -71,7 +71,7 @@ const OutlineButton = styled.TouchableOpacity`
   justify-content: center;
   border-width: 1px;
   border-color: rgba(220, 38, 38, 0.24);
-  background-color: #fff1f2;
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(190, 24, 93, 0.18)' : '#fff1f2'};
   margin-bottom: 14px;
   opacity: ${props => props.disabled ? 0.72 : 1};
 `;
@@ -83,7 +83,7 @@ const OutlineButtonText = styled.Text`
 `;
 
 const HelperText = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 12px;
   line-height: 18px;
   font-weight: 700;
@@ -114,13 +114,13 @@ const ActivityInfo = styled.View`
 `;
 
 const ActivityTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 14px;
   font-weight: 900;
 `;
 
 const ActivityMeta = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 12px;
   font-weight: 700;
   margin-top: 4px;
@@ -129,7 +129,7 @@ const ActivityMeta = styled.Text`
 const RevokedBadge = styled.Text`
   align-self: flex-start;
   color: #b91c1c;
-  background-color: #fee2e2;
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(190, 24, 93, 0.22)' : '#fee2e2'};
   border-radius: 999px;
   overflow: hidden;
   padding: 4px 9px;
@@ -139,7 +139,7 @@ const RevokedBadge = styled.Text`
 `;
 
 const EmptyText = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 13px;
   font-weight: 700;
   line-height: 19px;

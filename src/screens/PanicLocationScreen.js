@@ -13,7 +13,7 @@ const Container = styled.View`
 `;
 
 const AlertCard = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 30px;
   padding: 40px 20px;
   width: 100%;

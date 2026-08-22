@@ -58,14 +58,14 @@ const ErrorBox = styled.View`
   align-items: center;
   justify-content: center;
   padding: 28px;
-  background-color: #f8fafc;
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
 const ErrorTitle = styled.Text`
   margin-top: 12px;
   font-size: 18px;
   font-weight: 900;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   text-align: center;
 `;
 
@@ -73,7 +73,7 @@ const ErrorText = styled.Text`
   margin-top: 8px;
   font-size: 14px;
   line-height: 21px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   text-align: center;
 `;
 
@@ -86,11 +86,11 @@ const NowRow = styled.View`
   align-items: center;
 `;
 
-const NowIcon = styled(LinearGradient).attrs({
-  colors: portalGradients.primary,
+const NowIcon = styled(LinearGradient).attrs(({ theme }) => ({
+  colors: theme.gradients?.primary || portalGradients.primary,
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   width: 46px;
   height: 46px;
   border-radius: 23px;
@@ -104,7 +104,7 @@ const NowTextGroup = styled.View`
 `;
 
 const Eyebrow = styled.Text`
-  color: ${portalTheme.primary};
+  color: ${({ theme }) => theme.portal.primary};
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -112,7 +112,7 @@ const Eyebrow = styled.Text`
 
 const NowTitle = styled.Text`
   margin-top: 4px;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 18px;
   line-height: 23px;
   font-weight: 900;
@@ -136,13 +136,13 @@ const Pill = styled.View`
 
 const PillText = styled.Text`
   margin-left: 6px;
-  color: ${portalTheme.primary};
+  color: ${({ theme }) => theme.portal.primary};
   font-size: 12px;
   font-weight: 800;
 `;
 
 const SectionTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 19px;
   font-weight: 900;
   margin: 22px 0 12px;
@@ -154,7 +154,7 @@ const VideoCard = styled.TouchableOpacity`
   border-radius: 14px;
   margin-bottom: 12px;
   overflow: hidden;
-  background-color: ${portalTheme.card};
+  background-color: ${({ theme }) => theme.portal.card};
   border-width: 1px;
   border-color: ${props => props.selected ? portalTheme.primary : portalTheme.border};
   shadow-color: #0f172a;
@@ -189,7 +189,7 @@ const VideoInfo = styled.View`
 `;
 
 const VideoTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 14px;
   line-height: 18px;
   font-weight: 800;

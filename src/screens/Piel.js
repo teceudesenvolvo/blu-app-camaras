@@ -16,7 +16,7 @@ import { portalTheme } from '../styles/portalTheme';
 const RetryButton = styled.TouchableOpacity`
   margin-top: 15px;
   padding: 12px 18px;
-  background-color: ${portalTheme.primary};
+  background-color: ${({ theme }) => theme.portal.primary};
   border-radius: 12px;
 `;
 
@@ -34,13 +34,13 @@ const HeroText = styled.View`
 const HeroTitle = styled.Text`
   font-size: 18px;
   font-weight: 900;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 const HeroSubtitle = styled.Text`
   margin-top: 5px;
   font-size: 13px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   line-height: 18px;
 `;
 
@@ -52,19 +52,19 @@ const InfoCard = styled(PortalCard)`
 const CardTitle = styled.Text`
   font-size: 17px;
   font-weight: 900;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 const CardBody = styled.Text`
   margin-top: 12px;
   font-size: 14px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   line-height: 22px;
 `;
 
 const DateText = styled.Text`
   font-size: 12px;
-  color: ${portalTheme.subtle};
+  color: ${({ theme }) => theme.portal.subtle};
   margin-top: 15px;
   text-align: right;
   font-weight: 700;

@@ -34,7 +34,7 @@ const HeaderBadge = styled.View`
 `;
 
 const NotificationCard = styled.TouchableOpacity`
-  background-color: ${portalTheme.card};
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 14px;
   border-width: 1px;
   margin-bottom: 12px;
@@ -70,20 +70,20 @@ const NotificationTitle = styled.Text`
   font-size: 15px;
   line-height: 19px;
   font-weight: 900;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 5px;
 `;
 
 const NotificationDesc = styled.Text`
   font-size: 13px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   line-height: 19px;
   margin-bottom: 10px;
 `;
 
 const NotificationDate = styled.Text`
   font-size: 12px;
-  color: ${portalTheme.subtle};
+  color: ${({ theme }) => theme.portal.subtle};
   font-weight: 700;
 `;
 
@@ -94,7 +94,7 @@ const EmptyState = styled.View`
 
 const EmptyText = styled.Text`
   margin-top: 12px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 14px;
   font-weight: 800;
   text-align: center;
@@ -102,6 +102,17 @@ const EmptyText = styled.Text`
 
 const getNotificationRoute = (notification = {}) => {
   const data = notification.data || {};
+
+  if (data.type === 'service-evaluation' || notification.source === 'service-evaluation') {
+    if (notification.evaluated === true) return null;
+    return {
+      name: 'AvaliarAtendimento',
+      params: {
+        protocolo: data.protocolo || data.solicitacaoId || notification.protocolo,
+        notificationId: notification.id,
+      },
+    };
+  }
 
   if (data.screen === 'TvCamara') {
     return {
@@ -141,6 +152,10 @@ const getNotificationRoute = (notification = {}) => {
 
 function getNotificationIcon(notification) {
   const data = notification.data || {};
+
+  if (data.type === 'service-evaluation' || notification.source === 'service-evaluation') {
+    return { icon: 'star-outline', color: '#b45309', bg: 'rgba(245, 158, 11, 0.12)' };
+  }
 
   if (data.screen === 'TvCamara') {
     return { icon: 'television-play', color: '#0f172a', bg: 'rgba(15, 23, 42, 0.1)' };
@@ -255,6 +270,11 @@ export default function NotificacoesScreen({ navigation, route }) {
           <CardBody>
             <NotificationTitle>{item.tituloNotification || 'Mensagem'}</NotificationTitle>
             <NotificationDesc>{item.descricaoNotification || 'Você recebeu uma nova mensagem.'}</NotificationDesc>
+            {item.evaluated === true && (
+              <NotificationDate style={{ color: portalTheme.success, marginBottom: 6 }}>
+                Avaliação enviada
+              </NotificationDate>
+            )}
             <NotificationDate>
               {item.createdAt ? new Date(item.createdAt).toLocaleString('pt-BR') : ''}
             </NotificationDate>

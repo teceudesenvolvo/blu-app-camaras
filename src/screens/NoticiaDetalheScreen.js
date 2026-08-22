@@ -1,17 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Share, Text, useWindowDimensions } from 'react-native';
 import RenderHtml from 'react-native-render-html';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
-
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 
 const Container = styled.View`
   flex: 1;
-  background-color: #FFF;
+  background-color: ${({ theme }) => theme.portal.card};
 `;
 
 const Header = styled.View`
@@ -31,7 +28,7 @@ const BackButton = styled.TouchableOpacity`
   width: 40px;
   height: 40px;
   border-radius: 20px;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(16, 37, 54, 0.94)' : 'rgba(255, 255, 255, 0.9)'};
   justify-content: center;
   align-items: center;
   shadow-color: #000;
@@ -45,7 +42,7 @@ const ShareButton = styled.TouchableOpacity`
   width: 40px;
   height: 40px;
   border-radius: 20px;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(16, 37, 54, 0.94)' : 'rgba(255, 255, 255, 0.9)'};
   justify-content: center;
   align-items: center;
   shadow-color: #000;
@@ -58,12 +55,12 @@ const ShareButton = styled.TouchableOpacity`
 const FeaturedImage = styled.Image`
   width: 100%;
   height: 300px;
-  background-color: #eee;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
 `;
 
 const ContentContainer = styled.ScrollView`
   flex: 1;
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   margin-top: -30px; 
   border-top-left-radius: 30px;
   border-top-right-radius: 30px;
@@ -72,7 +69,7 @@ const ContentContainer = styled.ScrollView`
 
 const DateText = styled.Text`
   font-size: 13px;
-  color: #888;
+  color: ${({ theme }) => theme.portal.muted};
   margin-bottom: 8px;
   font-weight: 500;
 `;
@@ -80,14 +77,14 @@ const DateText = styled.Text`
 const Title = styled.Text`
   font-size: 22px;
   font-weight: 800;
-  color: #1a1a1a;
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 20px;
   line-height: 28px;
 `;
 
 const Divider = styled.View`
   height: 1px;
-  background-color: #eee;
+  background-color: ${({ theme }) => theme.portal.border};
   margin: 10px 0 20px 0;
 `;
 
@@ -95,7 +92,7 @@ const LinkButton = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  background-color: ${primaryColor};
+  background-color: ${({ theme }) => theme.portal.primary};
   padding: 16px;
   border-radius: 12px;
   margin-top: 30px;
@@ -110,6 +107,7 @@ const LinkButtonText = styled.Text`
 `;
 
 export default function NoticiaDetalheScreen({ route, navigation }) {
+    const theme = useTheme();
     const { news: initialNews, id } = route.params || {};
     const [news, setNews] = useState(initialNews || null);
     const [loading, setLoading] = useState(!initialNews);
@@ -153,7 +151,7 @@ export default function NoticiaDetalheScreen({ route, navigation }) {
     if (loading) {
         return (
             <Container style={{ justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={primaryColor} />
+                <ActivityIndicator size="large" color={theme.portal.primary} />
             </Container>
         );
     }
@@ -188,9 +186,9 @@ export default function NoticiaDetalheScreen({ route, navigation }) {
     };
 
     const tagsStyles = {
-        p: { fontSize: 16, lineHeight: 26, color: '#444', marginBottom: 15 },
-        strong: { fontWeight: 'bold', color: '#222' },
-        a: { color: primaryColor, textDecorationLine: 'underline' },
+        p: { fontSize: 16, lineHeight: 26, color: theme.portal.text, marginBottom: 15 },
+        strong: { fontWeight: 'bold', color: theme.portal.text },
+        a: { color: theme.portal.primary, textDecorationLine: 'underline' },
         img: { borderRadius: 10, marginVertical: 10, maxWidth: width - 40 }
     };
 
@@ -200,24 +198,24 @@ export default function NoticiaDetalheScreen({ route, navigation }) {
             
             <Header>
                 <BackButton onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
+                    <Ionicons name="arrow-back" size={24} color={theme.portal.text} />
                 </BackButton>
                 <ShareButton onPress={handleShare}>
-                    <Ionicons name="share-social-outline" size={22} color="#333" />
+                    <Ionicons name="share-social-outline" size={22} color={theme.portal.text} />
                 </ShareButton>
             </Header>
 
             <ContentContainer showsVerticalScrollIndicator={false}>
                 <DateText>{dateText}</DateText>
                 <Title>{titleText}</Title>
-                {subTitle ? <Text style={{ fontSize: 16, color: '#555', marginBottom: 16 }}>{subTitle}</Text> : null}
+                {subTitle ? <Text style={{ fontSize: 16, color: theme.portal.muted, marginBottom: 16 }}>{subTitle}</Text> : null}
                 <Divider />
 
                 <RenderHtml
                     contentWidth={width - 40}
                     source={{ html: contentHtml }}
                     tagsStyles={tagsStyles}
-                    baseStyle={{ color: '#444' }}
+                    baseStyle={{ color: theme.portal.text }}
                 />
 
                 {shareUrl ? (

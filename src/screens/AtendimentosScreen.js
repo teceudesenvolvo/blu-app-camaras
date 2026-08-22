@@ -18,7 +18,7 @@ const Inner = styled.View`
 
 const ListLabel = styled.Text`
   font-size: 14px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   margin-bottom: 12px;
   line-height: 20px;
 `;
@@ -26,12 +26,12 @@ const ListLabel = styled.Text`
 const ServiceItem = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
   padding: 16px;
   border-radius: 12px;
   margin-bottom: 12px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const ServiceInfo = styled.View`
@@ -42,13 +42,13 @@ const ServiceInfo = styled.View`
 const ServiceText = styled.Text`
   font-size: 15px;
   font-weight: 900;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 const ServiceDesc = styled.Text`
   margin-top: 3px;
   font-size: 12px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
 `;
 
 const OutlineButton = styled.TouchableOpacity`
@@ -57,13 +57,13 @@ const OutlineButton = styled.TouchableOpacity`
   justify-content: center;
   border-radius: 12px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   background-color: rgba(255, 255, 255, 0.75);
   margin-top: 8px;
 `;
 
 const OutlineButtonText = styled.Text`
-  color: ${portalTheme.primary};
+  color: ${({ theme }) => theme.portal.primary};
   font-weight: 900;
 `;
 

@@ -89,20 +89,20 @@ const Info = styled.View`
 `;
 
 const Name = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 15px;
   font-weight: 900;
 `;
 
 const Meta = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 12px;
   font-weight: 700;
   margin-top: 4px;
 `;
 
 const EmptyText = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 13px;
   line-height: 19px;
   font-weight: 700;
@@ -124,7 +124,7 @@ const ModalContent = styled(PortalCard)`
 const ModalHeader = styled.View`
   padding: 18px 20px 10px;
   border-bottom-width: 1px;
-  border-bottom-color: ${portalTheme.border};
+  border-bottom-color: ${({ theme }) => theme.portal.border};
 `;
 
 const ModalScroll = styled.ScrollView`
@@ -132,13 +132,13 @@ const ModalScroll = styled.ScrollView`
 `;
 
 const ModalTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 19px;
   font-weight: 900;
 `;
 
 const ModalSubtitle = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 13px;
   line-height: 19px;
   font-weight: 700;
@@ -150,7 +150,7 @@ const Field = styled.View`
 `;
 
 const Label = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 13px;
   font-weight: 900;
   margin-bottom: 7px;
@@ -160,8 +160,8 @@ const ModalActions = styled.View`
   flex-direction: row;
   padding: 12px 20px 20px;
   border-top-width: 1px;
-  border-top-color: ${portalTheme.border};
-  background-color: ${portalTheme.card};
+  border-top-color: ${({ theme }) => theme.portal.border};
+  background-color: ${({ theme }) => theme.portal.card};
 `;
 
 const ModalButton = styled.TouchableOpacity`
@@ -171,7 +171,7 @@ const ModalButton = styled.TouchableOpacity`
   overflow: hidden;
   align-items: center;
   justify-content: center;
-  background-color: ${props => props.secondary ? '#fff1f2' : 'transparent'};
+  background-color: ${({ secondary, theme }) => secondary ? (theme.mode === 'dark' ? 'rgba(190, 24, 93, 0.18)' : '#fff1f2') : 'transparent'};
   border-width: ${props => props.secondary ? '1px' : '0'};
   border-color: #fecdd3;
   margin-left: ${props => props.second ? '10px' : '0'};
@@ -207,14 +207,16 @@ const ChoiceButton = styled.TouchableOpacity`
   overflow: hidden;
   border-width: 1px;
   border-color: ${props => props.active ? portalTheme.primary : portalTheme.border};
-  background-color: ${props => props.active ? 'transparent' : '#f8fafc'};
+  background-color: ${({ active, theme }) => active ? 'transparent' : theme.portal.page};
 `;
 
-const ChoiceGradient = styled(LinearGradient).attrs({
-  colors: ['#e0f2fe', '#dbeafe', '#ffffff'],
+const ChoiceGradient = styled(LinearGradient).attrs(({ theme }) => ({
+  colors: theme.mode === 'dark'
+    ? ['rgba(56,167,240,0.16)', 'rgba(16,37,54,0.94)', 'rgba(7,19,31,0.9)']
+    : ['#e0f2fe', '#dbeafe', '#ffffff'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   min-height: 44px;
   align-items: center;
   justify-content: center;

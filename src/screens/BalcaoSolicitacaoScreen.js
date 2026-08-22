@@ -5,14 +5,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { addDoc, collection, doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
 const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
 const getStartOfToday = () => {
@@ -57,14 +56,14 @@ const normalizeBookedSlots = (value) => {
 
 const Container = styled.ScrollView`
   flex: 1;
-  background-color: ${backgroundColor};
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
 const HeaderContainer = styled.View`
   flex-direction: row;
   align-items: center;
   padding: 50px 20px 20px 20px;
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
 `;
 
 const BackButton = styled.TouchableOpacity`
@@ -76,12 +75,12 @@ const HeaderTitle = styled.Text`
   text-align: center;
   font-size: 18px;
   font-weight: 700;
-  color: #111;
+  color: ${({ theme }) => theme.portal.text};
   margin-right: 30px;
 `;
 
 const FormContainer = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 12px;
   padding: 20px;
   margin: 15px 20px 40px 20px;
@@ -98,28 +97,30 @@ const InputGroup = styled.View`
 
 const Label = styled.Text`
   font-size: 14px;
-  color: #333;
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 8px;
   font-weight: 600;
 `;
 
-const Input = styled.TextInput`
-  background-color: #f5f5f5;
+const Input = styled.TextInput.attrs(({ theme }) => ({
+  placeholderTextColor: theme.portal.subtle,
+}))`
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   border-radius: 8px;
   padding: 12px;
   font-size: 16px;
-  color: #333;
+  color: ${({ theme }) => theme.portal.text};
   border-width: 1px;
-  border-color: #e0e0e0;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 // Estilos para o seletor customizado
 const StyledSelect = styled.TouchableOpacity`
-  background-color: #f5f5f5;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   border-radius: 8px;
   padding: 12px 15px;
   border-width: 1px;
-  border-color: #e0e0e0;
+  border-color: ${({ theme }) => theme.portal.border};
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
@@ -127,12 +128,12 @@ const StyledSelect = styled.TouchableOpacity`
 
 const SelectText = styled.Text`
   font-size: 16px;
-  color: ${props => props.placeholder ? '#999' : '#333'};
+  color: ${({ placeholder, theme }) => placeholder ? theme.portal.subtle : theme.portal.text};
 `;
 
 const RequirementsCard = styled.View`
   margin-top: 20px;
-  background-color: #f5f6fa;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   border-radius: 8px;
   padding: 15px;
   border-left-width: 4px;
@@ -147,7 +148,7 @@ const RequirementItem = styled.View`
 
 const RequirementText = styled.Text`
   flex: 1;
-  color: #444;
+  color: ${({ theme }) => theme.portal.text};
   font-size: 14px;
   line-height: 20px;
 `;
@@ -160,7 +161,7 @@ const ModalBackdrop = styled.TouchableOpacity`
 `;
 
 const ModalContainer = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 10px;
   padding: 10px;
   width: 85%;
@@ -170,12 +171,12 @@ const ModalContainer = styled.View`
 const ModalItem = styled.TouchableOpacity`
   padding: 15px;
   border-bottom-width: 1px;
-  border-bottom-color: #eee;
+  border-bottom-color: ${({ theme }) => theme.portal.border};
 `;
 
 const ModalItemText = styled.Text`
   font-size: 16px;
-  color: #333;
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 const TextArea = styled(Input)`
@@ -184,7 +185,7 @@ const TextArea = styled(Input)`
 `;
 
 const SubmitButton = styled.TouchableOpacity`
-  background-color: ${primaryColor};
+  background-color: ${({ theme }) => theme.portal.primary};
   padding: 16px;
   border-radius: 8px;
   align-items: center;
@@ -207,14 +208,16 @@ const SlotContainer = styled.View`
 const SlotButton = styled.TouchableOpacity`
   padding: 10px 15px;
   border-radius: 20px;
-  background-color: ${props => props.selected ? primaryColor : '#e0e0e0'};
+  background-color: ${({ selected, theme }) => selected ? theme.portal.primary : theme.portal.pageAlt};
+  border-width: 1px;
+  border-color: ${({ selected, theme }) => selected ? theme.portal.primary : theme.portal.border};
   margin-right: 10px;
   margin-bottom: 10px;
 `;
 
 const SlotText = styled.Text`
   font-size: 14px;
-  color: ${props => props.selected ? '#fff' : '#333'};
+  color: ${({ selected, theme }) => selected ? '#fff' : theme.portal.text};
   font-weight: 600;
 `;
 
@@ -227,26 +230,26 @@ const TabContainer = styled.View`
 const TabButton = styled.TouchableOpacity`
   flex: 1;
   padding: 12px;
-  background-color: ${props => props.active ? primaryColor : '#f5f5f5'};
+  background-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.pageAlt};
   border-width: 1px;
-  border-color: ${props => props.active ? primaryColor : '#e0e0e0'};
+  border-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.border};
   align-items: center;
   ${props => props.first ? 'border-top-left-radius: 8px; border-bottom-left-radius: 8px;' : ''}
   ${props => props.last ? 'border-top-right-radius: 8px; border-bottom-right-radius: 8px;' : ''}
 `;
 
 const TabText = styled.Text`
-  color: ${props => props.active ? '#fff' : '#666'};
+  color: ${({ active, theme }) => active ? '#fff' : theme.portal.muted};
   font-weight: 600;
 `;
 
 const Card = styled.View`
-  background-color: #f9fafb;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   padding: 15px;
   border-radius: 8px;
   margin-bottom: 20px;
   border-width: 1px;
-  border-color: #eee;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const RadioGroup = styled.View`
@@ -268,7 +271,7 @@ const RadioCircle = styled.View`
   width: 20px;
   border-radius: 10px;
   border-width: 2px;
-  border-color: ${props => props.selected ? primaryColor : '#ccc'};
+  border-color: ${({ selected, theme }) => selected ? theme.portal.primary : theme.portal.border};
   align-items: center;
   justify-content: center;
   margin-right: 8px;
@@ -278,7 +281,7 @@ const SelectedBg = styled.View`
   width: 10px;
   height: 10px;
   border-radius: 5px;
-  background-color: ${primaryColor};
+  background-color: ${({ theme }) => theme.portal.primary};
 `;
 
 const documentsData = {
@@ -296,6 +299,7 @@ const documentsData = {
 };
 
 export default function BalcaoSolicitacaoScreen({ navigation, route }) {
+  const theme = useTheme();
   const { user } = useContext(AuthContext);
   const serviceName = route.params?.serviceName || 'Solicitação';
   const [loading, setLoading] = useState(false);
@@ -614,7 +618,7 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                   <SelectText placeholder={!selectedBeneficiary}>
                     {selectedBeneficiary?.name || 'Selecione um beneficiário cadastrado...'}
                   </SelectText>
-                  <Ionicons name="chevron-down" size={20} color="#666" />
+                  <Ionicons name="chevron-down" size={20} color={theme.portal.muted} />
                 </StyledSelect>
 
                 <Modal
@@ -646,10 +650,10 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                 </Modal>
 
                 {selectedBeneficiary ? (
-                  <View style={{ backgroundColor: '#fff', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
-                    <Text style={{ color: '#111827', fontWeight: '800', marginBottom: 4 }}>{selectedBeneficiary.name}</Text>
-                    <Text style={{ color: '#666', fontWeight: '600' }}>{selectedBeneficiary.parentesco || 'Parentesco não informado'} • CPF {selectedBeneficiary.cpf || 'não informado'}</Text>
-                    {selectedBeneficiary.phone ? <Text style={{ color: '#666', fontWeight: '600', marginTop: 2 }}>{selectedBeneficiary.phone}</Text> : null}
+                  <View style={{ backgroundColor: theme.portal.card, borderRadius: 8, padding: 12, borderWidth: 1, borderColor: theme.portal.border }}>
+                    <Text style={{ color: theme.portal.text, fontWeight: '800', marginBottom: 4 }}>{selectedBeneficiary.name}</Text>
+                    <Text style={{ color: theme.portal.muted, fontWeight: '600' }}>{selectedBeneficiary.parentesco || 'Parentesco não informado'} • CPF {selectedBeneficiary.cpf || 'não informado'}</Text>
+                    {selectedBeneficiary.phone ? <Text style={{ color: theme.portal.muted, fontWeight: '600', marginTop: 2 }}>{selectedBeneficiary.phone}</Text> : null}
                   </View>
                 ) : null}
               </>
@@ -662,7 +666,7 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                   <SelectText placeholder={!parentesco}>
                     {parentesco || 'Selecione o grau de parentesco...'}
                   </SelectText>
-                  <Ionicons name="chevron-down" size={20} color="#666" />
+                  <Ionicons name="chevron-down" size={20} color={theme.portal.muted} />
                 </StyledSelect>
 
                 <Modal
@@ -717,13 +721,13 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                     <RadioCircle selected={phonePreference === 'mesmo'}>
                       {phonePreference === 'mesmo' && <SelectedBg />}
                     </RadioCircle>
-                    <Text style={{color: '#333'}}>Usar o meu</Text>
+                    <Text style={{color: theme.portal.text}}>Usar o meu</Text>
                   </RadioButton>
                   <RadioButton onPress={() => setPhonePreference('novo')}>
                     <RadioCircle selected={phonePreference === 'novo'}>
                       {phonePreference === 'novo' && <SelectedBg />}
                     </RadioCircle>
-                    <Text style={{color: '#333'}}>Informar novo</Text>
+                    <Text style={{color: theme.portal.text}}>Informar novo</Text>
                   </RadioButton>
                 </RadioGroup>
                 
@@ -743,18 +747,18 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                     <RadioCircle selected={enderecoPreference === 'mesmo'}>
                       {enderecoPreference === 'mesmo' && <SelectedBg />}
                     </RadioCircle>
-                    <Text style={{color: '#333'}}>Usar meu endereço</Text>
+                    <Text style={{color: theme.portal.text}}>Usar meu endereço</Text>
                   </RadioButton>
                   <RadioButton onPress={() => setEnderecoPreference('novo')}>
                     <RadioCircle selected={enderecoPreference === 'novo'}>
                       {enderecoPreference === 'novo' && <SelectedBg />}
                     </RadioCircle>
-                    <Text style={{color: '#333'}}>Informar novo endereço</Text>
+                    <Text style={{color: theme.portal.text}}>Informar novo endereço</Text>
                   </RadioButton>
                 </RadioGroup>
 
                 {enderecoPreference === 'novo' && (
-                  <View style={{ marginTop: 10, borderTopWidth: 1, borderColor: '#eee', paddingTop: 15 }}>
+                  <View style={{ marginTop: 10, borderTopWidth: 1, borderColor: theme.portal.border, paddingTop: 15 }}>
                     <Label>CEP *</Label>
                     <Input
                       placeholder="00000-000"
@@ -799,7 +803,7 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                       placeholder="Cidade - UF"
                       value={novoEndereco.cidade ? `${novoEndereco.cidade} - ${novoEndereco.estado}` : ''}
                       editable={false}
-                      style={{ backgroundColor: '#e9ecef', marginBottom: 15 }}
+                      style={{ backgroundColor: theme.portal.page, marginBottom: 15 }}
                     />
                   </View>
                 )}
@@ -824,7 +828,7 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                 <SelectText placeholder={!selectedDocData}>
                   {selectedDocData?.label || 'Selecione um documento...'}
                 </SelectText>
-                <Ionicons name="chevron-down" size={20} color="#666" />
+                <Ionicons name="chevron-down" size={20} color={theme.portal.muted} />
               </StyledSelect>
             </InputGroup>
 
@@ -855,7 +859,7 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
 
             {selectedDocData && (
               <RequirementsCard>
-                <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#333', marginBottom: 15 }}>Documentos e Informações Necessárias:</Text>
+                <Text style={{ fontWeight: 'bold', fontSize: 16, color: theme.portal.text, marginBottom: 15 }}>Documentos e Informações Necessárias:</Text>
                 {selectedDocData.requirements.map((req, index) => (
                   <RequirementItem key={index}>
                     <Ionicons name="checkmark-circle-outline" size={20} color={primaryColor} style={{ marginRight: 8, marginTop: 1 }} />
@@ -871,7 +875,7 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                 {selectedDocData.attachments.map(att => (
                   <StyledSelect key={att.key} onPress={() => handlePickImage(att.key)} style={{ marginBottom: 10 }}>
                     <SelectText placeholder={!formData.anexos[att.key]}>{formData.anexos[att.key] ? `✓ ${att.label}` : att.label}</SelectText>
-                    <Ionicons name={formData.anexos[att.key] ? "checkmark-circle" : "camera-outline"} size={20} color={formData.anexos[att.key] ? 'green' : '#666'} />
+                    <Ionicons name={formData.anexos[att.key] ? "checkmark-circle" : "camera-outline"} size={20} color={formData.anexos[att.key] ? theme.portal.success : theme.portal.muted} />
                   </StyledSelect>
                 ))}
               </InputGroup>
@@ -890,9 +894,9 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                   placeholder="Toque para selecionar a data"
                   value={formData.dataAgendamento}
                   editable={false} // Impede digitação manual para forçar uso do picker
-                  style={{ color: '#000' }}
+                  style={{ color: theme.portal.text }}
                 />
-                <Ionicons name="calendar" size={20} color="#666" style={{ position: 'absolute', right: 15, top: 12 }} />
+                <Ionicons name="calendar" size={20} color={theme.portal.muted} style={{ position: 'absolute', right: 15, top: 12 }} />
               </TouchableOpacity>
 
               {showDatePicker && (
@@ -929,7 +933,7 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                     ))}
                   </SlotContainer>
                 ) : (
-                  <Text style={{ color: '#888', fontStyle: 'italic', marginTop: 5 }}>
+                  <Text style={{ color: theme.portal.muted, fontStyle: 'italic', marginTop: 5 }}>
                     {!loadingSlots && "Nenhum horário disponível para esta data."}
                   </Text>
                 )}
@@ -1210,7 +1214,7 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
     <Container showsVerticalScrollIndicator={false}>
       <HeaderContainer>
         <BackButton onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={theme.portal.text} />
         </BackButton>
         <HeaderTitle>{serviceName}</HeaderTitle>
       </HeaderContainer>

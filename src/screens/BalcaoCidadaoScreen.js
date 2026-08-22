@@ -19,20 +19,20 @@ const Inner = styled.View`
 
 const IntroText = styled.Text`
   font-size: 14px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   margin-bottom: 18px;
   line-height: 21px;
 `;
 
 const ServiceCard = styled.TouchableOpacity`
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 13px;
   flex-direction: row;
   align-items: center;
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const ServiceInfo = styled.View`
@@ -43,13 +43,13 @@ const ServiceInfo = styled.View`
 const ServiceTitle = styled.Text`
   font-size: 15px;
   font-weight: 900;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 4px;
 `;
 
 const ServiceDesc = styled.Text`
   font-size: 12px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   line-height: 17px;
 `;
 
@@ -59,7 +59,7 @@ const OutlineButton = styled.TouchableOpacity`
   justify-content: center;
   border-radius: 12px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   background-color: rgba(255, 255, 255, 0.75);
   margin-top: 4px;
 `;

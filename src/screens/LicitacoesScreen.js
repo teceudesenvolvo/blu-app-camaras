@@ -45,17 +45,17 @@ const DropdownItem = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  background-color: ${portalTheme.card};
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 14px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   padding: 0 14px;
   height: 52px;
   margin-right: ${props => props.last ? '0' : '10px'};
 `;
 
 const DropdownText = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 14px;
   font-weight: 800;
 `;
@@ -86,20 +86,20 @@ const CardTitleGroup = styled.View`
 const CardTitle = styled.Text`
   font-size: 16px;
   font-weight: 900;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 5px;
 `;
 
 const CardInfo = styled.Text`
   font-size: 12px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   margin-bottom: 2px;
   font-weight: 700;
 `;
 
 const CardDesc = styled.Text`
   font-size: 13px;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-weight: 600;
   margin-top: 12px;
   margin-bottom: 12px;
@@ -109,7 +109,7 @@ const CardDesc = styled.Text`
 const CardValue = styled.Text`
   font-size: 15px;
   font-weight: 900;
-  color: ${portalTheme.primary};
+  color: ${({ theme }) => theme.portal.primary};
 `;
 
 const ModalBackdrop = styled.TouchableOpacity`
@@ -128,12 +128,12 @@ const ModalContainer = styled(PortalCard)`
 const ModalItem = styled.TouchableOpacity`
   padding: 15px;
   border-bottom-width: 1px;
-  border-bottom-color: ${portalTheme.border};
+  border-bottom-color: ${({ theme }) => theme.portal.border};
 `;
 
 const ModalItemText = styled.Text`
   font-size: 16px;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-weight: 700;
 `;
 
@@ -144,7 +144,7 @@ const EmptyState = styled.View`
 `;
 
 const EmptyText = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-weight: 800;
   margin-top: 10px;
 `;

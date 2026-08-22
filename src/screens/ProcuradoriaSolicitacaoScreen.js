@@ -11,25 +11,24 @@ import {
     Text,
     View
 } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
 const primaryColor = '#a21caf'; // Purple
-const backgroundColor = '#fcf4f8';
 const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
 
 const Container = styled.ScrollView`
   flex: 1;
-  background-color: ${backgroundColor};
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
 const HeaderContainer = styled.View`
   flex-direction: row;
   align-items: center;
   padding: 50px 20px 20px 20px;
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
 `;
 
 const BackButton = styled.TouchableOpacity`
@@ -41,12 +40,14 @@ const HeaderTitle = styled.Text`
   text-align: center;
   font-size: 18px;
   font-weight: 700;
-  color: #111;
+  color: ${({ theme }) => theme.portal.text};
   margin-right: 30px;
 `;
 
 const FormContainer = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
   border-radius: 12px;
   padding: 20px;
   margin: 15px 20px 40px 20px;
@@ -63,7 +64,7 @@ const SectionTitle = styled.Text`
   color: ${primaryColor};
   margin: 10px 0 15px 0;
   border-bottom-width: 1px;
-  border-bottom-color: #fce7f3;
+  border-bottom-color: ${({ theme }) => theme.portal.border};
   padding-bottom: 5px;
 `;
 
@@ -74,26 +75,26 @@ const InputGroup = styled.View`
 const Label = styled.Text`
   font-size: 13px;
   font-weight: 600;
-  color: #444;
+  color: ${({ theme }) => theme.portal.text};
   margin-bottom: 8px;
 `;
 
-const Input = styled.TextInput`
-  background-color: #fdf2f8;
+const Input = styled.TextInput.attrs(({ theme }) => ({ placeholderTextColor: theme.portal.subtle }))`
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   border-radius: 8px;
   padding: 12px 15px;
   font-size: 14px;
-  color: #333;
+  color: ${({ theme }) => theme.portal.text};
   border-width: 1px;
-  border-color: #fce7f3;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const SelectPlaceholder = styled.TouchableOpacity`
-  background-color: #fdf2f8;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
   border-radius: 8px;
   padding: 12px 15px;
   border-width: 1px;
-  border-color: #fce7f3;
+  border-color: ${({ theme }) => theme.portal.border};
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
@@ -101,7 +102,7 @@ const SelectPlaceholder = styled.TouchableOpacity`
 
 const SelectValue = styled.Text`
   font-size: 14px;
-  color: #333;
+  color: ${({ theme }) => theme.portal.text};
 `;
 
 const AttachmentButton = styled.TouchableOpacity`
@@ -113,7 +114,7 @@ const AttachmentButton = styled.TouchableOpacity`
   border-style: dashed;
   border-radius: 8px;
   margin-top: 5px;
-  background-color: #fdf2f850;
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(162,28,175,0.14)' : '#fdf2f850'};
 `;
 
 const AttachmentText = styled.Text`
@@ -157,7 +158,9 @@ const ModalOverlay = styled.TouchableOpacity`
 `;
 
 const ModalContent = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
   border-radius: 12px;
   padding: 20px;
   width: 85%;
@@ -167,7 +170,7 @@ const ModalContent = styled.View`
 const ModalItem = styled.TouchableOpacity`
   padding: 15px;
   border-bottom-width: 1px;
-  border-bottom-color: #f0f0f0;
+  border-bottom-color: ${({ theme }) => theme.portal.border};
 `;
 
 const ATENDIMENTO_TYPES = [
@@ -188,6 +191,7 @@ const IDENTIFICACAO_TYPES = [
 const RELACAO_VITIMA_TYPES = ['Sou eu', 'Meu familiar', 'Minha amiga', 'Minha mãe', 'Outro'];
 
 export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
+    const theme = useTheme();
     const { user } = useContext(AuthContext);
     const [loading, setLoading] = useState(false);
     const [profileData, setProfileData] = useState(null);
@@ -315,7 +319,7 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
         <Container showsVerticalScrollIndicator={false}>
             <HeaderContainer>
                 <BackButton onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
+                    <Ionicons name="arrow-back" size={24} color={theme.portal.text} />
                 </BackButton>
                 <HeaderTitle>Novo Atendimento</HeaderTitle>
             </HeaderContainer>

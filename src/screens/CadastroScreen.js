@@ -10,18 +10,17 @@ import {
   ScrollView,
   Text,
 } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { AuthContext } from '../context/AuthContext';
-import { portalTheme } from '../styles/portalTheme';
 
 const Screen = styled.View`
   flex: 1;
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
 `;
 
 const Hero = styled.View`
   min-height: 222px;
-  background-color: #eef2f6;
+  background-color: ${({ theme }) => theme.mode === 'dark' ? theme.portal.pageAlt : '#eef2f6'};
   align-items: center;
   justify-content: center;
   border-bottom-left-radius: 34px;
@@ -36,7 +35,7 @@ const BackButton = styled.TouchableOpacity`
   width: 42px;
   height: 42px;
   border-radius: 21px;
-  background-color: rgba(255, 255, 255, 0.82);
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(16, 37, 54, 0.9)' : 'rgba(255, 255, 255, 0.82)'};
   align-items: center;
   justify-content: center;
 `;
@@ -51,7 +50,7 @@ const Content = styled.View`
 `;
 
 const Title = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 26px;
   line-height: 32px;
   font-weight: 900;
@@ -59,7 +58,7 @@ const Title = styled.Text`
 `;
 
 const Subtitle = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 15px;
   line-height: 22px;
   font-weight: 700;
@@ -73,7 +72,7 @@ const FieldBlock = styled.View`
 `;
 
 const Label = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 13px;
   font-weight: 900;
   margin-bottom: 8px;
@@ -87,10 +86,10 @@ const Input = styled.TextInput`
   min-height: 54px;
   border-radius: 14px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
-  background-color: #f8fafc;
+  border-color: ${({ theme }) => theme.portal.border};
+  background-color: ${({ theme }) => theme.portal.page};
   padding: 0 15px;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 16px;
 `;
 
@@ -104,8 +103,8 @@ const SelectPlaceholder = styled.TouchableOpacity`
   min-height: 54px;
   border-radius: 14px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
-  background-color: #f8fafc;
+  border-color: ${({ theme }) => theme.portal.border};
+  background-color: ${({ theme }) => theme.portal.page};
   padding: 0 15px;
   flex-direction: row;
   justify-content: space-between;
@@ -113,7 +112,7 @@ const SelectPlaceholder = styled.TouchableOpacity`
 `;
 
 const SelectText = styled.Text`
-  color: ${props => props.selected ? portalTheme.text : portalTheme.subtle};
+  color: ${({ selected, theme }) => selected ? theme.portal.text : theme.portal.subtle};
   font-size: 16px;
 `;
 
@@ -127,11 +126,11 @@ const PrimaryButton = styled.TouchableOpacity`
   opacity: ${props => props.disabled ? 0.72 : 1};
 `;
 
-const PrimaryGradient = styled(LinearGradient).attrs({
-  colors: ['#025AA1', '#0077ed'],
+const PrimaryGradient = styled(LinearGradient).attrs(({ theme }) => ({
+  colors: theme.gradients.primary,
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   width: 100%;
   min-height: 54px;
   align-items: center;
@@ -152,7 +151,7 @@ const LoginContainer = styled.View`
 `;
 
 const LoginText = styled.Text`
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 14px;
   font-weight: 700;
 `;
@@ -162,7 +161,7 @@ const LoginLink = styled.TouchableOpacity`
 `;
 
 const LoginLinkText = styled.Text`
-  color: ${portalTheme.primary};
+  color: ${({ theme }) => theme.portal.primary};
   font-weight: 900;
   font-size: 14px;
 `;
@@ -178,14 +177,14 @@ const ModalOverlay = styled.TouchableOpacity`
 const ModalContent = styled.View`
   width: 100%;
   border-radius: 18px;
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   padding: 10px;
 `;
 
 const ModalTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 17px;
   font-weight: 900;
   padding: 10px 12px 4px;
@@ -194,10 +193,11 @@ const ModalTitle = styled.Text`
 const ModalItem = styled.TouchableOpacity`
   padding: 15px 12px;
   border-bottom-width: 1px;
-  border-bottom-color: ${portalTheme.border};
+  border-bottom-color: ${({ theme }) => theme.portal.border};
 `;
 
 export default function CadastroScreen({ navigation }) {
+  const theme = useTheme();
   const [nome, setNome] = useState('');
   const [sexo, setSexo] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -250,12 +250,12 @@ export default function CadastroScreen({ navigation }) {
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={portalTheme.subtle}
+          placeholderTextColor={theme.portal.subtle}
           secureTextEntry={!visible}
           style={{ paddingRight: 50 }}
         />
         <EyeButton onPress={() => setVisible(!visible)}>
-          <Ionicons name={visible ? 'eye-off' : 'eye'} size={22} color={portalTheme.muted} />
+          <Ionicons name={visible ? 'eye-off' : 'eye'} size={22} color={theme.portal.muted} />
         </EyeButton>
       </InputShell>
     </FieldBlock>
@@ -267,7 +267,7 @@ export default function CadastroScreen({ navigation }) {
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
           <Hero>
             <BackButton onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={22} color={portalTheme.primary} />
+              <Ionicons name="arrow-back" size={22} color={theme.portal.primary} />
             </BackButton>
             <BrandImage source={require('../../assets/logo-camara-paraipaba.png')} resizeMode="contain" />
           </Hero>
@@ -278,14 +278,14 @@ export default function CadastroScreen({ navigation }) {
 
             <FieldBlock>
               <Label>Nome</Label>
-              <Input value={nome} onChangeText={setNome} placeholder="Nome Sobrenome" placeholderTextColor={portalTheme.subtle} />
+              <Input value={nome} onChangeText={setNome} placeholder="Nome Sobrenome" placeholderTextColor={theme.portal.subtle} />
             </FieldBlock>
 
             <FieldBlock>
               <Label>Sexo</Label>
               <SelectPlaceholder onPress={() => setModalSexoVisible(true)}>
                 <SelectText selected={Boolean(sexo)}>{sexo || 'Selecione seu sexo'}</SelectText>
-                <Ionicons name="chevron-down" size={20} color={portalTheme.muted} />
+                <Ionicons name="chevron-down" size={20} color={theme.portal.muted} />
               </SelectPlaceholder>
             </FieldBlock>
 
@@ -295,7 +295,7 @@ export default function CadastroScreen({ navigation }) {
                 value={telefone}
                 onChangeText={setTelefone}
                 placeholder="(XX) X XXXX-XXXX"
-                placeholderTextColor={portalTheme.subtle}
+                placeholderTextColor={theme.portal.subtle}
                 keyboardType="phone-pad"
               />
             </FieldBlock>
@@ -306,7 +306,7 @@ export default function CadastroScreen({ navigation }) {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="email@dominio.com"
-                placeholderTextColor={portalTheme.subtle}
+                placeholderTextColor={theme.portal.subtle}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -357,7 +357,7 @@ export default function CadastroScreen({ navigation }) {
                     setModalSexoVisible(false);
                   }}
                 >
-                  <Text style={{ fontSize: 16, color: portalTheme.text }}>{option}</Text>
+                  <Text style={{ fontSize: 16, color: theme.portal.text }}>{option}</Text>
                 </ModalItem>
               ))}
             </ModalContent>

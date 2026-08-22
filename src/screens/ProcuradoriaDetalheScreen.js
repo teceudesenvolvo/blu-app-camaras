@@ -22,7 +22,7 @@ const Header = styled.View`
   flex-direction: row;
   align-items: center;
   padding: 50px 20px 20px 20px;
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-bottom-width: 1px;
   border-bottom-color: #eee;
 `;
@@ -46,7 +46,7 @@ const Content = styled.ScrollView`
 `;
 
 const Section = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
@@ -172,7 +172,7 @@ const MessageTime = styled.Text`
 const InputRow = styled.View`
   flex-direction: row;
   align-items: center;
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 25px;
   padding: 5px 15px;
   margin-top: 10px;

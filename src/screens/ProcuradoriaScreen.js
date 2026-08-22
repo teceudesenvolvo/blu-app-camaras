@@ -77,12 +77,12 @@ const InfoTitle = styled.Text`
 
 const InfoText = styled.Text`
   font-size: 14px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   line-height: 21px;
 `;
 
 const HistoryCard = styled.TouchableOpacity`
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 12px;
   padding: 16px;
   margin-top: 18px;
@@ -90,7 +90,7 @@ const HistoryCard = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const HistoryInfo = styled.View`
@@ -99,14 +99,14 @@ const HistoryInfo = styled.View`
 `;
 
 const HistoryTitle = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 15px;
   font-weight: 900;
 `;
 
 const HistorySubtitle = styled.Text`
   margin-top: 3px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 12px;
 `;
 

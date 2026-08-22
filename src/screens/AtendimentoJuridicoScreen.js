@@ -17,7 +17,7 @@ const HeaderContainer = styled.View`
   flex-direction: row;
   align-items: center;
   padding: 50px 20px 20px 20px;
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
 `;
 
 const BackButton = styled.TouchableOpacity`
@@ -34,7 +34,7 @@ const HeaderTitle = styled.Text`
 `;
 
 const FormContainer = styled.View`
-  background-color: #fff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 12px;
   padding: 20px;
   margin: 15px 20px 40px 20px;

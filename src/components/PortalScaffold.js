@@ -4,24 +4,24 @@ import { Platform } from 'react-native';
 import styled from 'styled-components/native';
 import { portalGradients, portalTheme } from '../styles/portalTheme';
 
-export const PortalBackground = styled(LinearGradient).attrs({
-  colors: portalGradients.page,
+export const PortalBackground = styled(LinearGradient).attrs(({ theme }) => ({
+  colors: theme.gradients?.page || portalGradients.page,
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   flex: 1;
 `;
 
 export const PortalScroll = styled.ScrollView`
   flex: 1;
-  background-color: ${portalTheme.page};
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
 export const PortalHeader = styled.View`
   padding: ${props => props.compact ? '68px 22px 18px' : '72px 24px 24px'};
-  background-color: rgba(255, 255, 255, 0.88);
+  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(7, 19, 31, 0.92)' : 'rgba(255, 255, 255, 0.88)'};
   border-bottom-width: 1px;
-  border-bottom-color: ${portalTheme.border};
+  border-bottom-color: ${({ theme }) => theme.portal.border};
 `;
 
 export const PortalHeaderRow = styled.View`
@@ -33,9 +33,9 @@ export const PortalBackButton = styled.TouchableOpacity`
   width: 42px;
   height: 42px;
   border-radius: 21px;
-  background-color: #ffffff;
+  background-color: ${({ theme }) => theme.portal.card};
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   align-items: center;
   justify-content: center;
   margin-right: 12px;
@@ -46,7 +46,7 @@ export const PortalTitleGroup = styled.View`
 `;
 
 export const PortalEyebrow = styled.Text`
-  color: ${portalTheme.primary};
+  color: ${({ theme }) => theme.portal.primary};
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -55,7 +55,7 @@ export const PortalEyebrow = styled.Text`
 
 export const PortalTitle = styled.Text`
   margin-top: 4px;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: ${props => props.large ? '30px' : '22px'};
   font-weight: 900;
   line-height: ${props => props.large ? '36px' : '28px'};
@@ -63,16 +63,16 @@ export const PortalTitle = styled.Text`
 
 export const PortalSubtitle = styled.Text`
   margin-top: 8px;
-  color: ${portalTheme.muted};
+  color: ${({ theme }) => theme.portal.muted};
   font-size: 14px;
   line-height: 21px;
 `;
 
 export const PortalCard = styled.View`
-  background-color: ${portalTheme.card};
+  background-color: ${({ theme }) => theme.portal.card};
   border-radius: 14px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
+  border-color: ${({ theme }) => theme.portal.border};
   padding: ${props => props.padding || '18px'};
   shadow-color: #0f172a;
   shadow-offset: 0px 10px;
@@ -85,15 +85,15 @@ export const PortalInput = styled.TextInput`
   min-height: 52px;
   border-radius: 12px;
   border-width: 1px;
-  border-color: ${portalTheme.border};
-  background-color: #ffffff;
+  border-color: ${({ theme }) => theme.portal.border};
+  background-color: ${({ theme }) => theme.portal.card};
   padding: 0 15px;
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 16px;
 `;
 
 export const PortalLabel = styled.Text`
-  color: ${portalTheme.text};
+  color: ${({ theme }) => theme.portal.text};
   font-size: 13px;
   font-weight: 800;
   margin-bottom: 8px;
@@ -104,18 +104,18 @@ export const PortalPrimaryButton = styled.TouchableOpacity`
   border-radius: 12px;
   overflow: hidden;
   opacity: ${props => props.disabled ? 0.72 : 1};
-  shadow-color: ${portalTheme.primary};
+  shadow-color: ${({ theme }) => theme.portal.primary};
   shadow-offset: 0px 8px;
   shadow-opacity: 0.22;
   shadow-radius: 14px;
   elevation: 4;
 `;
 
-export const PortalButtonGradient = styled(LinearGradient).attrs({
-  colors: portalGradients.primary,
+export const PortalButtonGradient = styled(LinearGradient).attrs(({ theme }) => ({
+  colors: theme.gradients?.primary || portalGradients.primary,
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
-})`
+}))`
   min-height: 54px;
   align-items: center;
   justify-content: center;
