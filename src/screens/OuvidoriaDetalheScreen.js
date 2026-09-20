@@ -1,5 +1,5 @@
+import chamberConfig from '../config';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
@@ -9,7 +9,7 @@ import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 const Container = styled.View`
   flex: 1;

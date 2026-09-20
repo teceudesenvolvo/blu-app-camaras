@@ -10,22 +10,23 @@ import { ThemeProvider } from 'styled-components/native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { THEME_PREFERENCES, ThemePreferenceContext } from './src/context/ThemePreferenceContext';
 import { applyPortalTheme, getAutomaticThemeMode, portalGradients } from './src/styles/portalTheme';
+import { SystemControlProvider, useSystemControl } from './src/context/SystemControlContext';
 
 // Pegamos os dados do Antigravity/Switch (Paraipaba)
-const { theme: flavorTheme } = Constants.expoConfig.extra;
-const THEME_PREFERENCE_KEY = '@cm-paraipaba/theme-preference';
+const THEME_PREFERENCE_KEY = '@' + Constants.expoConfig.extra.slug + '/theme-preference';
 
 const resolveThemeMode = preference => preference === 'automatic'
   ? getAutomaticThemeMode()
   : preference;
 
-export default function App() {
+function ThemedApp() {
+  const { settings } = useSystemControl();
   const [themePreference, setThemePreferenceState] = useState('automatic');
   const [themeMode, setThemeMode] = useState(() => resolveThemeMode('automatic'));
-  const portal = useMemo(() => applyPortalTheme(themeMode), [themeMode]);
+  const portal = useMemo(() => applyPortalTheme(themeMode, settings.design), [themeMode, settings.design]);
   const appTheme = useMemo(() => ({
-    primary: flavorTheme?.primary || '#004a99',
-    secondary: flavorTheme?.secondary || '#f9c204',
+    primary: portal.primary,
+    secondary: portal.secondary,
     background: portal.page,
     mode: themeMode,
     portal,
@@ -99,4 +100,8 @@ export default function App() {
       </ThemeProvider>
     </NavigationContainer>
   );
+}
+
+export default function App() {
+  return <SystemControlProvider><ThemedApp /></SystemControlProvider>;
 }

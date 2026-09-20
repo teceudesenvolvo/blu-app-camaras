@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { doc, getDoc } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, Share, Text, useWindowDimensions } from 'react-native';
 import RenderHtml from 'react-native-render-html';
 import styled, { useTheme } from 'styled-components/native';
@@ -112,6 +112,15 @@ export default function NoticiaDetalheScreen({ route, navigation }) {
     const [news, setNews] = useState(initialNews || null);
     const [loading, setLoading] = useState(!initialNews);
     const { width } = useWindowDimensions();
+    const contentHtml = news?.conteudo || news?.content?.rendered || '';
+    const tagsStyles = useMemo(() => ({
+        p: { fontSize: 16, lineHeight: 26, color: theme.portal.text, marginBottom: 15 },
+        strong: { fontWeight: 'bold', color: theme.portal.text },
+        a: { color: theme.portal.primary, textDecorationLine: 'underline' },
+        img: { borderRadius: 10, marginVertical: 10, maxWidth: width - 40 }
+    }), [theme.portal.primary, theme.portal.text, width]);
+    const htmlSource = useMemo(() => ({ html: contentHtml }), [contentHtml]);
+    const htmlBaseStyle = useMemo(() => ({ color: theme.portal.text }), [theme.portal.text]);
 
     useEffect(() => {
         if (news || !id) return;
@@ -163,7 +172,6 @@ export default function NoticiaDetalheScreen({ route, navigation }) {
     const imageUrl = news.capaUrl || news._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://via.placeholder.com/600x400';
     const titleText = news.titulo || news.title?.rendered || 'Notícia';
     const subTitle = news.subtitulo || '';
-    const contentHtml = news.conteudo || news.content?.rendered || '';
     const dateText = news.createdAt ? formatDate(news.createdAt) : (news.date ? formatDate(news.date) : 'N/A');
     const shareUrl = news.link || '';
 
@@ -183,13 +191,6 @@ export default function NoticiaDetalheScreen({ route, navigation }) {
         if (shareUrl) {
             Linking.openURL(shareUrl);
         }
-    };
-
-    const tagsStyles = {
-        p: { fontSize: 16, lineHeight: 26, color: theme.portal.text, marginBottom: 15 },
-        strong: { fontWeight: 'bold', color: theme.portal.text },
-        a: { color: theme.portal.primary, textDecorationLine: 'underline' },
-        img: { borderRadius: 10, marginVertical: 10, maxWidth: width - 40 }
     };
 
     return (
@@ -213,9 +214,9 @@ export default function NoticiaDetalheScreen({ route, navigation }) {
 
                 <RenderHtml
                     contentWidth={width - 40}
-                    source={{ html: contentHtml }}
+                    source={htmlSource}
                     tagsStyles={tagsStyles}
-                    baseStyle={{ color: theme.portal.text }}
+                    baseStyle={htmlBaseStyle}
                 />
 
                 {shareUrl ? (

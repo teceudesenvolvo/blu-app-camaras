@@ -1,5 +1,5 @@
+import chamberConfig from '../config';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { doc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
@@ -18,7 +18,7 @@ import { AuthContext } from '../context/AuthContext';
 import { portalTheme } from '../styles/portalTheme';
 import { fetchAddressByCep, formatCep, formatCpf, formatPhone, isValidCpf, onlyDigits } from '../utils/brasilForms';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 const Scroll = styled.ScrollView`
   flex: 1;
@@ -331,6 +331,7 @@ export default function PerfilDadosPessoaisScreen({ navigation, route }) {
 
       await updateDoc(doc(firestore, 'users', user.uid), {
         ...dataToSave,
+        nome: dataToSave.name || dataToSave.nome || '',
         cadastroCompleto: true,
         googleProfilePending: false,
       });

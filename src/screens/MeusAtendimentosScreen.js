@@ -1,6 +1,6 @@
+import chamberConfig from '../config';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { collection, deleteDoc, doc, getDoc, onSnapshot, query, runTransaction, where } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
@@ -9,7 +9,7 @@ import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 const getStartOfToday = () => {
   const today = new Date();

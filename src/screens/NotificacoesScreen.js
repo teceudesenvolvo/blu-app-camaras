@@ -1,5 +1,5 @@
+import chamberConfig from '../config';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { collection, doc, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList } from 'react-native';
@@ -17,7 +17,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import { portalTheme } from '../styles/portalTheme';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 const Container = styled(PortalBackground)`
   flex: 1;

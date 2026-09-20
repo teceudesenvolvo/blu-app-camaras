@@ -1,3 +1,4 @@
+import chamberConfig from '../config';
 import Constants from 'expo-constants';
 import { createContext, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
@@ -17,7 +18,7 @@ import { auth, firestore } from '../../services/firebaseConfig';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 export const AuthContext = createContext();
 
@@ -118,7 +119,7 @@ export const AuthProvider = ({ children }) => {
                 }
 
                 const token = (await Notifications.getExpoPushTokenAsync({
-                    projectId: Constants.expoConfig?.extra?.eas?.projectId || "a4515ae1-c9e6-4aa1-a5f9-ae420ea3d93c"
+                    projectId: chamberConfig.eas.projectId
                 })).data;
 
                 try {

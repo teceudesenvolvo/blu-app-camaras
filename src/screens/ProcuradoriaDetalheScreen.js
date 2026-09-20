@@ -1,3 +1,4 @@
+import chamberConfig from '../config';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
@@ -11,7 +12,7 @@ import { AuthContext } from '../context/AuthContext';
 
 const primaryColor = '#a21caf'; // Purple
 const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 const Container = styled.View`
   flex: 1;

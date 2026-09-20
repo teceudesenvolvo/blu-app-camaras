@@ -1,5 +1,5 @@
+import chamberConfig from '../config';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
@@ -7,7 +7,7 @@ import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 
 const Container = styled.View`

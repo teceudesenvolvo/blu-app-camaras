@@ -1,3 +1,4 @@
+import chamberConfig from '../config';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useState } from 'react';
@@ -10,7 +11,7 @@ import {
 } from '../components/PortalScaffold';
 import { portalGradients, portalTheme } from '../styles/portalTheme';
 
-const videosEndpoint = 'https://southamerica-east1-blu-app-camara.cloudfunctions.net/listarVideosTvCamara';
+const videosEndpoint = chamberConfig.videosEndpoint;
 const { width } = Dimensions.get('window');
 const playerWidth = width - 36;
 const playerHeight = Math.round(playerWidth * 9 / 16);

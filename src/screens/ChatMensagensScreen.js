@@ -1,5 +1,5 @@
+import chamberConfig from '../config';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { collection, doc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
@@ -16,7 +16,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import { portalTheme } from '../styles/portalTheme';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 const SOURCES = [
   { key: 'balcao-cidadao', label: 'Balcão', icon: 'card-account-details-outline', color: portalTheme.primary, detail: 'BalcaoDetalhe' },

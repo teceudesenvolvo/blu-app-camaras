@@ -1,3 +1,4 @@
+import chamberConfig from '../src/config';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from './firebaseConfig';
 
@@ -60,7 +61,7 @@ export const uploadFileToStorage = async (uri, folderPath, options = {}) => {
     }
 };
 
-export const uploadProfileImageToStorage = async (uri, userId, flavorId = 'paraipaba') => {
+export const uploadProfileImageToStorage = async (uri, userId, flavorId = chamberConfig.flavorId) => {
     const extension = getFileExtension(uri);
     const path = `${flavorId}/perfil/${userId}/avatar/profile-${Date.now()}.${extension}`;
     const fileRef = ref(storage, path);

@@ -1,229 +1,90 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
-import styled from 'styled-components/native';
-import Constants from 'expo-constants';
-import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { addDoc, collection, doc, getDoc, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
+import { useContext, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useTheme } from 'styled-components/native';
+import { firestore } from '../../services/firebaseConfig';
+import { PortalBackground, PortalScreenHeader } from '../components/PortalScaffold';
+import { AuthContext } from '../context/AuthContext';
 
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
-const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
-
-const Container = styled.ScrollView`
-  flex: 1;
-  background-color: ${backgroundColor};
-`;
-
-const HeaderContainer = styled.View`
-  flex-direction: row;
-  align-items: center;
-  padding: 50px 20px 20px 20px;
-  background-color: ${({ theme }) => theme.portal.card};
-`;
-
-const BackButton = styled.TouchableOpacity`
-  padding: 5px;
-`;
-
-const HeaderTitle = styled.Text`
-  flex: 1;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 700;
-  color: #111;
-  margin-right: 30px;
-`;
-
-const FormContainer = styled.View`
-  background-color: ${({ theme }) => theme.portal.card};
-  border-radius: 12px;
-  padding: 20px;
-  margin: 15px 20px 40px 20px;
-  shadow-color: #000;
-  shadow-offset: 0px 2px;
-  shadow-opacity: 0.05;
-  shadow-radius: 4px;
-  elevation: 2;
-`;
-
-const StepText = styled.Text`
-  font-size: 14px;
-  color: #888;
-  margin-bottom: 15px;
-`;
-
-const ServiceInfoCard = styled.View`
-  background-color: #eef2ff;
-  padding: 15px;
-  border-radius: 8px;
-  border-left-width: 4px;
-  border-left-color: ${primaryColor};
-  margin-bottom: 20px;
-`;
-
-const ServiceInfoTitle = styled.Text`
-  font-size: 14px;
-  font-weight: 700;
-  color: ${primaryColor};
-  margin-bottom: 5px;
-`;
-
-const ServiceInfoSub = styled.Text`
-  font-size: 12px;
-  color: #666;
-`;
-
-const InputGroup = styled.View`
-  margin-bottom: 15px;
-`;
-
-const Label = styled.Text`
-  font-size: 13px;
-  font-weight: 600;
-  color: #444;
-  margin-bottom: 8px;
-`;
-
-const Input = styled.TextInput`
-  background-color: #f5f6fa;
-  border-radius: 8px;
-  padding: 12px 15px;
-  font-size: 14px;
-  color: #333;
-  border-width: 1px;
-  border-color: #eee;
-`;
-
-const SelectPlaceholder = styled.TouchableOpacity`
-  background-color: #f5f6fa;
-  border-radius: 8px;
-  padding: 12px 15px;
-  border-width: 1px;
-  border-color: #eee;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const SelectText = styled.Text`
-  font-size: 14px;
-  color: #888;
-`;
-
-const ConfirmButton = styled.TouchableOpacity`
-  background-color: ${primaryColor};
-  padding: 15px;
-  border-radius: 8px;
-  align-items: center;
-  margin-top: 10px;
-`;
-
-const ConfirmText = styled.Text`
-  color: #fff;
-  font-weight: 600;
-  font-size: 16px;
-`;
-
-const ReturnButton = styled.TouchableOpacity`
-  padding: 15px;
-  align-items: center;
-  margin-top: 5px;
-`;
-
-const ReturnText = styled.Text`
-  color: ${secondaryColor};
-  font-weight: 500;
-  font-size: 14px;
-`;
+const emptyForm = { assunto: '', descricao: '', cepAcontecimento: '', cidadeAcontecimento: '', bairroAcontecimento: '', enderecoAcontecimento: '', numeroAcontecimento: '' };
+const dateLabel = value => value?.toDate?.()?.toLocaleDateString('pt-BR') || 'Data não informada';
 
 export default function AtendimentoJuridicoScreen({ navigation }) {
-    return (
-        <Container showsVerticalScrollIndicator={false}>
-            <HeaderContainer>
-                <BackButton onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
-                </BackButton>
-                <HeaderTitle>Serviços</HeaderTitle>
-            </HeaderContainer>
+  const { user } = useContext(AuthContext);
+  const colors = useTheme().portal;
+  const [items, setItems] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [mode, setMode] = useState('list');
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [date, setDate] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
+  const [form, setForm] = useState(emptyForm);
 
-            <FormContainer>
-                <StepText>2. Detalhes da Solicitação</StepText>
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    return onSnapshot(query(collection(firestore, 'atendimento-juridico'), where('userId', '==', user.uid)), snapshot => {
+      setItems(snapshot.docs.map(row => ({ id: row.id, ...row.data() })).sort((a, b) => (b.dataSolicitacao?.toMillis?.() || 0) - (a.dataSolicitacao?.toMillis?.() || 0)));
+      setLoading(false); setError('');
+    }, failure => { setError(failure.message || 'Não foi possível carregar suas solicitações.'); setLoading(false); });
+  }, [user?.uid]);
 
-                <ServiceInfoCard>
-                    <ServiceInfoTitle>Serviço Selecionado:{"\n"}Atendimento Jurídico</ServiceInfoTitle>
-                    <ServiceInfoSub>Tipo: Serviço Público</ServiceInfoSub>
-                </ServiceInfoCard>
+  const field = (label, key, multiline = false) => <View style={{ marginTop: 16 }}>
+    <Text style={{ color: colors.text, fontSize: 13, fontWeight: '800' }}>{label}</Text>
+    <TextInput value={form[key]} onChangeText={value => setForm(previous => ({ ...previous, [key]: value }))} multiline={multiline} textAlignVertical={multiline ? 'top' : 'center'} placeholderTextColor={colors.muted} maxLength={multiline ? 10000 : 250} keyboardType={key === 'cepAcontecimento' || key === 'numeroAcontecimento' ? 'number-pad' : 'default'} style={{ minHeight: multiline ? 120 : 48, marginTop: 7, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, color: colors.text }} />
+  </View>;
+  const button = (label, onPress, disabled = false) => <TouchableOpacity accessibilityRole="button" onPress={onPress} disabled={disabled} style={{ minHeight: 48, marginTop: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderRadius: 8, opacity: disabled ? 0.5 : 1 }}><Text style={{ color: '#fff', fontWeight: '800' }}>{label}</Text></TouchableOpacity>;
 
-                <InputGroup>
-                    <Label>Sobre o acontecimento</Label>
-                    <Input placeholder="" />
-                </InputGroup>
+  const submit = async () => {
+    if (busy) return;
+    if (!form.assunto.trim() || form.descricao.trim().length < 20) { setError('Informe o assunto e descreva o caso em pelo menos 20 caracteres.'); return; }
+    setBusy(true); setError('');
+    try {
+      const profile = (await getDoc(doc(firestore, 'users', user.uid))).data() || {};
+      await addDoc(collection(firestore, 'atendimento-juridico'), {
+        dadosAcontecimento: { ...form, assunto: form.assunto.trim(), descricao: form.descricao.trim(), dataAcontecimento: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` },
+        dadosUsuario: { id: user.uid, email: profile.email || user.email || '', name: profile.name || profile.nome || user.displayName || '', cpf: profile.cpf || 'Não informado', phone: profile.phone || profile.telefone || 'Não informado', address: profile.address || '', city: profile.city || '', state: profile.state || '', cep: profile.cep || '' },
+        userId: user.uid, status: 'Aguardando Atendimento', dataSolicitacao: serverTimestamp(),
+      });
+      setForm(emptyForm); setMode('list'); Alert.alert('Solicitação enviada', 'Seu pedido de orientação jurídica foi registrado.');
+    } catch (failure) { setError(failure.message || 'Não foi possível enviar a solicitação.'); }
+    finally { setBusy(false); }
+  };
 
-                <InputGroup>
-                    <Label>Data do Acontecimento</Label>
-                    <Input placeholder="DD/MM/AAAA" />
-                </InputGroup>
-
-                <InputGroup>
-                    <Label>CEP do local</Label>
-                    <Input placeholder="" keyboardType="numeric" />
-                </InputGroup>
-
-                <InputGroup>
-                    <Label>Endereço</Label>
-                    <Input placeholder="" />
-                </InputGroup>
-
-                <InputGroup>
-                    <Label>Número</Label>
-                    <Input placeholder="" keyboardType="numeric" />
-                </InputGroup>
-
-                <InputGroup>
-                    <Label>Bairro</Label>
-                    <Input placeholder="" />
-                </InputGroup>
-
-                <InputGroup>
-                    <Label>Cidade</Label>
-                    <Input placeholder="" />
-                </InputGroup>
-
-                <InputGroup>
-                    <Label>Assunto</Label>
-                    <SelectPlaceholder>
-                        <SelectText>Selecione...</SelectText>
-                        <Ionicons name="chevron-down" size={16} color="#888" />
-                    </SelectPlaceholder>
-                </InputGroup>
-
-                <InputGroup>
-                    <Label>Descreva seu caso</Label>
-                    <Input
-                        placeholder=""
-                        multiline
-                        textAlignVertical="top"
-                        style={{ height: 100 }}
-                    />
-                </InputGroup>
-
-                <InputGroup>
-                    <Label>Nome (do seu perfil)</Label>
-                    <Input value="Leonardo Luiz" editable={false} style={{ color: '#888' }} />
-                </InputGroup>
-
-                <InputGroup>
-                    <Label>Telefone / WhatsApp (do seu perfil)</Label>
-                    <Input value="85999991213" editable={false} style={{ color: '#888' }} />
-                </InputGroup>
-
-                <ConfirmButton onPress={() => alert('Solicitação enviada!')}>
-                    <ConfirmText>Confirmar Solicitação</ConfirmText>
-                </ConfirmButton>
-
-                <ReturnButton onPress={() => navigation.goBack()}>
-                    <ReturnText>← Voltar para a Seleção</ReturnText>
-                </ReturnButton>
-            </FormContainer>
-        </Container>
-    );
+  return <PortalBackground>
+    <PortalScreenHeader navigation={navigation} title="Atendimento Jurídico" subtitle="Orientações e solicitações" />
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 18, paddingBottom: 110 }}>
+      {mode === 'list' ? <>
+        {button('Nova solicitação', () => { setError(''); setMode('new'); })}
+        <Text style={{ color: colors.text, fontWeight: '800', fontSize: 18, marginTop: 26 }}>Meus atendimentos</Text>
+        {loading ? <ActivityIndicator color={colors.primary} style={{ marginTop: 18 }} /> : null}
+        {!loading && !items.length && !error ? <Text style={{ color: colors.muted, marginTop: 15 }}>Nenhuma solicitação registrada.</Text> : null}
+        {items.map(item => <TouchableOpacity key={item.id} onPress={() => { setSelected(item); setMode('detail'); }} accessibilityRole="button" style={{ marginTop: 10, padding: 16, borderRadius: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}><Text style={{ color: colors.text, fontWeight: '800' }}>{item.dadosAcontecimento?.assunto || 'Orientação jurídica'}</Text><Text style={{ color: colors.muted, marginTop: 5 }}>{item.status} · {dateLabel(item.dataSolicitacao)}</Text></TouchableOpacity>)}
+      </> : null}
+      {mode === 'new' ? <>
+        {field('Assunto', 'assunto')}
+        {field('Descrição do caso', 'descricao', true)}
+        <Text style={{ color: colors.text, fontWeight: '800', marginTop: 18 }}>Data do acontecimento</Text>
+        {button(date.toLocaleDateString('pt-BR'), () => setShowPicker(true))}
+        {showPicker ? <DateTimePicker value={date} maximumDate={new Date()} mode="date" display={Platform.OS === 'ios' ? 'inline' : 'default'} onChange={(_, value) => { if (Platform.OS !== 'ios') setShowPicker(false); if (value) setDate(value); }} /> : null}
+        {field('CEP do local', 'cepAcontecimento')}
+        {field('Endereço', 'enderecoAcontecimento')}
+        {field('Número', 'numeroAcontecimento')}
+        {field('Bairro', 'bairroAcontecimento')}
+        {field('Cidade', 'cidadeAcontecimento')}
+        {button(busy ? 'Enviando...' : 'Enviar solicitação', submit, busy)}
+      </> : null}
+      {mode === 'detail' && selected ? <View style={{ padding: 16, borderRadius: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{selected.dadosAcontecimento?.assunto}</Text>
+        <Text style={{ color: colors.primary, marginTop: 8 }}>{selected.status}</Text>
+        <Text style={{ color: colors.muted, marginTop: 8 }}>Solicitado em {dateLabel(selected.dataSolicitacao)}</Text>
+        <Text selectable style={{ color: colors.text, lineHeight: 22, marginTop: 18 }}>{selected.dadosAcontecimento?.descricao}</Text>
+        <Text style={{ color: colors.muted, marginTop: 14 }}>Data do acontecimento: {selected.dadosAcontecimento?.dataAcontecimento || 'Não informada'}</Text>
+      </View> : null}
+      {mode !== 'list' ? button('Voltar aos atendimentos', () => { setError(''); setMode('list'); }) : null}
+      {error ? <Text selectable style={{ color: colors.danger, marginTop: 16 }}>{error}</Text> : null}
+    </ScrollView>
+  </PortalBackground>;
 }

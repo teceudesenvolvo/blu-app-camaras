@@ -6,6 +6,7 @@ const lightTheme = {
   primary: configTheme.primary || '#025AA1',
   primaryDark: '#014377',
   secondary: configTheme.secondary || '#f9c204',
+  accent: configTheme.accent || '#F59E0B',
   page: '#f8fbff',
   pageAlt: '#eef5fb',
   text: '#1f2937',
@@ -22,6 +23,7 @@ const darkTheme = {
   primary: '#38a7f0',
   primaryDark: '#7cc4f2',
   secondary: '#facc15',
+  accent: '#facc15',
   page: '#07131f',
   pageAlt: '#0d2030',
   text: '#f1f5f9',
@@ -56,8 +58,16 @@ export const getAutomaticThemeMode = (date = new Date()) => {
   return hour >= 18 || hour < 6 ? 'dark' : 'light';
 };
 
-export const applyPortalTheme = (mode) => {
-  Object.assign(portalTheme, mode === 'dark' ? darkTheme : lightTheme);
+export const applyPortalTheme = (mode, design = {}) => {
+  const base = mode === 'dark' ? darkTheme : lightTheme;
+  Object.assign(portalTheme, base, {
+    primary: design.primaryColor || base.primary,
+    secondary: design.secondaryColor || base.secondary,
+    accent: design.accentColor || base.accent,
+    page: mode === 'dark' ? base.page : (design.backgroundColor || base.page),
+    text: mode === 'dark' ? base.text : (design.textColor || base.text),
+  });
   Object.assign(portalGradients, mode === 'dark' ? darkGradients : lightGradients);
+  portalGradients.primary = [portalTheme.primary, design.secondaryColor || portalTheme.primary];
   return { ...portalTheme };
 };

@@ -1,6 +1,5 @@
+import chamberConfig from '../config';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
-import { LinearGradient } from 'expo-linear-gradient';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
@@ -12,22 +11,23 @@ import {
 } from '../components/PortalScaffold';
 import { AuthContext } from '../context/AuthContext';
 import { useThemePreference } from '../context/ThemePreferenceContext';
-import { portalGradients, portalTheme } from '../styles/portalTheme';
+import { portalTheme } from '../styles/portalTheme';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 const Container = styled(PortalBackground)`
   flex: 1;
 `;
 
-const Cover = styled(LinearGradient).attrs(({ theme }) => ({
-  colors: theme.gradients?.primary || portalGradients.primary,
-  start: { x: 0, y: 0 },
-  end: { x: 1, y: 1 },
-}))`
-  padding: 64px 20px 72px;
-  border-bottom-left-radius: 28px;
-  border-bottom-right-radius: 28px;
+const Content = styled.ScrollView.attrs({
+  contentInsetAdjustmentBehavior: 'automatic',
+  showsVerticalScrollIndicator: false,
+})`
+  flex: 1;
+`;
+
+const Cover = styled.View`
+  padding: 58px 20px 46px;
 `;
 
 const HeaderActions = styled.View`
@@ -40,27 +40,27 @@ const HeaderButton = styled.TouchableOpacity`
   min-height: 38px;
   padding: 0 13px;
   border-radius: 999px;
-  background-color: rgba(255,255,255,0.18);
+  background-color: ${({ theme }) => theme.portal.card};
   border-width: 1px;
-  border-color: rgba(255,255,255,0.35);
+  border-color: ${({ theme }) => theme.portal.border};
   align-items: center;
   justify-content: center;
   margin-left: 8px;
 `;
 
 const HeaderButtonText = styled.Text`
-  color: #ffffff;
+  color: ${({ theme }) => theme.portal.danger};
   font-size: 13px;
   font-weight: 900;
 `;
 
 const ProfileCard = styled(PortalCard)`
-  margin: -56px 18px 14px;
+  margin: -28px 18px 14px;
   align-items: center;
 `;
 
 const AvatarButton = styled.TouchableOpacity`
-  margin-top: -58px;
+  margin-top: -48px;
   margin-bottom: 12px;
 `;
 
@@ -141,6 +141,7 @@ const StatsRow = styled.View`
   flex-direction: row;
   width: 100%;
   margin-top: 18px;
+  gap: 8px;
 `;
 
 const StatBox = styled.TouchableOpacity`
@@ -149,7 +150,6 @@ const StatBox = styled.TouchableOpacity`
   padding: 12px 6px;
   border-radius: 14px;
   background-color: ${({ theme }) => theme.portal.page};
-  margin: 0 4px;
 `;
 
 const StatNumber = styled.Text`
@@ -167,8 +167,13 @@ const StatLabel = styled.Text`
 `;
 
 const Section = styled.View`
-  flex: 1;
   padding: 0 18px;
+`;
+
+const SectionHeader = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
 `;
 
 const SectionTitle = styled.Text`
@@ -176,6 +181,19 @@ const SectionTitle = styled.Text`
   font-size: 18px;
   font-weight: 900;
   margin: 12px 0;
+`;
+
+const SectionLink = styled.TouchableOpacity`
+  min-height: 40px;
+  padding: 0 2px 0 12px;
+  flex-direction: row;
+  align-items: center;
+`;
+
+const SectionLinkText = styled.Text`
+  color: ${({ theme }) => theme.portal.primary};
+  font-size: 13px;
+  font-weight: 900;
 `;
 
 const TimelineCard = styled.TouchableOpacity`
@@ -187,10 +205,6 @@ const TimelineCard = styled.TouchableOpacity`
   border-color: ${({ theme }) => theme.portal.border};
   padding: 13px;
   margin-bottom: 10px;
-`;
-
-const TimelineList = styled.FlatList`
-  flex: 1;
 `;
 
 const TimelineIcon = styled.View`
@@ -235,7 +249,10 @@ const StatusText = styled.Text`
 
 const ProfileActions = styled.View`
   width: 100%;
-  margin-top: 16px;
+`;
+
+const SettingsCard = styled(PortalCard)`
+  padding: 8px 14px 16px;
 `;
 
 const ProfileAction = styled.TouchableOpacity`
@@ -243,11 +260,11 @@ const ProfileAction = styled.TouchableOpacity`
   border-radius: 14px;
   border-width: 1px;
   border-color: ${({ theme }) => theme.portal.border};
-  background-color: ${({ theme }) => theme.portal.page};
+  background-color: ${({ theme }) => theme.portal.card};
   flex-direction: row;
   align-items: center;
   padding: 0 13px;
-  margin-top: 9px;
+  margin-top: 8px;
 `;
 
 const ProfileActionIcon = styled.View`
@@ -278,8 +295,8 @@ const ProfileActionSubtitle = styled.Text`
 `;
 
 const ThemeSettings = styled.View`
-  margin-top: 18px;
-  padding-top: 18px;
+  margin-top: 14px;
+  padding-top: 16px;
   border-top-width: 1px;
   border-top-color: ${({ theme }) => theme.portal.border};
 `;
@@ -490,15 +507,21 @@ export default function PerfilScreen({ navigation }) {
 
   return (
     <Container>
-      <Cover>
-        <HeaderActions>
-          <HeaderButton onPress={handleLogout}>
-            <HeaderButtonText>Sair</HeaderButtonText>
-          </HeaderButton>
-        </HeaderActions>
-      </Cover>
+      <Content contentContainerStyle={{ paddingBottom: 140 }}>
+        <Cover>
+          <HeaderActions>
+            <HeaderButton
+              onPress={handleLogout}
+              accessibilityRole="button"
+              accessibilityLabel="Sair da conta"
+            >
+              <Ionicons name="log-out-outline" size={17} color={portalTheme.danger} />
+              <HeaderButtonText> Sair</HeaderButtonText>
+            </HeaderButton>
+          </HeaderActions>
+        </Cover>
 
-      <ProfileCard>
+        <ProfileCard>
           <AvatarButton activeOpacity={0.75} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
             <AvatarBox>
               {avatarUri ? (
@@ -538,84 +561,96 @@ export default function PerfilScreen({ navigation }) {
             <StatLabel>Total</StatLabel>
           </StatBox>
         </StatsRow>
+        </ProfileCard>
 
-        <ProfileActions>
-          <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
-            <ProfileActionIcon>
-              <Ionicons name="person-outline" size={19} color={portalTheme.primary} />
-            </ProfileActionIcon>
-            <ProfileActionTextGroup>
-              <ProfileActionTitle>Dados pessoais</ProfileActionTitle>
-              <ProfileActionSubtitle>Cadastro, endereço e foto de perfil</ProfileActionSubtitle>
-            </ProfileActionTextGroup>
-            <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
-          </ProfileAction>
+        <Section>
+          <SectionTitle>Conta</SectionTitle>
+          <SettingsCard>
+            <ProfileActions>
+              <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
+                <ProfileActionIcon>
+                  <Ionicons name="person-outline" size={19} color={portalTheme.primary} />
+                </ProfileActionIcon>
+                <ProfileActionTextGroup>
+                  <ProfileActionTitle>Dados pessoais</ProfileActionTitle>
+                  <ProfileActionSubtitle>Cadastro, endereço e foto de perfil</ProfileActionSubtitle>
+                </ProfileActionTextGroup>
+                <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
+              </ProfileAction>
 
-          <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilBeneficiarios')}>
-            <ProfileActionIcon bg="rgba(15, 118, 110, 0.1)">
-              <MaterialCommunityIcons name="account-heart-outline" size={20} color="#0f766e" />
-            </ProfileActionIcon>
-            <ProfileActionTextGroup>
-              <ProfileActionTitle>Beneficiários</ProfileActionTitle>
-              <ProfileActionSubtitle>Pessoas vinculadas ao Balcão</ProfileActionSubtitle>
-            </ProfileActionTextGroup>
-            <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
-          </ProfileAction>
+              <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilBeneficiarios')}>
+                <ProfileActionIcon bg="rgba(15, 118, 110, 0.1)">
+                  <MaterialCommunityIcons name="account-heart-outline" size={20} color="#0f766e" />
+                </ProfileActionIcon>
+                <ProfileActionTextGroup>
+                  <ProfileActionTitle>Beneficiários</ProfileActionTitle>
+                  <ProfileActionSubtitle>Pessoas vinculadas ao Balcão</ProfileActionSubtitle>
+                </ProfileActionTextGroup>
+                <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
+              </ProfileAction>
 
-          <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilSeguranca')}>
-            <ProfileActionIcon bg="rgba(124, 58, 237, 0.1)">
-              <Ionicons name="shield-checkmark-outline" size={19} color="#7c3aed" />
-            </ProfileActionIcon>
-            <ProfileActionTextGroup>
-              <ProfileActionTitle>Segurança</ProfileActionTitle>
-              <ProfileActionSubtitle>Senha e atividades de login</ProfileActionSubtitle>
-            </ProfileActionTextGroup>
-            <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
-          </ProfileAction>
+              <ProfileAction activeOpacity={0.78} onPress={() => navigation.navigate('PerfilSeguranca')}>
+                <ProfileActionIcon bg="rgba(124, 58, 237, 0.1)">
+                  <Ionicons name="shield-checkmark-outline" size={19} color="#7c3aed" />
+                </ProfileActionIcon>
+                <ProfileActionTextGroup>
+                  <ProfileActionTitle>Segurança</ProfileActionTitle>
+                  <ProfileActionSubtitle>Senha e atividades de login</ProfileActionSubtitle>
+                </ProfileActionTextGroup>
+                <Ionicons name="chevron-forward" size={20} color={portalTheme.muted} />
+              </ProfileAction>
 
-          <ThemeSettings>
-            <ThemeSettingsTitle>Aparência</ThemeSettingsTitle>
-            <ThemeSettingsSubtitle>Escolha como o tema será exibido neste dispositivo.</ThemeSettingsSubtitle>
-            <ThemeOptions accessibilityRole="radiogroup">
-              {THEME_OPTIONS.map(option => {
-                const selected = themePreference === option.key;
-                return (
-                  <ThemeOption
-                    key={option.key}
-                    selected={selected}
-                    activeOpacity={0.72}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selected }}
-                    accessibilityLabel={`Tema ${option.label}`}
-                    onPress={() => setThemePreference(option.key)}
-                  >
-                    <Ionicons name={option.icon} size={20} color={selected ? portalTheme.primary : portalTheme.muted} />
-                    <ThemeOptionText selected={selected}>{option.label}</ThemeOptionText>
-                  </ThemeOption>
-                );
-              })}
-            </ThemeOptions>
-          </ThemeSettings>
-        </ProfileActions>
-      </ProfileCard>
+              <ThemeSettings>
+                <ThemeSettingsTitle>Aparência</ThemeSettingsTitle>
+                <ThemeSettingsSubtitle>Escolha o tema usado neste dispositivo.</ThemeSettingsSubtitle>
+                <ThemeOptions accessibilityRole="radiogroup">
+                  {THEME_OPTIONS.map(option => {
+                    const selected = themePreference === option.key;
+                    return (
+                      <ThemeOption
+                        key={option.key}
+                        selected={selected}
+                        activeOpacity={0.72}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: selected }}
+                        accessibilityLabel={`Tema ${option.label}`}
+                        onPress={() => setThemePreference(option.key)}
+                      >
+                        <Ionicons name={option.icon} size={20} color={selected ? portalTheme.primary : portalTheme.muted} />
+                        <ThemeOptionText selected={selected}>{option.label}</ThemeOptionText>
+                      </ThemeOption>
+                    );
+                  })}
+                </ThemeOptions>
+              </ThemeSettings>
+            </ProfileActions>
+          </SettingsCard>
+        </Section>
 
-      <Section>
-        <SectionTitle>Atendimentos recentes</SectionTitle>
-        <TimelineList
-          data={visibleRequests}
-          keyExtractor={(item) => `${item.originCollection}-${item.id}`}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 130 }}
-          ListEmptyComponent={(
+        <Section>
+          <SectionHeader>
+            <SectionTitle>Atendimentos recentes</SectionTitle>
+            {requests.length > 0 ? (
+              <SectionLink onPress={() => navigation.navigate('MeusAtendimentos')} accessibilityRole="button">
+                <SectionLinkText>Ver todos</SectionLinkText>
+                <Ionicons name="chevron-forward" size={17} color={portalTheme.primary} />
+              </SectionLink>
+            ) : null}
+          </SectionHeader>
+
+          {visibleRequests.length === 0 ? (
             <PortalCard>
               <TimelineMeta>Você ainda não possui atendimentos registrados.</TimelineMeta>
             </PortalCard>
-          )}
-          renderItem={({ item }) => {
+          ) : visibleRequests.map((item) => {
             const status = getStatusInfo(item.status);
 
             return (
-              <TimelineCard activeOpacity={0.78} onPress={() => openRequest(item)}>
+              <TimelineCard
+                key={`${item.originCollection}-${item.id}`}
+                activeOpacity={0.78}
+                onPress={() => openRequest(item)}
+              >
                 <TimelineIcon bg={item.sourceBg}>
                   <MaterialCommunityIcons name={item.sourceIcon} size={22} color={item.sourceColor} />
                 </TimelineIcon>
@@ -628,9 +663,9 @@ export default function PerfilScreen({ navigation }) {
                 </StatusPill>
               </TimelineCard>
             );
-          }}
-        />
-      </Section>
+          })}
+        </Section>
+      </Content>
     </Container>
   );
 }

@@ -1,20 +1,22 @@
+import chamberConfig from '../config';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View, useWindowDimensions } from 'react-native';
 import RenderHtml from 'react-native-render-html';
 import styled, { useTheme } from 'styled-components/native';
 
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getDownloadURL, ref as storageRef } from 'firebase/storage';
 import { firestore, storage } from '../../services/firebaseConfig';
+import { useMobileModules } from '../context/MobileModulesContext';
+import { useSystemControl } from '../context/SystemControlContext';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 const genericBiographies = [
-  'Parlamentar da Câmara Municipal de Paraipaba, atuando na representação da população e no acompanhamento das demandas do município.',
-  'Vereador com atuação voltada ao diálogo com a comunidade, fiscalização do poder público e defesa de melhorias para Paraipaba.',
+  'Parlamentar atuando na representação da população e no acompanhamento das demandas do município.',
+  'Vereador com atuação voltada ao diálogo com a comunidade, fiscalização do poder público e defesa de melhorias para o município.',
   'Representante do legislativo municipal, dedicado à construção de políticas públicas e ao atendimento das necessidades dos cidadãos.',
 ];
 
@@ -29,6 +31,11 @@ const Header = styled(LinearGradient).attrs(({ theme }) => ({
   end: { x: 1, y: 1 },
 }))`
   padding: 54px 20px 18px;
+`;
+
+const HeaderRow = styled.View`
+  flex-direction: row;
+  align-items: center;
 `;
 
 const HeaderTitle = styled.Text`
@@ -46,6 +53,11 @@ const HeaderSubtitle = styled.Text`
   margin-top: 6px;
 `;
 
+const HeaderContent = styled.View`
+  flex: 1;
+  margin-left: 14px;
+`;
+
 const BackButton = styled.TouchableOpacity`
   width: 42px;
   height: 42px;
@@ -53,7 +65,6 @@ const BackButton = styled.TouchableOpacity`
   background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(16,37,54,0.9)' : 'rgba(255,255,255,0.82)'};
   align-items: center;
   justify-content: center;
-  margin-bottom: 18px;
 `;
 
 const TopScroller = styled.ScrollView`
@@ -189,13 +200,20 @@ export default function VereadoresScreen({ navigation }) {
   const [vereadores, setVereadores] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [cabinetNews, setCabinetNews] = useState([]);
+  const [legislativeData, setLegislativeData] = useState(null);
   const { width } = useWindowDimensions();
+  const { canUse } = useMobileModules();
+  const { settings } = useSystemControl();
+  const selectedVereador = vereadores.find(v => v.id === selectedId);
 
-  const tagsStyles = {
+  const tagsStyles = useMemo(() => ({
     p: { fontSize: 15, lineHeight: 24, color: theme.portal.text, textAlign: 'justify', marginBottom: 10 },
     strong: { fontWeight: 'bold', color: theme.portal.text },
     a: { color: theme.portal.primary, textDecorationLine: 'underline' }
-  };
+  }), [theme.portal.primary, theme.portal.text]);
+  const htmlBaseStyle = useMemo(() => ({ color: theme.portal.text }), [theme.portal.text]);
+  const biographySource = useMemo(() => ({ html: selectedVereador?.biografia || '' }), [selectedVereador?.biografia]);
 
   // Função para retornar um texto genérico baseado no ID do vereador
   const getGenericBio = (id) => {
@@ -257,16 +275,48 @@ export default function VereadoresScreen({ navigation }) {
     fetchVereadores();
   }, []);
 
-  const selectedVereador = vereadores.find(v => v.id === selectedId);
+  useEffect(() => {
+    if (!selectedVereador?.id) return undefined;
+    let active = true;
+    getDocs(query(collection(firestore, 'noticias'), where('gabineteId', '==', selectedVereador.id)))
+      .then(snapshot => {
+        if (!active) return;
+        setCabinetNews(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).filter(item => ['Publicado', 'publicado', 'published'].includes(item.status) || item.publicada === true));
+      }).catch(() => { if (active) setCabinetNews([]); });
+    return () => { active = false; };
+  }, [selectedVereador?.id]);
+
+  useEffect(() => {
+    const api = settings?.integrations?.legislativeApi;
+    if (!selectedVereador?.id || !canUse('legislativo') || !api?.enabled || !api.url) {
+      setLegislativeData(null);
+      return undefined;
+    }
+    let active = true;
+    fetch(api.url)
+      .then(response => { if (!response.ok) throw new Error(`API legislativa HTTP ${response.status}`); return response.json(); })
+      .then(payload => {
+        const rows = Array.isArray(payload) ? payload : (payload.data || payload.results || payload.items || []);
+        const field = api.fields?.id || 'id';
+        const current = rows.find(row => String(row[field] || row.id) === String(selectedVereador.id));
+        if (active) setLegislativeData(current || null);
+      })
+      .catch(failure => { console.warn('Falha ao carregar dados legislativos públicos:', failure.message); if (active) setLegislativeData(null); });
+    return () => { active = false; };
+  }, [canUse, selectedVereador?.id, settings?.integrations?.legislativeApi]);
 
   return (
     <Container>
       <Header>
-        <BackButton onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="arrow-left" size={23} color={theme.portal.primary} />
-        </BackButton>
-        <HeaderTitle>Vereadores</HeaderTitle>
-        <HeaderSubtitle>Conheça os parlamentares da Câmara Municipal de Paraipaba.</HeaderSubtitle>
+        <HeaderRow>
+          <BackButton onPress={() => navigation.goBack()} activeOpacity={0.75}>
+            <MaterialCommunityIcons name="arrow-left" size={23} color={theme.portal.primary} />
+          </BackButton>
+          <HeaderContent>
+            <HeaderTitle>Vereadores</HeaderTitle>
+            <HeaderSubtitle>Conheça os parlamentares da {settings?.tenant?.name || chamberConfig.institutionName}.</HeaderSubtitle>
+          </HeaderContent>
+        </HeaderRow>
       </Header>
 
       {loading ? (
@@ -308,13 +358,25 @@ export default function VereadoresScreen({ navigation }) {
               {selectedVereador.biografia && selectedVereador.biografia.trim() !== "" ? (
                 <RenderHtml
                   contentWidth={width - 40}
-                  source={{ html: selectedVereador.biografia }}
+                  source={biographySource}
                   tagsStyles={tagsStyles}
-                  baseStyle={{ color: theme.portal.text }}
+                  baseStyle={htmlBaseStyle}
                 />
               ) : (
                 <BiographyText>{getGenericBio(selectedVereador.id)}</BiographyText>
               )}
+
+              {canUse('agendaVereadores') ? <>
+                <SectionTitle>Notícias do gabinete</SectionTitle>
+                {cabinetNews.length ? cabinetNews.map(item => <View key={item.id} style={{ marginBottom: 10 }}><ProfileDetail>{item.titulo || item.title || 'Publicação do gabinete'}</ProfileDetail><ModuleNewsText>{item.subtitulo || item.resumo || item.summary || 'Leia a publicação no aplicativo.'}</ModuleNewsText></View>) : <ModuleNewsText>Nenhuma notícia publicada por este gabinete.</ModuleNewsText>}
+              </> : null}
+
+              {canUse('legislativo') && legislativeData ? <>
+                <SectionTitle>Atuação legislativa</SectionTitle>
+                <ModuleNewsText>{legislativeData.summary || legislativeData.resumo || 'Dados legislativos disponíveis pela API configurada.'}</ModuleNewsText>
+                {legislativeData.materias ? <ModuleNewsText style={{ marginTop: 8 }}>Matérias: {legislativeData.materias}</ModuleNewsText> : null}
+                {legislativeData.comissoes ? <ModuleNewsText style={{ marginTop: 8 }}>Comissões: {legislativeData.comissoes}</ModuleNewsText> : null}
+              </> : null}
 
               <View style={{ height: 100 }} />
             </DetailsContainer>
@@ -324,3 +386,9 @@ export default function VereadoresScreen({ navigation }) {
     </Container>
   );
 }
+
+const ModuleNewsText = styled.Text`
+  color: ${({ theme }) => theme.portal.muted};
+  font-size: 14px;
+  line-height: 21px;
+`;

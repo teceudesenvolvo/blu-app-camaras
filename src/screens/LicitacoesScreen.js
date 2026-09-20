@@ -9,6 +9,7 @@ import {
   PortalScreenHeader,
 } from '../components/PortalScaffold';
 import { portalTheme } from '../styles/portalTheme';
+import { useSystemControl } from '../context/SystemControlContext';
 
 const Container = styled(PortalBackground)`
   flex: 1;
@@ -60,7 +61,12 @@ const DropdownText = styled.Text`
   font-weight: 800;
 `;
 
-const Card = styled(PortalCard)`
+const Card = styled.TouchableOpacity.attrs({ activeOpacity: 0.82 })`
+  background-color: ${({ theme }) => theme.portal.card};
+  border-radius: 14px;
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
+  padding: 18px;
   margin: 6px 18px 10px;
 `;
 
@@ -149,8 +155,6 @@ const EmptyText = styled.Text`
   margin-top: 10px;
 `;
 
-const CNPJ = '35076017000107';
-
 const MODALIDADES = [
   { label: 'Selecione', value: null },
   { label: 'Dispensa de Licitação', value: 8 },
@@ -168,7 +172,33 @@ const ANOS = [
   new Date().getFullYear() - 3,
 ];
 
-export default function LicitacoesScreen() {
+const readPath = (value, path) => {
+  if (!path) return value;
+  return String(path).split('.').filter(Boolean).reduce((current, key) => current == null ? undefined : current[key], value);
+};
+
+const appendQuery = (url, params) => {
+  const query = new URLSearchParams(params).toString();
+  return `${url}${url.includes('?') ? '&' : '?'}${query}`;
+};
+
+const normalizeProcurementItem = (item, fields = {}) => ({
+  numeroControlePNCP: readPath(item, fields.id || 'numeroControlePNCP'),
+  numeroCompra: readPath(item, fields.number || 'numeroCompra'),
+  modalidadeNome: readPath(item, fields.modality || 'modalidadeNome'),
+  objetoCompra: readPath(item, fields.object || 'objetoCompra'),
+  nomeRazaoSocialFornecedor: readPath(item, fields.supplier || 'nomeRazaoSocialFornecedor'),
+  valorTotalEstimado: readPath(item, fields.value || 'valorTotalEstimado'),
+  situacaoCompraNome: readPath(item, fields.status || 'situacaoCompraNome'),
+  dataAberturaProposta: readPath(item, fields.startDate || 'dataAberturaProposta'),
+  dataEncerramentoProposta: readPath(item, fields.endDate || 'dataEncerramentoProposta'),
+  dataPublicacaoPncp: readPath(item, fields.publicationDate || 'dataPublicacaoPncp'),
+  linkSistemaOrigem: readPath(item, fields.detailUrl || 'linkSistemaOrigem'),
+  arquivos: readPath(item, fields.files || 'arquivos') || readPath(item, 'documentos') || readPath(item, 'anexos') || [],
+});
+
+export default function LicitacoesScreen({ navigation }) {
+  const { settings } = useSystemControl();
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -183,40 +213,51 @@ export default function LicitacoesScreen() {
 
   const [isYearModalVisible, setYearModalVisible] = useState(false);
   const [isModalityModalVisible, setModalityModalVisible] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const fetchLicitacoes = useCallback(async (pageNumber, selectedYear, selectedModality) => {
     if (pageNumber === 1) setLoading(true);
     else setLoadingMore(true);
 
-    const dataInicial = `${selectedYear}0101`;
-    const dataFinal = `${selectedYear}1231`;
-    const modalidadeParam = selectedModality.value ? `&codigoModalidadeContratacao=${selectedModality.value}` : '';
-    const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?dataInicial=${dataInicial}&dataFinal=${dataFinal}&uf=ce&cnpj=${CNPJ}${modalidadeParam}&pagina=${pageNumber}&tamanhoPagina=20`;
-
     try {
+      const config = settings?.integrations?.procurementApi;
+      if (!config?.enabled || !config.url) {
+        throw new Error('A API de licitações ainda não foi configurada ou ativada no Controle do Sistema.');
+      }
+
+      const configuredUrl = String(config.url).replaceAll('{cnpj}', String(config.organizationCnpj || '').replace(/\D/g, ''));
+      const dataInicial = `${selectedYear}0101`;
+      const dataFinal = `${selectedYear}1231`;
+      const queryParams = {
+        dataInicial,
+        dataFinal,
+        pagina: pageNumber,
+        tamanhoPagina: 20,
+      };
+      if (selectedModality.value) queryParams.codigoModalidadeContratacao = selectedModality.value;
+      const url = appendQuery(configuredUrl, queryParams);
       const response = await fetch(url);
 
       if (!response.ok) {
-        if (pageNumber === 1) setLicitacoes([]);
-        return;
+        throw new Error(`API de licitações HTTP ${response.status}`);
       }
 
       const json = await response.json();
-
-      if (json && json.data) {
-        setLicitacoes(prev => pageNumber === 1 ? json.data : [...prev, ...json.data]);
-        setTotalPages(json.totalPaginas || 1);
-      } else if (pageNumber === 1) {
-        setLicitacoes([]);
-      }
+      const responseData = readPath(json, config.responsePath);
+      const rows = Array.isArray(responseData) ? responseData : (Array.isArray(json?.data) ? json.data : []);
+      const normalizedRows = rows.map(item => normalizeProcurementItem(item, config.fields));
+      setLicitacoes(prev => pageNumber === 1 ? normalizedRows : [...prev, ...normalizedRows]);
+      setTotalPages(json.totalPaginas || json.totalPages || json.numeroPaginas || 1);
+      setApiError('');
     } catch (error) {
-      console.log('Erro ao buscar licitações:', error);
+      console.warn('Erro ao buscar licitações pela API configurada:', error.message);
+      setApiError(error.message);
       if (pageNumber === 1) setLicitacoes([]);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [settings?.integrations?.procurementApi]);
 
   useEffect(() => {
     setPage(1);
@@ -244,7 +285,7 @@ export default function LicitacoesScreen() {
   };
 
   const renderItem = ({ item }) => (
-    <Card>
+    <Card onPress={() => navigation.navigate('LicitacaoDetalhe', { licitacao: item })}>
       <CardTopRow>
         <CardIcon>
           <MaterialCommunityIcons name="file-document-check-outline" size={22} color={portalTheme.primary} />
@@ -349,7 +390,7 @@ export default function LicitacoesScreen() {
             !loading && (
               <EmptyState>
                 <MaterialCommunityIcons name="file-search-outline" size={36} color={portalTheme.primary} />
-                <EmptyText>Não existem licitações para os filtros selecionados.</EmptyText>
+                <EmptyText>{apiError || 'Não existem licitações para os filtros selecionados.'}</EmptyText>
               </EmptyState>
             )
           }

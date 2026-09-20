@@ -1,3 +1,4 @@
+import chamberConfig from '../config';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
@@ -14,9 +15,8 @@ import {
 } from '../components/PortalScaffold';
 import { AuthContext } from '../context/AuthContext';
 import { portalGradients, portalTheme } from '../styles/portalTheme';
-import Constants from 'expo-constants';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 const ContentContainer = styled.ScrollView`
   flex: 1;

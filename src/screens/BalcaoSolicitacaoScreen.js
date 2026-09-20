@@ -1,3 +1,4 @@
+import chamberConfig from '../config';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
@@ -12,7 +13,7 @@ import { AuthContext } from '../context/AuthContext';
 
 const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
 const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 const getStartOfToday = () => {
   const today = new Date();

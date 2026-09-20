@@ -8,6 +8,7 @@ import * as Notifications from 'expo-notifications';
 import * as QuickActions from 'expo-quick-actions';
 import React, { useEffect } from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import styled from 'styled-components/native';
 import { useTheme } from 'styled-components/native';
 import Animated, {
     interpolate,
@@ -35,6 +36,7 @@ import CadastroScreen from '../screens/CadastroScreen';
 import ChatMensagensScreen from '../screens/ChatMensagensScreen';
 import ContatoConfiancaScreen from '../screens/ContatoConfiancaScreen';
 import LicitacoesScreen from '../screens/LicitacoesScreen';
+import LicitacaoDetalheScreen from '../screens/LicitacaoDetalheScreen';
 import LoginScreen from '../screens/LoginScreen';
 import MeusAtendimentosScreen from '../screens/MeusAtendimentosScreen';
 import NoticiaDetalheScreen from '../screens/NoticiaDetalheScreen';
@@ -51,11 +53,70 @@ import ProcuradoriaSolicitacaoScreen from '../screens/ProcuradoriaSolicitacaoScr
 import VereadoresScreen from '../screens/VereadoresScreen';
 
 import { AuthContext, AuthProvider } from '../context/AuthContext';
+import { MobileModulesProvider, useMobileModules } from '../context/MobileModulesContext';
+import { moduleForScreen } from '../config/mobileModules';
+import { PortalBackground, PortalScreenHeader } from '../components/PortalScaffold';
+import EsicScreen from '../screens/EsicScreen';
+import NoticiasScreen from '../screens/NoticiasScreen';
+import MicroempreendedorScreen from '../screens/MicroempreendedorScreen';
+import AvaliacoesScreen from '../screens/AvaliacoesScreen';
+import ProtocoloScreen from '../screens/ProtocoloScreen';
+import GabineteVereadorScreen from '../screens/GabineteVereadorScreen';
+import EscolaParlamentoScreen from '../screens/EscolaParlamentoScreen';
+import ProconScreen from '../screens/ProconScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const { width } = Dimensions.get('window');
+
+const UnavailableText = styled.Text`
+  color: ${({ theme }) => theme.portal.muted};
+  font-size: 15px;
+  line-height: 22px;
+  margin: 20px;
+`;
+
+const guardScreen = (Screen, moduleId) => function GuardedScreen(props) {
+    const { loading, canUse } = useMobileModules();
+    const requestedModule = moduleId || moduleForScreen(props.route.name, props.route.params);
+    if (loading) return <PortalBackground />;
+    if (requestedModule && !canUse(requestedModule)) {
+        return <PortalBackground>
+            <PortalScreenHeader navigation={props.navigation} title="Acesso indisponível" />
+            <UnavailableText>Este serviço não está disponível para seu perfil neste aplicativo.</UnavailableText>
+        </PortalBackground>;
+    }
+    return <Screen {...props} />;
+};
+
+const guardedScreens = {
+    Vereadores: guardScreen(VereadoresScreen, 'vereadores'),
+    Piel: guardScreen(PielScreen, 'piel'),
+    Procuradoria: guardScreen(ProcuradoriaScreen, 'procuradoria'),
+    TvCamara: guardScreen(TvCamaraScreen, 'tvCamara'),
+    AtendimentoJuridico: guardScreen(AtendimentoJuridicoScreen, 'juridico'),
+    OuvidoriaMunicipal: guardScreen(OuvidoriaMunicipalScreen, 'ouvidoria'),
+    BalcaoCidadao: guardScreen(BalcaoCidadaoScreen, 'balcao'),
+    ProcuradoriaSolicitacao: guardScreen(ProcuradoriaSolicitacaoScreen, 'procuradoria'),
+    BalcaoSolicitacao: guardScreen(BalcaoSolicitacaoScreen, 'balcao'),
+    ContatoConfianca: guardScreen(ContatoConfiancaScreen, 'procuradoria'),
+    MeusAtendimentos: guardScreen(MeusAtendimentosScreen),
+    NoticiaDetalhe: guardScreen(NoticiaDetalheScreen, 'noticias'),
+    Noticias: guardScreen(NoticiasScreen, 'noticias'),
+    Esic: guardScreen(EsicScreen, 'esic'),
+    Microempreendedor: guardScreen(MicroempreendedorScreen, 'microempreendedor'),
+    Avaliacoes: guardScreen(AvaliacoesScreen, 'avaliacoes'),
+    Protocolo: guardScreen(ProtocoloScreen, 'protocolo'),
+    GabineteVereador: guardScreen(GabineteVereadorScreen, 'agendaVereadores'),
+    EscolaParlamento: guardScreen(EscolaParlamentoScreen, 'escolaParlamento'),
+    Procon: guardScreen(ProconScreen, 'procon'),
+    OuvidoriaDetalhe: guardScreen(OuvidoriaDetalheScreen, 'ouvidoria'),
+    BalcaoDetalhe: guardScreen(BalcaoDetalheScreen, 'balcao'),
+    AvaliarAtendimento: guardScreen(AvaliarAtendimentoScreen, 'avaliacoes'),
+    ProcuradoriaDetalhe: guardScreen(ProcuradoriaDetalheScreen, 'procuradoria'),
+    PanicLocation: guardScreen(PanicLocationScreen, 'procuradoria'),
+};
 
 const getNotificationRoute = (data = {}) => {
     if (data.type === 'service-evaluation') {
@@ -104,7 +165,7 @@ const getNotificationRoute = (data = {}) => {
     return null;
 };
 
-const LiquidTabItem = ({ icon, isFocused, onPress, primaryColor, inactiveColor, compact, showBadge }) => {
+const LiquidTabItem = ({ icon, isFocused, onPress, primaryColor, dotColor, activeIconColor, inactiveColor, compact, showBadge }) => {
     const focusProgress = useSharedValue(isFocused ? 1 : 0);
 
     React.useEffect(() => {
@@ -133,10 +194,10 @@ const LiquidTabItem = ({ icon, isFocused, onPress, primaryColor, inactiveColor, 
             activeOpacity={0.72}
         >
             <Animated.View style={[iconStyle, styles.iconWrap]}>
-                <MaterialCommunityIcons name={icon} size={compact ? 31 : 26} color={isFocused ? primaryColor : inactiveColor} />
+                <MaterialCommunityIcons name={icon} size={compact ? 31 : 26} color={isFocused ? activeIconColor : inactiveColor} />
                 {showBadge ? <View style={styles.messageBadge} /> : null}
             </Animated.View>
-            {!compact ? <Animated.View style={[styles.activeDot, { backgroundColor: primaryColor }, dotStyle]} /> : null}
+            {!compact ? <Animated.View style={[styles.activeDot, { backgroundColor: dotColor }, dotStyle]} /> : null}
         </TouchableOpacity>
     );
 };
@@ -200,7 +261,7 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
 
     return (
         <View style={styles.navContainer}>
-            <BlurView intensity={96} tint={isDark ? 'dark' : 'light'} style={[styles.blur, { width: pillWidth }]}>
+            <BlurView intensity={96} tint={isDark ? 'dark' : 'light'} style={[styles.blur, { width: pillWidth, borderColor: isDark ? 'rgba(226,242,255,0.72)' : 'rgba(255,255,255,0.92)' }]}>
                 <LinearGradient
                     pointerEvents="none"
                     colors={isDark
@@ -236,12 +297,14 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                                     height: 64,
                                     borderRadius: 32,
                                     left: (tabWidth - bubbleSize) / 2 - 5,
+                                    borderWidth: 1,
+                                    borderColor: isDark ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.88)',
                                 },
                             ]}
                         >
                             <LinearGradient
                                 colors={isDark
-                                    ? ['rgba(56,167,240,0.38)', `${primaryColor}38`, 'rgba(16,37,54,0.72)']
+                                    ? ['rgba(255,255,255,0.98)', `${primaryColor}92`, 'rgba(226,242,255,0.78)']
                                     : ['rgba(255,255,255,0.98)', `${primaryColor}28`, 'rgba(255,255,255,0.48)']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
@@ -263,6 +326,8 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                             icon={icon}
                             isFocused={isFocused}
                             primaryColor={primaryColor}
+                            dotColor={isDark ? appTheme.portal.accent : appTheme.portal.secondary}
+                            activeIconColor={isDark ? appTheme.portal.accent : appTheme.portal.secondary}
                             inactiveColor={appTheme.portal.text}
                             showBadge={showBadge}
                             onPress={() => navigation.navigate(route.name)}
@@ -271,7 +336,7 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                 })}
             </BlurView>
 
-            <TouchableOpacity activeOpacity={0.76} onPress={() => navigation.navigate(profileRoute.name)} style={styles.profileButtonOuter}>
+            <TouchableOpacity activeOpacity={0.76} onPress={() => navigation.navigate(profileRoute.name)} style={[styles.profileButtonOuter, { borderColor: isDark ? 'rgba(226,242,255,0.72)' : 'rgba(255,255,255,0.92)' }]}>
                 <BlurView intensity={96} tint={isDark ? 'dark' : 'light'} style={styles.profileButton}>
                     <LinearGradient
                         colors={state.index === state.routes.length - 1
@@ -286,7 +351,7 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                     <MaterialCommunityIcons
                         name={descriptors[profileRoute.key].options.tabBarIconName || 'account-outline'}
                         size={34}
-                        color={state.index === state.routes.length - 1 ? primaryColor : appTheme.portal.text}
+                        color={state.index === state.routes.length - 1 ? (isDark ? appTheme.portal.accent : appTheme.portal.secondary) : appTheme.portal.text}
                     />
                 </BlurView>
             </TouchableOpacity>
@@ -296,15 +361,35 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
 
 // 4. TAB NAVIGATOR (Telas principais com a barra visível)
 function BottomTabNavigator() {
+    const { canUse, settings } = useMobileModules();
+    const routes = {
+        servicos: { name: 'Servicos', component: AtendimentosScreen, icon: 'view-grid-plus-outline', label: 'Serviços' },
+                licitacoes: { name: 'Licitacoes', component: LicitacoesScreen, icon: 'gavel', label: 'Licitações' },
+        mensagens: { name: 'Mensagens', component: ChatMensagensScreen, icon: 'message-text-outline', label: 'Mensagens', module: 'mensagens' },
+        balcao: { name: 'BalcaoCidadao', component: guardedScreens.BalcaoCidadao, icon: 'account-check-outline', label: 'Balcão', module: 'balcao' },
+        legislativo: { name: 'Legislativo', component: guardedScreens.Protocolo, icon: 'scale-balance', label: 'Legislativo', module: 'legislativo' },
+        protocolo: { name: 'Protocolo', component: guardedScreens.Protocolo, icon: 'folder-text-outline', label: 'Protocolo', module: 'protocolo' },
+        ouvidoria: { name: 'Ouvidoria', component: guardedScreens.OuvidoriaMunicipal, icon: 'message-alert-outline', label: 'Ouvidoria', module: 'ouvidoria' },
+        esic: { name: 'Esic', component: guardedScreens.Esic, icon: 'file-lock-outline', label: 'e-SIC', module: 'esic' },
+        procuradoria: { name: 'Procuradoria', component: guardedScreens.Procuradoria, icon: 'gender-female', label: 'Mulher', module: 'procuradoria' },
+        procon: { name: 'Procon', component: guardedScreens.Procon, icon: 'shield-check-outline', label: 'PROCON', module: 'procon' },
+        microempreendedor: { name: 'Microempreendedor', component: guardedScreens.Microempreendedor, icon: 'briefcase-outline', label: 'Negócios', module: 'microempreendedor' },
+        escolaParlamento: { name: 'EscolaParlamento', component: guardedScreens.EscolaParlamento, icon: 'school-outline', label: 'Escola', module: 'escolaParlamento' },
+        tvCamara: { name: 'TvCamara', component: guardedScreens.TvCamara, icon: 'television-play', label: 'TV Câmara', module: 'tvCamara' },
+        noticias: { name: 'Noticias', component: guardedScreens.Noticias, icon: 'newspaper-variant-outline', label: 'Notícias', module: 'noticias' },
+        vereadores: { name: 'Vereadores', component: guardedScreens.Vereadores, icon: 'account-group-outline', label: 'Vereadores', module: 'vereadores' },
+        piel: { name: 'Piel', component: guardedScreens.Piel, icon: 'card-account-details-outline', label: 'PIEL', module: 'piel' },
+        avaliacoes: { name: 'Avaliacoes', component: guardedScreens.Avaliacoes, icon: 'star-outline', label: 'Avaliações', module: 'avaliacoes' },
+    };
+    const configured = Array.isArray(settings?.appBottomBarModules) ? settings.appBottomBarModules : ['servicos', 'licitacoes', 'mensagens'];
+    const middleRoutes = configured.map(id => routes[id]).filter(Boolean).filter(route => !route.module || canUse(route.module));
     return (
         <Tab.Navigator
             tabBar={props => <LiquidTabBar {...props} />}
             screenOptions={{ headerShown: false }}
         >
             <Tab.Screen name="Inicio" component={HomeScreen} options={{ tabBarIconName: 'home-variant', tabBarLabel: 'Início' }} />
-            <Tab.Screen name="Servicos" component={AtendimentosScreen} options={{ tabBarIconName: 'view-grid-plus-outline', tabBarLabel: 'Serviços' }} />
-            <Tab.Screen name="Licitacoes" component={LicitacoesScreen} options={{ tabBarIconName: 'gavel', tabBarLabel: 'Licitações' }} />
-            <Tab.Screen name="Mensagens" component={ChatMensagensScreen} options={{ tabBarIconName: 'message-text-outline', tabBarLabel: 'Mensagens' }} />
+            {middleRoutes.map(route => <Tab.Screen key={route.name} name={route.name} component={route.component} options={{ tabBarIconName: route.icon, tabBarLabel: route.label }} />)}
             <Tab.Screen name="Perfil" component={PerfilScreen} options={{ tabBarIconName: 'account-outline', tabBarLabel: 'Perfil' }} />
         </Tab.Navigator>
     );
@@ -313,6 +398,7 @@ function BottomTabNavigator() {
 // 5. STACK NAVIGATOR PRINCIPAL
 function NavigationContent() {
     const { user, loading } = React.useContext(AuthContext);
+    const { loading: modulesLoading, canUse } = useMobileModules();
     const navigation = useNavigation();
 
     useEffect(() => {
@@ -321,13 +407,13 @@ function NavigationContent() {
             const data = response.notification.request.content.data;
             const route = getNotificationRoute(data);
 
-            if (route) {
+            if (route && canUse(moduleForScreen(route.name, route.params))) {
                 navigation.navigate(route.name, route.params);
             }
         });
 
         return () => subscription.remove();
-    }, [navigation]);
+    }, [navigation, canUse]);
 
     useEffect(() => {
         const shortcutItems = [
@@ -356,17 +442,17 @@ function NavigationContent() {
                 return;
             }
 
-            if (actionId === 'new-balcao' || screen === 'BalcaoCidadao' || screen === 'BalcaoSolicitacao') {
+            if ((actionId === 'new-balcao' || screen === 'BalcaoCidadao' || screen === 'BalcaoSolicitacao') && canUse('balcao')) {
                 navigation.navigate('BalcaoCidadao');
                 return;
             }
 
-            if (actionId === 'tv-camara' || screen === 'TvCamara') {
+            if ((actionId === 'tv-camara' || screen === 'TvCamara') && canUse('tvCamara')) {
                 navigation.navigate('TvCamara');
             }
         };
 
-        QuickActions.setItems(shortcutItems).catch((error) => {
+        QuickActions.setItems(shortcutItems.filter(item => canUse(item.id === 'tv-camara' ? 'tvCamara' : 'balcao'))).catch((error) => {
             console.warn('Nao foi possivel configurar atalhos do app:', error);
         });
 
@@ -376,9 +462,9 @@ function NavigationContent() {
 
         const subscription = QuickActions.addListener(openShortcut);
         return () => subscription?.remove?.();
-    }, [navigation, user]);
+    }, [navigation, user, canUse]);
 
-    if (loading) {
+    if (loading || modulesLoading) {
         return null; // Or a splash screen
     }
 
@@ -392,27 +478,36 @@ function NavigationContent() {
             ) : (
                 <>
                     <Stack.Screen name="MainTabs" component={BottomTabNavigator} />
-                    <Stack.Screen name="Vereadores" component={VereadoresScreen} />
-                    <Stack.Screen name="Piel" component={PielScreen} />
-                    <Stack.Screen name="Procuradoria" component={ProcuradoriaScreen} />
-                    <Stack.Screen name="TvCamara" component={TvCamaraScreen} />
-                    <Stack.Screen name="AtendimentoJuridico" component={AtendimentoJuridicoScreen} />
-                    <Stack.Screen name="OuvidoriaMunicipal" component={OuvidoriaMunicipalScreen} />
-                    <Stack.Screen name="BalcaoCidadao" component={BalcaoCidadaoScreen} />
+                    <Stack.Screen name="Vereadores" component={guardedScreens.Vereadores} />
+                    <Stack.Screen name="Piel" component={guardedScreens.Piel} />
+                    <Stack.Screen name="Procuradoria" component={guardedScreens.Procuradoria} />
+                    <Stack.Screen name="TvCamara" component={guardedScreens.TvCamara} />
+                    <Stack.Screen name="AtendimentoJuridico" component={guardedScreens.AtendimentoJuridico} />
+                    <Stack.Screen name="OuvidoriaMunicipal" component={guardedScreens.OuvidoriaMunicipal} />
+                    <Stack.Screen name="BalcaoCidadao" component={guardedScreens.BalcaoCidadao} />
                     <Stack.Screen name="Notificacoes" component={NotificacoesScreen} />
                     <Stack.Screen name="PerfilDadosPessoais" component={PerfilDadosPessoaisScreen} />
                     <Stack.Screen name="PerfilSeguranca" component={PerfilSegurancaScreen} />
                     <Stack.Screen name="PerfilBeneficiarios" component={PerfilBeneficiariosScreen} />
-                    <Stack.Screen name="ProcuradoriaSolicitacao" component={ProcuradoriaSolicitacaoScreen} />
-                    <Stack.Screen name="BalcaoSolicitacao" component={BalcaoSolicitacaoScreen} />
-                    <Stack.Screen name="ContatoConfianca" component={ContatoConfiancaScreen} />
-                    <Stack.Screen name="MeusAtendimentos" component={MeusAtendimentosScreen} />
-                    <Stack.Screen name="NoticiaDetalhe" component={NoticiaDetalheScreen} />
-                    <Stack.Screen name="OuvidoriaDetalhe" component={OuvidoriaDetalheScreen} />
-                    <Stack.Screen name="BalcaoDetalhe" component={BalcaoDetalheScreen} />
-                    <Stack.Screen name="AvaliarAtendimento" component={AvaliarAtendimentoScreen} />
-                    <Stack.Screen name="ProcuradoriaDetalhe" component={ProcuradoriaDetalheScreen} />
-                    <Stack.Screen name="PanicLocation" component={PanicLocationScreen} />
+                    <Stack.Screen name="ProcuradoriaSolicitacao" component={guardedScreens.ProcuradoriaSolicitacao} />
+                    <Stack.Screen name="BalcaoSolicitacao" component={guardedScreens.BalcaoSolicitacao} />
+                    <Stack.Screen name="ContatoConfianca" component={guardedScreens.ContatoConfianca} />
+                    <Stack.Screen name="MeusAtendimentos" component={guardedScreens.MeusAtendimentos} />
+                    <Stack.Screen name="NoticiaDetalhe" component={guardedScreens.NoticiaDetalhe} />
+                    <Stack.Screen name="LicitacaoDetalhe" component={LicitacaoDetalheScreen} />
+                    <Stack.Screen name="Noticias" component={guardedScreens.Noticias} />
+                    <Stack.Screen name="Esic" component={guardedScreens.Esic} />
+                    <Stack.Screen name="Microempreendedor" component={guardedScreens.Microempreendedor} />
+                    <Stack.Screen name="Avaliacoes" component={guardedScreens.Avaliacoes} />
+                    <Stack.Screen name="Protocolo" component={guardedScreens.Protocolo} />
+                    <Stack.Screen name="GabineteVereador" component={guardedScreens.GabineteVereador} />
+                    <Stack.Screen name="EscolaParlamento" component={guardedScreens.EscolaParlamento} />
+                    <Stack.Screen name="Procon" component={guardedScreens.Procon} />
+                    <Stack.Screen name="OuvidoriaDetalhe" component={guardedScreens.OuvidoriaDetalhe} />
+                    <Stack.Screen name="BalcaoDetalhe" component={guardedScreens.BalcaoDetalhe} />
+                    <Stack.Screen name="AvaliarAtendimento" component={guardedScreens.AvaliarAtendimento} />
+                    <Stack.Screen name="ProcuradoriaDetalhe" component={guardedScreens.ProcuradoriaDetalhe} />
+                    <Stack.Screen name="PanicLocation" component={guardedScreens.PanicLocation} />
                 </>
             )}
         </Stack.Navigator>
@@ -422,7 +517,9 @@ function NavigationContent() {
 export default function AppNavigator() {
     return (
         <AuthProvider>
-            <NavigationContent />
+            <MobileModulesProvider>
+                <NavigationContent />
+            </MobileModulesProvider>
         </AuthProvider>
     );
 }
@@ -444,7 +541,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 41,
         overflow: 'hidden',
-        borderWidth: 0,
+        borderWidth: 1,
         shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 18 },
         shadowOpacity: 0.18,
@@ -513,7 +610,7 @@ const styles = StyleSheet.create({
         height: 82,
         borderRadius: 41,
         overflow: 'hidden',
-        borderWidth: 0,
+        borderWidth: 1,
         shadowColor: '#0f172a',
         shadowOffset: { width: 0, height: 18 },
         shadowOpacity: 0.18,

@@ -1,12 +1,68 @@
 {
-    "name": "CM Paraipaba",
-    "slug": "cm-paraipaba",
-    "bundleIdentifier": "com.blutecnologias.cmparaipaba",
-    "flavorId": "paraipaba",
-    "theme": {
-        "primary": "#025AA1",
-        "secondary": "#f9c204",
-        "background": "#f8fafc",
-        "text": "#0f172a"
+  "name": "CM Paraipaba",
+  "slug": "cm-paraipaba",
+  "flavorId": "paraipaba",
+  "theme": {
+    "primary": "#025AA1",
+    "secondary": "#f9c204",
+    "background": "#f8fafc",
+    "text": "#0f172a"
+  },
+  "institutionName": "Câmara Municipal de Paraipaba",
+  "cityName": "Câmara de Paraipaba",
+  "municipality": "Paraipaba",
+  "state": "ce",
+  "cnpj": "35076017000107",
+  "cityId": "paraipaba",
+  "firebaseCollection": "cities/paraipaba",
+  "primaryColor": "#004a99",
+  "secondaryColor": "#ffab00",
+  "modules": {
+    "hasProcon": true,
+    "hasTvCamara": true
+  },
+  "ios": {
+    "supportsTablet": true,
+    "bundleIdentifier": "com.bluappcmparaipaba",
+    "googleServicesFile": "./services/firebase/paraipaba/GoogleService-Info.plist",
+    "infoPlist": {
+      "NSCameraUsageDescription": "Permita o uso da câmera para anexar fotos às solicitações enviadas à Câmara.",
+      "NSPhotoLibraryUsageDescription": "Permita o acesso à galeria para selecionar imagens e anexá-las às suas solicitações.",
+      "NSPhotoLibraryAddUsageDescription": "Permita salvar imagens geradas pelo aplicativo na sua galeria quando você solicitar essa ação.",
+      "NSLocationWhenInUseUsageDescription": "Permita o uso da localização para registrar o endereço de ocorrências e pedidos de ajuda enviados pelo aplicativo.",
+      "LSApplicationQueriesSchemes": [
+        "itms-apps"
+      ],
+      "ITSAppUsesNonExemptEncryption": false
     }
+  },
+  "android": {
+    "package": "com.blutecnologias.appcamara",
+    "versionCode": 1,
+    "googleServicesFile": "./services/firebase/paraipaba/google-services.json",
+    "adaptiveIcon": {
+      "backgroundColor": "#ECECEC",
+      "foregroundImage": "./assets/icon.png",
+      "backgroundImage": "./assets/icon.png",
+      "monochromeImage": "./assets/icon.png"
+    }
+  },
+  "assets": {
+    "icon": "./assets/icon.png",
+    "splash": "./assets/splash.png",
+    "logo": "./assets/logo-camara-paraipaba.png"
+  },
+  "easProjectId": "a4515ae1-c9e6-4aa1-a5f9-ae420ea3d93c",
+  "firebase": {
+    "apiKey": "AIzaSyDc1N9npL8gvdaR1s2vXZlEk29pG8hLYTA",
+    "authDomain": "blu-app-camara.firebaseapp.com",
+    "databaseURL": "https://blu-app-camara-default-rtdb.firebaseio.com",
+    "projectId": "blu-app-camara",
+    "storageBucket": "blu-app-camara.firebasestorage.app",
+    "messagingSenderId": "1070248841383",
+    "appId": "1:1070248841383:web:1df6b381187a6f296bcb82",
+    "measurementId": "G-2Y562TKJW3"
+  },
+  "functionsRegion": "us-central1",
+  "youtubeRegion": "southamerica-east1"
 }

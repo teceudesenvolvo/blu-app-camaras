@@ -1,3 +1,4 @@
+import { chamberLogo } from '../config/branding';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
@@ -200,7 +201,7 @@ export default function LoginScreen({ navigation }) {
       <Screen>
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
           <Hero>
-            <BrandImage source={require('../../assets/logo-camara-paraipaba.png')} resizeMode="contain" />
+            <BrandImage source={chamberLogo} resizeMode="contain" />
           </Hero>
           <Content>
             <Title>Entrar</Title>

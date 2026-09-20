@@ -1,3 +1,4 @@
+import { chamberLogo } from '../config/branding';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useContext, useState } from 'react';
@@ -225,6 +226,7 @@ export default function CadastroScreen({ navigation }) {
     try {
       await register(email, senha, {
         name: nome,
+        nome,
         sexo,
         phone: telefone,
         cadastroCompleto: false,
@@ -269,7 +271,7 @@ export default function CadastroScreen({ navigation }) {
             <BackButton onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={22} color={theme.portal.primary} />
             </BackButton>
-            <BrandImage source={require('../../assets/logo-camara-paraipaba.png')} resizeMode="contain" />
+            <BrandImage source={chamberLogo} resizeMode="contain" />
           </Hero>
 
           <Content>

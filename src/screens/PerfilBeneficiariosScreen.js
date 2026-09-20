@@ -1,5 +1,5 @@
+import chamberConfig from '../config';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
@@ -16,7 +16,7 @@ import { AuthContext } from '../context/AuthContext';
 import { portalTheme } from '../styles/portalTheme';
 import { fetchAddressByCep, formatCep, formatCpf, formatPhone, isValidCpf, onlyDigits } from '../utils/brasilForms';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 const Scroll = styled.ScrollView`
   flex: 1;

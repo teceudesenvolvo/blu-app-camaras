@@ -1,5 +1,5 @@
+import chamberConfig from '../config';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { EmailAuthProvider, getAuth, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
@@ -16,7 +16,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import { portalTheme } from '../styles/portalTheme';
 
-const flavorId = Constants.expoConfig?.extra?.flavorId || 'paraipaba';
+const flavorId = chamberConfig.flavorId;
 
 const Scroll = styled.ScrollView`
   flex: 1;
@@ -232,6 +232,10 @@ export default function PerfilSegurancaScreen({ navigation }) {
   };
 
   const handleLogoutOtherDevices = () => {
+    if (!currentLoginActivityId) {
+      Alert.alert('Sessão indisponível', 'Não foi possível identificar este aparelho. Entre novamente após a configuração das permissões.');
+      return;
+    }
     Alert.alert(
       'Encerrar outros dispositivos?',
       'As outras sessões serão revogadas e precisarão fazer login novamente. Este aparelho continuará como sessão principal.',
@@ -325,7 +329,7 @@ export default function PerfilSegurancaScreen({ navigation }) {
           </PortalCard>
 
           <SectionTitle>Atividades de login</SectionTitle>
-          <OutlineButton onPress={handleLogoutOtherDevices} disabled={logoutLoading}>
+          <OutlineButton onPress={handleLogoutOtherDevices} disabled={logoutLoading || !currentLoginActivityId} style={{ opacity: currentLoginActivityId ? 1 : 0.5 }}>
             {logoutLoading ? <ActivityIndicator color="#dc2626" /> : <OutlineButtonText>Encerrar outros dispositivos</OutlineButtonText>}
           </OutlineButton>
           <HelperText>
