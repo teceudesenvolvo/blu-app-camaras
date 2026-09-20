@@ -16,23 +16,21 @@ import { AuthContext } from '../context/AuthContext';
 
 const Screen = styled.View`
   flex: 1;
-  background-color: ${({ theme }) => theme.portal.card};
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
 const Hero = styled.View`
-  min-height: 222px;
-  background-color: ${({ theme }) => theme.mode === 'dark' ? theme.portal.pageAlt : '#eef2f6'};
-  align-items: center;
-  justify-content: center;
-  border-bottom-left-radius: 34px;
-  border-bottom-right-radius: 34px;
-  padding-top: 34px;
+  min-height: 154px;
+  background-color: transparent;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 30px 24px 8px;
 `;
 
 const BackButton = styled.TouchableOpacity`
   position: absolute;
   left: 18px;
-  top: 54px;
+  top: 30px;
   width: 42px;
   height: 42px;
   border-radius: 21px;
@@ -42,12 +40,12 @@ const BackButton = styled.TouchableOpacity`
 `;
 
 const BrandImage = styled.Image`
-  width: 100px;
-  height: 100px;
+  width: 62px;
+  height: 62px;
 `;
 
 const Content = styled.View`
-  padding: 28px 24px 34px;
+  padding: 16px 24px 34px;
 `;
 
 const Title = styled.Text`
@@ -55,7 +53,7 @@ const Title = styled.Text`
   font-size: 26px;
   line-height: 32px;
   font-weight: 900;
-  text-align: center;
+  text-align: left;
 `;
 
 const Subtitle = styled.Text`
@@ -63,7 +61,7 @@ const Subtitle = styled.Text`
   font-size: 15px;
   line-height: 22px;
   font-weight: 700;
-  text-align: center;
+  text-align: left;
   margin-top: 8px;
   margin-bottom: 26px;
 `;

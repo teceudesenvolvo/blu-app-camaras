@@ -34,6 +34,7 @@ import BalcaoDetalheScreen from '../screens/BalcaoDetalheScreen';
 import BalcaoSolicitacaoScreen from '../screens/BalcaoSolicitacaoScreen';
 import CadastroScreen from '../screens/CadastroScreen';
 import ChatMensagensScreen from '../screens/ChatMensagensScreen';
+import ChatMensagensListaScreen from '../screens/ChatMensagensListaScreen';
 import ContatoConfiancaScreen from '../screens/ContatoConfiancaScreen';
 import LicitacoesScreen from '../screens/LicitacoesScreen';
 import LicitacaoDetalheScreen from '../screens/LicitacaoDetalheScreen';
@@ -54,7 +55,7 @@ import VereadoresScreen from '../screens/VereadoresScreen';
 
 import { AuthContext, AuthProvider } from '../context/AuthContext';
 import { MobileModulesProvider, useMobileModules } from '../context/MobileModulesContext';
-import { moduleForScreen } from '../config/mobileModules';
+import { moduleForScreen, routeForModule } from '../config/mobileModules';
 import { PortalBackground, PortalScreenHeader } from '../components/PortalScaffold';
 import EsicScreen from '../screens/EsicScreen';
 import NoticiasScreen from '../screens/NoticiasScreen';
@@ -64,6 +65,27 @@ import ProtocoloScreen from '../screens/ProtocoloScreen';
 import GabineteVereadorScreen from '../screens/GabineteVereadorScreen';
 import EscolaParlamentoScreen from '../screens/EscolaParlamentoScreen';
 import ProconScreen from '../screens/ProconScreen';
+import AdminModuleScreen, { ADMIN_ROUTE_MODULES } from '../screens/AdminModuleScreen';
+import AdminBalcaoScreen from '../screens/AdminBalcaoScreen';
+import AdminVereadoresScreen from '../screens/AdminVereadoresScreen';
+import AdminPielScreen from '../screens/AdminPielScreen';
+import AdminProcuradoriaScreen from '../screens/AdminProcuradoriaScreen';
+import AdminGabineteScreen from '../screens/AdminGabineteScreen';
+import AdminAvaliacoesScreen from '../screens/AdminAvaliacoesScreen';
+import AdminNoticiasScreen from '../screens/AdminNoticiasScreen';
+import AdminProtocoloScreen from '../screens/AdminProtocoloScreen';
+import AdminContratosScreen from '../screens/AdminContratosScreen';
+import AdminAlmoxarifadoScreen from '../screens/AdminAlmoxarifadoScreen';
+import AdminPatrimonioScreen from '../screens/AdminPatrimonioScreen';
+import AdminManutencaoScreen from '../screens/AdminManutencaoScreen';
+import AdminFrotasScreen from '../screens/AdminFrotasScreen';
+import AdminEsicScreen from '../screens/AdminEsicScreen';
+import AdminJuridicoScreen from '../screens/AdminJuridicoScreen';
+import AdminMicroempreendedorScreen from '../screens/AdminMicroempreendedorScreen';
+import AdminMensagensScreen from '../screens/AdminMensagensScreen';
+import AdminMensagensListaScreen from '../screens/AdminMensagensListaScreen';
+import AdminOuvidoriaScreen from '../screens/AdminOuvidoriaScreen';
+import AdminProconScreen from '../screens/AdminProconScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -259,6 +281,8 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
         ],
     }));
 
+    if (descriptors[state.routes[state.index].key]?.options?.hideTabBar || state.routes[state.index].params?.chatOpen) return null;
+
     return (
         <View style={styles.navContainer}>
             <BlurView intensity={96} tint={isDark ? 'dark' : 'light'} style={[styles.blur, { width: pillWidth, borderColor: isDark ? 'rgba(226,242,255,0.72)' : 'rgba(255,255,255,0.92)' }]}>
@@ -330,7 +354,7 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                             activeIconColor={isDark ? appTheme.portal.accent : appTheme.portal.secondary}
                             inactiveColor={appTheme.portal.text}
                             showBadge={showBadge}
-                            onPress={() => navigation.navigate(route.name)}
+                            onPress={() => navigation.navigate(options.routeTarget || route.name)}
                         />
                     );
                 })}
@@ -359,13 +383,19 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
     );
 };
 
+function MensagensTabScreen(props) {
+    const { canUseAdminApp } = useMobileModules();
+    const Screen = canUseAdminApp('mensagens') ? AdminMensagensListaScreen : ChatMensagensListaScreen;
+    return <Screen {...props} />;
+}
+
 // 4. TAB NAVIGATOR (Telas principais com a barra visível)
 function BottomTabNavigator() {
-    const { canUse, settings } = useMobileModules();
+    const { canUse, settings, role } = useMobileModules();
     const routes = {
         servicos: { name: 'Servicos', component: AtendimentosScreen, icon: 'view-grid-plus-outline', label: 'Serviços' },
                 licitacoes: { name: 'Licitacoes', component: LicitacoesScreen, icon: 'gavel', label: 'Licitações' },
-        mensagens: { name: 'Mensagens', component: ChatMensagensScreen, icon: 'message-text-outline', label: 'Mensagens', module: 'mensagens' },
+        mensagens: { name: 'Mensagens', component: MensagensTabScreen, icon: 'message-text-outline', label: 'Mensagens', module: 'mensagens' },
         balcao: { name: 'BalcaoCidadao', component: guardedScreens.BalcaoCidadao, icon: 'account-check-outline', label: 'Balcão', module: 'balcao' },
         legislativo: { name: 'Legislativo', component: guardedScreens.Protocolo, icon: 'scale-balance', label: 'Legislativo', module: 'legislativo' },
         protocolo: { name: 'Protocolo', component: guardedScreens.Protocolo, icon: 'folder-text-outline', label: 'Protocolo', module: 'protocolo' },
@@ -389,7 +419,11 @@ function BottomTabNavigator() {
             screenOptions={{ headerShown: false }}
         >
             <Tab.Screen name="Inicio" component={HomeScreen} options={{ tabBarIconName: 'home-variant', tabBarLabel: 'Início' }} />
-            {middleRoutes.map(route => <Tab.Screen key={route.name} name={route.name} component={route.component} options={{ tabBarIconName: route.icon, tabBarLabel: route.label }} />)}
+            {middleRoutes.map(route => <Tab.Screen key={route.name} name={route.name} component={route.component} options={{
+                tabBarIconName: route.icon,
+                tabBarLabel: route.label,
+                routeTarget: route.module === 'mensagens' ? route.name : routeForModule(settings, role, route.module || route.name, route.name),
+            }} />)}
             <Tab.Screen name="Perfil" component={PerfilScreen} options={{ tabBarIconName: 'account-outline', tabBarLabel: 'Perfil' }} />
         </Tab.Navigator>
     );
@@ -507,7 +541,12 @@ function NavigationContent() {
                     <Stack.Screen name="BalcaoDetalhe" component={guardedScreens.BalcaoDetalhe} />
                     <Stack.Screen name="AvaliarAtendimento" component={guardedScreens.AvaliarAtendimento} />
                     <Stack.Screen name="ProcuradoriaDetalhe" component={guardedScreens.ProcuradoriaDetalhe} />
+                    <Stack.Screen name="ChatMensagensDetalhe" component={guardScreen(ChatMensagensScreen, 'mensagens')} />
+                    <Stack.Screen name="AdminMensagensDetalhe" component={guardScreen(AdminMensagensScreen, 'mensagens')} />
                     <Stack.Screen name="PanicLocation" component={guardedScreens.PanicLocation} />
+                    {Object.entries(ADMIN_ROUTE_MODULES).map(([name, moduleId]) => (
+                        <Stack.Screen key={name} name={name} component={name === 'AdminBalcao' ? AdminBalcaoScreen : name === 'AdminVereadores' ? AdminVereadoresScreen : name === 'AdminPiel' ? AdminPielScreen : name === 'AdminProcuradoria' ? AdminProcuradoriaScreen : name === 'AdminGabinete' ? AdminGabineteScreen : name === 'AdminAvaliacoes' ? AdminAvaliacoesScreen : name === 'AdminOuvidoria' ? AdminOuvidoriaScreen : name === 'AdminProcon' ? AdminProconScreen : name === 'AdminNoticias' ? AdminNoticiasScreen : name === 'AdminProtocolo' ? AdminProtocoloScreen : name === 'AdminContratos' ? AdminContratosScreen : name === 'AdminAlmoxarifado' ? AdminAlmoxarifadoScreen : name === 'AdminPatrimonio' ? AdminPatrimonioScreen : name === 'AdminManutencao' ? AdminManutencaoScreen : name === 'AdminFrotas' ? AdminFrotasScreen : name === 'AdminEsic' ? AdminEsicScreen : name === 'AdminJuridico' ? AdminJuridicoScreen : name === 'AdminMicroempreendedor' ? AdminMicroempreendedorScreen : name === 'AdminMensagens' ? AdminMensagensScreen : name === 'AdminTvCamara' ? TvCamaraScreen : AdminModuleScreen} initialParams={{ moduleId }} />
+                    ))}
                 </>
             )}
         </Stack.Navigator>

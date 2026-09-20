@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { firestore } from '../../services/firebaseConfig';
 import { AuthContext } from './AuthContext';
-import { canUseModule } from '../config/mobileModules';
+import { canUseAdminAppModule, canUseModule } from '../config/mobileModules';
 import { useSystemControl } from './SystemControlContext';
 
 const MobileModulesContext = createContext(null);
@@ -40,6 +40,7 @@ export function MobileModulesProvider({ children }) {
       const requiredApi = { tvCamara: 'youtube', notificacoes: 'notifications', mensagens: 'notifications' }[id];
       return !requiredApi || settings?.apiFeatures?.[requiredApi] !== false;
     },
+    canUseAdminApp: id => !settingsFailure && canUseAdminAppModule(settings, role, id),
   }), [settingsLoading, roleLoading, settingsFailure, settings, role]);
 
   return <MobileModulesContext.Provider value={value}>{children}</MobileModulesContext.Provider>;

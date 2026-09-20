@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
+    "config:check": "node --test tests/chamber-config.test.cjs",
+    "config:print": "expo config --type public",
     "reset-project": "node ./scripts/reset-project.js",
     "youtube:refresh-token": "tsx ./scripts/gerar-refresh-token.ts",
     "youtube:auth-test": "tsx ./scripts/youtube-auth-test.ts",
@@ -27,6 +29,7 @@
     "expo-constants": "~18.0.14",
     "expo-crypto": "~15.0.9",
     "expo-device": "~8.0.10",
+    "expo-document-picker": "~14.0.8",
     "expo-font": "~14.0.12",
     "expo-haptics": "~15.0.8",
     "expo-image": "~3.0.11",

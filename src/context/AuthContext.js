@@ -9,9 +9,10 @@ import {
     onAuthStateChanged,
     sendPasswordResetEmail,
     signInWithEmailAndPassword,
-    signOut
+    signOut,
+    updateProfile
 } from 'firebase/auth';
-import { addDoc, collection, doc, serverTimestamp as firestoreTimestamp, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp as firestoreTimestamp, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { auth, firestore } from '../../services/firebaseConfig';
 
 // 🔔 Expo Notifications
@@ -24,6 +25,7 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+    const [profileName, setProfileName] = useState('');
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
@@ -35,6 +37,14 @@ export const AuthProvider = ({ children }) => {
         const unsubscribe = onAuthStateChanged(auth, (userState) => {
             setUser(userState);
             setLoading(false);
+            if (!userState) {
+                setProfileName('');
+                return;
+            }
+            getDoc(doc(firestore, 'users', userState.uid)).then(snapshot => {
+                const data = snapshot.data() || {};
+                setProfileName(String(data.name || data.nome || '').trim());
+            }).catch(() => setProfileName(''));
         });
 
         return unsubscribe;
@@ -240,6 +250,10 @@ export const AuthProvider = ({ children }) => {
         try {
             const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
 
+            if (extraData.name || extraData.nome) {
+                await updateProfile(newUser, { displayName: extraData.name || extraData.nome });
+            }
+
             const userData = {
                 ...extraData,
                 email,
@@ -284,6 +298,7 @@ export const AuthProvider = ({ children }) => {
     return (
         <AuthContext.Provider value={{
             user,
+            profileName,
             loading,
             login,
             register,

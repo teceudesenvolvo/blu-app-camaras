@@ -17,27 +17,25 @@ WebBrowser.maybeCompleteAuthSession();
 
 const Screen = styled.View`
   flex: 1;
-  background-color: ${({ theme }) => theme.portal.card};
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
 const Hero = styled.View`
-  min-height: 238px;
-  background-color: ${({ theme }) => theme.mode === 'dark' ? theme.portal.pageAlt : '#eef2f6'};
-  align-items: center;
-  justify-content: center;
-  border-bottom-left-radius: 34px;
-  border-bottom-right-radius: 34px;
-  padding-top: 34px;
+  min-height: 154px;
+  background-color: transparent;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 30px 24px 8px;
 `;
 
 const Content = styled.View`
   flex: 1;
-  padding: 28px 24px 28px;
+  padding: 16px 24px 34px;
 `;
 
 const BrandImage = styled.Image`
-  width: 108px;
-  height: 108px;
+  width: 62px;
+  height: 62px;
 `;
 
 const Title = styled.Text`
@@ -45,7 +43,7 @@ const Title = styled.Text`
   font-size: 26px;
   line-height: 32px;
   font-weight: 900;
-  text-align: center;
+  text-align: left;
 `;
 
 const Subtitle = styled.Text`
@@ -55,7 +53,7 @@ const Subtitle = styled.Text`
   font-weight: 700;
   margin-top: 8px;
   margin-bottom: 34px;
-  text-align: center;
+  text-align: left;
 `;
 
 const FieldBlock = styled.View`

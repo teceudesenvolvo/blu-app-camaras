@@ -4,7 +4,7 @@ import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc, doc, onSnapshot, serverTimestamp as firestoreTimestamp, setDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, View } from 'react-native';
 import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
@@ -27,7 +27,15 @@ const HeaderContainer = styled.View`
 `;
 
 const BackButton = styled.TouchableOpacity`
-  padding: 5px;
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const HeaderTitle = styled.Text`
@@ -197,6 +205,12 @@ const ModalItem = styled.TouchableOpacity`
   border-bottom-color: ${({ theme }) => theme.portal.border};
 `;
 
+const ModalItemText = styled.Text`
+  color: ${({ theme }) => theme.portal.text};
+  font-size: 15px;
+  font-weight: 600;
+`;
+
 const MANIFESTATION_TYPES = ['Elogio', 'Reclamação', 'Sugestão', 'Denúncia', 'Solicitação'];
 const IDENTIFICATION_TYPES = ['Identificar-se', 'Anônimo'];
 
@@ -326,7 +340,7 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
         <Container showsVerticalScrollIndicator={false}>
             <HeaderContainer>
                 <BackButton onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color={theme.portal.text} />
+                    <Ionicons name="arrow-back" size={24} color={theme.portal.primary} />
                 </BackButton>
                 <HeaderTextGroup>
                     <HeaderTitle>Ouvidoria</HeaderTitle>
@@ -438,7 +452,7 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
                     <ModalContent>
                         {MANIFESTATION_TYPES.map((t) => (
                             <ModalItem key={t} onPress={() => { setTipo(t); setModalTipoVisible(false); }}>
-                                <Text>{t}</Text>
+                                <ModalItemText>{t}</ModalItemText>
                             </ModalItem>
                         ))}
                     </ModalContent>
@@ -451,7 +465,7 @@ export default function OuvidoriaMunicipalScreen({ navigation }) {
                     <ModalContent>
                         {IDENTIFICATION_TYPES.map((i) => (
                             <ModalItem key={i} onPress={() => { setIdentificacao(i); setModalIdentVisible(false); }}>
-                                <Text>{i}</Text>
+                                <ModalItemText>{i}</ModalItemText>
                             </ModalItem>
                         ))}
                     </ModalContent>

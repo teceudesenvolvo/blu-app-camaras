@@ -337,7 +337,7 @@ async function notifyUsersAboutNewYoutubeVideo(params: {
   return created;
 }
 
-async function subscribeToYoutubeWebSub(callbackUrl: string): Promise<void> {
+async function subscribeToYoutubeWebSub(callbackUrl: string, attempt = 1): Promise<void> {
   const channelId = readSecret(youtubeChannelId, "YOUTUBE_CHANNEL_ID");
   const verifyToken = readSecret(youtubeWebhookVerifyToken, "YOUTUBE_WEBHOOK_VERIFY_TOKEN");
   const params = new URLSearchParams({
@@ -356,10 +356,28 @@ async function subscribeToYoutubeWebSub(callbackUrl: string): Promise<void> {
     },
     body: params.toString(),
   });
+  const responseBody = await response.text();
 
-  if (!response.ok) {
-    throw new Error(`Falha ao renovar WebSub: HTTP ${response.status}`);
+  logger.info("Resposta do WebSub ao renovar inscrição.", {
+    attempt,
+    status: response.status,
+    body: responseBody.slice(0, 1000),
+    callbackUrl,
+    channelId,
+  });
+
+  if (response.ok) return;
+
+  const retryable = [429, 500, 502, 503, 504].includes(response.status);
+  if (retryable && attempt < 4) {
+    const delayMs = attempt * 3000;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return subscribeToYoutubeWebSub(callbackUrl, attempt + 1);
   }
+
+  throw new Error(
+    `Falha ao renovar WebSub: HTTP ${response.status} - ${responseBody.slice(0, 500)}`,
+  );
 }
 
 export const youtubeChannelWebhook = onRequest(

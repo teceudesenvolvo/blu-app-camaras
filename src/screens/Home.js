@@ -2,16 +2,16 @@ import chamberConfig from '../config';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { collection, doc, getDocs, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, TouchableOpacity, View } from 'react-native';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Dimensions, PanResponder, View } from 'react-native';
 import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { PortalBackground } from '../components/PortalScaffold';
 import { AuthContext } from '../context/AuthContext';
 import { useMobileModules } from '../context/MobileModulesContext';
+import { routeForModule } from '../config/mobileModules';
 import { portalGradients } from '../styles/portalTheme';
-import { chamberLogo } from '../config/branding';
 import { useSystemControl } from '../context/SystemControlContext';
 
 const { width } = Dimensions.get('window');
@@ -30,8 +30,12 @@ const Header = styled.View`
 
 const HeaderIdentity = styled.View`
   flex: 1;
+`;
+
+const HeaderActions = styled.View`
   flex-direction: row;
   align-items: center;
+  gap: 8px;
 `;
 
 const NotificationButton = styled.TouchableOpacity`
@@ -40,6 +44,23 @@ const NotificationButton = styled.TouchableOpacity`
   height: 44px;
   align-items: center;
   justify-content: center;
+`;
+
+const ProfileAvatar = styled.View`
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.secondary};
+`;
+
+const ProfileAvatarImage = styled(Image)`
+  width: 100%;
+  height: 100%;
 `;
 
 const Badge = styled.View`
@@ -68,15 +89,10 @@ const WelcomeContainer = styled.View`
 `;
 
 const WelcomeText = styled.Text`
-  font-size: 16px;
-  color: ${({ theme }) => theme.portal.muted};
-  font-weight: 700;
-`;
-
-const BoldText = styled.Text`
   font-size: 24px;
-  font-weight: 800;
+  line-height: 30px;
   color: ${({ theme }) => theme.portal.text};
+  font-weight: 700;
 `;
 
 const InstitutionText = styled.Text`
@@ -88,8 +104,9 @@ const InstitutionText = styled.Text`
 
 const QuickMenu = styled.View`
   flex-direction: row;
+  flex-wrap: wrap;
   justify-content: space-between;
-  padding: 16px 14px 20px;
+  padding: 0 18px 20px;
   margin-bottom: 4px;
 `;
 
@@ -110,10 +127,23 @@ const HOME_ACTIONS = {
   escolaParlamento: { screen: 'EscolaParlamento', icon: 'school-outline', label: 'Escola', gradient: ['#1d4ed8', '#60a5fa'] },
 };
 const DEFAULT_HOME_MODULES = ['vereadores', 'procuradoria', 'balcao', 'piel', 'tvCamara'];
-
 const MenuItem = styled.TouchableOpacity`
-  align-items: center;
-  width: ${(width - 36) / 5}px;
+  width: 48%;
+  min-height: 112px;
+  padding: 14px;
+  margin-bottom: 12px;
+  border-radius: 18px;
+  align-items: flex-start;
+  justify-content: space-between;
+  overflow: hidden;
+`;
+
+const ServiceCardGradient = styled(LinearGradient)`
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
 `;
 
 const IconCircle = styled.View`
@@ -135,12 +165,12 @@ const IconCircle = styled.View`
 `;
 
 const GradientIconCircle = styled(LinearGradient)`
-  width: 56px;
-  height: 56px;
-  border-radius: 28px;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
   justify-content: center;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   elevation: 8;
   shadow-color: #ec4899;
   shadow-offset: 0px 4px;
@@ -148,12 +178,87 @@ const GradientIconCircle = styled(LinearGradient)`
   shadow-radius: 7px;
 `;
 
-const MenuLabel = styled.Text`
-  font-size: 11px;
+const NewsCarousel = styled.View`
+  height: 260px;
+  margin: 0 16px 20px;
+  align-items: center;
+`;
+
+const NewsSlide = styled.TouchableOpacity`
+  width: ${Math.min(width - 32, 380)}px;
+  height: 230px;
+  margin-right: 12px;
+  border-radius: 18px;
+  overflow: hidden;
+  background-color: ${({ theme }) => theme.portal.card};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
+`;
+
+const NewsSlideImage = styled.Image`
+  width: 100%;
+  height: 100%;
+  background-color: ${({ theme }) => theme.portal.pageAlt};
+`;
+
+const NewsSlideOverlay = styled.View`
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 14px 11px;
+  background-color: ${({ theme }) => theme.portal.card};
+  align-items: flex-start;
+`;
+
+const NewsSlideTitle = styled.Text`
   color: ${({ theme }) => theme.portal.text};
+  font-size: 15px;
+  line-height: 19px;
+  font-weight: 900;
+`;
+
+const NewsSlideSubtitle = styled.Text`
+  margin-top: 2px;
+  color: ${({ theme }) => theme.portal.muted};
+  font-size: 12px;
+  line-height: 16px;
+`;
+
+const NewsSlideButton = styled.TouchableOpacity`
+  margin-top: 3px;
+  padding: 2px 0;
+`;
+
+const NewsSlideButtonText = styled.Text`
+  color: ${({ theme }) => theme.portal.primary};
+  font-size: 12px;
+  font-weight: 900;
+`;
+
+const NewsDots = styled.View`
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 7px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+`;
+
+const NewsDot = styled.View`
+  width: ${({ active }) => (active ? 8 : 6)}px;
+  height: ${({ active }) => (active ? 8 : 6)}px;
+  margin: 0 3px;
+  border-radius: 5px;
+  background-color: ${({ active, theme }) => (active ? theme.portal.primary : 'rgba(255,255,255,0.85)')};
+`;
+
+const MenuLabel = styled.Text`
+  font-size: 14px;
+  color: #fff;
   font-weight: 800;
-  text-align: center;
-  line-height: 14px;
+  line-height: 18px;
 `;
 
 const SectionHeader = styled.View`
@@ -166,69 +271,13 @@ const SectionTitle = styled.Text`
   color: ${({ theme }) => theme.portal.text};
 `;
 
-const NewsGrid = styled.View`
-  padding: 0 20px;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: space-between;
-`;
-
-const NewsCard = styled.TouchableOpacity`
-  width: 47%;
-  background-color: ${({ theme }) => theme.portal.card};
-  border-radius: 12px;
-  margin-bottom: 20px;
-  overflow: hidden;
-  border: 1px solid ${({ theme }) => theme.portal.border};
-  elevation: 3;
-  shadow-color: #000;
-  shadow-offset: 0px 2px;
-  shadow-opacity: 0.08;
-`;
-
-const NewsImage = styled.Image`
-  width: 100%;
-  height: 115px;
-  background-color: ${({ theme }) => theme.portal.pageAlt};
-`;
-
-const NewsContent = styled.View`
-  padding: 12px;
-`;
-
-const NewsTitle = styled.Text`
-  font-size: 14px;
-  font-weight: 700;
-  color: ${({ theme }) => theme.portal.text};
-  line-height: 18px;
-`;
-
-const NewsSummary = styled.Text`
-  margin-top: 7px;
-  font-size: 12px;
-  color: ${({ theme }) => theme.portal.muted};
-  line-height: 16px;
-`;
-
-const ReadMoreRow = styled.View`
-  flex-direction: row;
-  align-items: center;
-  margin-top: 10px;
-`;
-
-const ReadMoreText = styled.Text`
-  font-size: 12px;
-  color: ${({ theme }) => theme.portal.primary};
-  font-weight: 800;
-  margin-right: 4px;
-`;
-
 // --- COMPONENTES AUXILIARES ---
 
 const MenuAction = ({ icon, label, onPress, gradient }) => {
   const theme = useTheme();
   return (
   <MenuItem activeOpacity={0.7} onPress={onPress}>
+    <ServiceCardGradient colors={gradient || [theme.portal.primary, theme.portal.secondary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} pointerEvents="none" />
     {gradient ? (
       <GradientIconCircle colors={gradient} start={{ x: 0.1, y: 0 }} end={{ x: 1, y: 1 }}>
         <MaterialCommunityIcons name={icon} size={32} color="#fff" />
@@ -243,27 +292,6 @@ const MenuAction = ({ icon, label, onPress, gradient }) => {
   );
 };
 
-const stripHtml = (value = '') => String(value)
-  .replace(/<[^>]*>/g, ' ')
-  .replace(/&nbsp;/g, ' ')
-  .replace(/&amp;/g, '&')
-  .replace(/&quot;/g, '"')
-  .replace(/&#39;/g, "'")
-  .replace(/\s+/g, ' ')
-  .trim();
-
-const getNewsSummary = (item) => {
-  const rawSummary =
-    item.resumo ||
-    item.subtitulo ||
-    item.excerpt?.rendered ||
-    item.descricao ||
-    item.content?.rendered ||
-    '';
-
-  return stripHtml(rawSummary);
-};
-
 const isPublishedNews = (item = {}) => {
   const status = String(item.status || item.situacao || '').trim().toLowerCase();
 
@@ -274,29 +302,53 @@ const isPublishedNews = (item = {}) => {
   return false;
 };
 
+const stripHtml = (value = '') => String(value)
+  .replace(/<[^>]*>/g, ' ')
+  .replace(/&nbsp;/g, ' ')
+  .replace(/&amp;/g, '&')
+  .replace(/&quot;/g, '"')
+  .replace(/&#39;/g, "'")
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const newsTitle = item => stripHtml(item.titulo || item.title?.rendered || 'Notícia');
+const newsSubtitle = item => stripHtml(item.subtitulo || item.resumo || item.excerpt?.rendered || item.descricao || item.content?.rendered || 'Confira os detalhes desta notícia.');
+
 // --- TELA PRINCIPAL ---
 
 const HomeScreen = ({ navigation }) => {
   const theme = useTheme();
-  const { user, unreadCount } = useContext(AuthContext);
-  const [profile, setProfile] = useState(null);
-  useEffect(() => {
-    if (!user?.uid) return undefined;
-    return onSnapshot(doc(firestore, 'users', user.uid), snapshot => setProfile(snapshot.data() || null), error => {
-      console.warn('Falha ao carregar nome na Home:', error.code || error.message);
-    });
-  }, [user?.uid]);
-  const firstName = String(profile?.name || profile?.nome || user?.displayName || '').trim().split(/\s+/)[0];
-  const { canUse, settings: moduleSettings } = useMobileModules();
+  const { user, profileName, unreadCount } = useContext(AuthContext);
+  const firstName = String(profileName || user?.displayName || user?.email?.split('@')[0] || '').trim().split(/\s+/)[0];
+  const currentHour = new Date().getHours();
+  const greeting = currentHour < 12 ? 'Bom dia' : currentHour < 18 ? 'Boa tarde' : 'Boa noite';
+  const { canUse, settings: moduleSettings, role } = useMobileModules();
   const { settings: systemSettings } = useSystemControl();
   const settings = systemSettings || moduleSettings;
-  const [logoFailed, setLogoFailed] = useState(false);
-  const logoUrl = settings?.branding?.logoUrl;
   const homeModules = Array.isArray(settings?.appHomeModules) ? settings.appHomeModules : DEFAULT_HOME_MODULES;
-  const homeActions = [...new Set(homeModules)].filter(id => HOME_ACTIONS[id] && canUse(id)).slice(0, 5);
-  useEffect(() => { setLogoFailed(false); }, [logoUrl]);
+  const homeActions = [...new Set(homeModules)].filter(id => HOME_ACTIONS[id] && canUse(id)).slice(0, 6);
   const [news, setNews] = useState([]);
+  const [activeNewsIndex, setActiveNewsIndex] = useState(0);
+  const newsAnimation = useRef(new Animated.Value(1)).current;
+  const newsCountRef = useRef(0);
   const [loading, setLoading] = useState(true);
+  newsCountRef.current = news.length;
+
+  const changeNews = delta => {
+    const count = newsCountRef.current;
+    if (count < 2) return;
+    Animated.sequence([
+      Animated.timing(newsAnimation, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(newsAnimation, { toValue: 1, duration: 250, useNativeDriver: true }),
+    ]).start();
+    setActiveNewsIndex(index => (index + delta + count) % count);
+  };
+  const newsPanResponder = useRef(PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 12 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+    onPanResponderRelease: (_, gesture) => {
+      if (Math.abs(gesture.dx) > 36) changeNews(gesture.dx < 0 ? 1 : -1);
+    },
+  })).current;
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -319,80 +371,63 @@ const HomeScreen = ({ navigation }) => {
     fetchNews();
   }, []);
 
+  useEffect(() => {
+    if (news.length < 2) return undefined;
+    const timer = setInterval(() => {
+      Animated.sequence([
+        Animated.timing(newsAnimation, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(newsAnimation, { toValue: 1, duration: 280, useNativeDriver: true }),
+      ]).start();
+      setActiveNewsIndex(index => (index + 1) % news.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [news.length, newsAnimation]);
+
   return (
     <PortalBackground>
     <Container showsVerticalScrollIndicator={false}>
       <Header>
         <HeaderIdentity>
-          <Image
-            source={logoUrl && !logoFailed ? { uri: logoUrl } : chamberLogo}
-            onError={() => setLogoFailed(true)}
-            accessibilityLabel={settings?.branding?.logoAlt || 'Logomarca da Câmara'}
-            contentFit="contain"
-            style={{ width: 48, height: 48, marginRight: 12 }}
-          />
           <WelcomeContainer>
-            <WelcomeText numberOfLines={1} adjustsFontSizeToFit>Olá{firstName ? `, ${firstName}` : ''}</WelcomeText>
-            <BoldText>Seja bem-vindo</BoldText>
+            <WelcomeText numberOfLines={1} adjustsFontSizeToFit>{greeting}{firstName ? `, ${firstName}` : ''}</WelcomeText>
             <InstitutionText numberOfLines={2}>{settings?.tenant?.name || chamberConfig.institutionName}</InstitutionText>
           </WelcomeContainer>
         </HeaderIdentity>
-        <NotificationButton activeOpacity={0.6} onPress={() => navigation.navigate('Notificacoes')}>
-          <View>
-            <Ionicons name="notifications" size={26} color={theme.portal.primary} />
-            {unreadCount > 0 && (
-              <Badge>
-                <BadgeText>{unreadCount > 9 ? '9+' : unreadCount}</BadgeText>
-              </Badge>
-            )}
-          </View>
-        </NotificationButton>
+        <HeaderActions>
+          <NotificationButton activeOpacity={0.6} onPress={() => navigation.navigate('Notificacoes')}>
+            <View>
+              <Ionicons name="notifications" size={26} color={theme.portal.secondary} />
+              {unreadCount > 0 && <Badge><BadgeText>{unreadCount > 9 ? '9+' : unreadCount}</BadgeText></Badge>}
+            </View>
+          </NotificationButton>
+          <ProfileAvatar>
+            {user?.photoURL ? <ProfileAvatarImage source={{ uri: user.photoURL }} contentFit="cover" /> : <MaterialCommunityIcons name="account" size={25} color={theme.portal.secondary} />}
+          </ProfileAvatar>
+        </HeaderActions>
       </Header>
 
+      {canUse('noticias') && <>
+        {loading ? <View style={{ height: 230, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={theme.portal.primary} /></View> : news.length > 0 && <NewsCarousel {...newsPanResponder.panHandlers}>
+          <Animated.View style={{ flex: 1, opacity: newsAnimation, transform: [{ translateX: newsAnimation.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }] }}>
+            {(() => {
+              const item = news[activeNewsIndex];
+              const imageUrl = item.capaUrl || item._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://via.placeholder.com/400x220.png?text=Notícia';
+              const openNews = () => navigation.navigate('NoticiaDetalhe', { news: item, id: item.id });
+              return <NewsSlide activeOpacity={0.88} onPress={openNews}><NewsSlideImage resizeMode="cover" source={{ uri: imageUrl }} /><NewsSlideOverlay><NewsSlideTitle numberOfLines={2}>{newsTitle(item)}</NewsSlideTitle><NewsSlideSubtitle numberOfLines={1}>{newsSubtitle(item)}</NewsSlideSubtitle><NewsSlideButton onPress={openNews}><NewsSlideButtonText>Ver notícia completa</NewsSlideButtonText></NewsSlideButton></NewsSlideOverlay></NewsSlide>;
+            })()}
+          </Animated.View>
+          <NewsDots>{news.map((item, index) => <NewsDot key={item.id} active={index === activeNewsIndex} />)}</NewsDots>
+        </NewsCarousel>}
+      </>}
+
+      <SectionHeader><SectionTitle>Serviços</SectionTitle></SectionHeader>
       <QuickMenu>
         {homeActions.map(id => <MenuAction
           key={id}
           {...HOME_ACTIONS[id]}
-          onPress={() => navigation.navigate(HOME_ACTIONS[id].screen)}
+          onPress={() => navigation.navigate(routeForModule(settings, role, id, HOME_ACTIONS[id].screen))}
         />)}
       </QuickMenu>
-
-      {canUse('noticias') && <>
-      <SectionHeader>
-        <SectionTitle>Notícias</SectionTitle>
-        <TouchableOpacity onPress={() => navigation.navigate('Noticias')} accessibilityRole="button">
-          <ReadMoreText>Ver todas</ReadMoreText>
-        </TouchableOpacity>
-      </SectionHeader>
-
-      {loading ? (
-        <View style={{ height: 200, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.portal.primary} />
-        </View>
-      ) : (
-        <NewsGrid>
-          {news.map((item) => {
-            const imageUrl = item.capaUrl || item._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://via.placeholder.com/400x200.png?text=Sem+Imagem';
-            const titleText = item.titulo || item.title?.rendered || 'Notícia';
-            const summaryText = getNewsSummary(item);
-            
-            return (
-              <NewsCard key={item.id} activeOpacity={0.9} onPress={() => navigation.navigate('NoticiaDetalhe', { news: item, id: item.id })}>
-                <NewsImage source={{ uri: imageUrl }} />
-                <NewsContent>
-                  <NewsTitle numberOfLines={3}>{titleText}</NewsTitle>
-                  {summaryText ? <NewsSummary numberOfLines={3}>{summaryText}</NewsSummary> : null}
-                  <ReadMoreRow>
-                    <ReadMoreText>Leia mais</ReadMoreText>
-                    <MaterialCommunityIcons name="arrow-right" size={14} color={theme.portal.primary} />
-                  </ReadMoreRow>
-                </NewsContent>
-              </NewsCard>
-            );
-          })}
-        </NewsGrid>
-      )}
-      </>}
 
       {/* Espaçamento extra no final para não sumir atrás da BottomBar */}
       <View style={{ height: 100 }} />

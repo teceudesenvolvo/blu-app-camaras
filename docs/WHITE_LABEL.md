@@ -6,6 +6,23 @@ desconhecido interrompe a configuracao. Nao use os antigos scripts switch.
 
 ## Arquitetura definida
 
+Este repositório é o **núcleo de desenvolvimento**. Os demais aplicativos são
+clones completos deste repositório, e não cópias isoladas de telas. Correções,
+novos módulos e componentes comuns devem ser feitos aqui primeiro e depois
+sincronizados nos clones por Pull Request. Cada clone mantém apenas seus dados
+de implantação e identidade no flavor correspondente.
+
+O fluxo recomendado é:
+
+```text
+blu-app-camaras (núcleo) -> Pull Request -> clone da Câmara -> build/publicação própria
+```
+
+Não sobrescreva o diretório `src/` de um clone para trocar a Câmara. Use um
+novo `flavors/<id>` e altere somente configuração, assets e arquivos nativos
+daquele tenant. Conflitos em código comum devem ser resolvidos trazendo o
+upgrade do núcleo, nunca criando uma segunda implementação local.
+
 Cada Camara possui seu proprio projeto Firebase, canal YouTube, playlist,
 projeto EAS e aplicativos nas lojas. O app nunca seleciona ou troca o projeto
 Firebase a partir de uma URL recebida do portal: essa identidade pertence ao build.
@@ -74,7 +91,9 @@ client secrets e refresh tokens devem permanecer fora de extra/config.json.
 
 ## Entregar upgrades
 
-Uma alteracao nas telas beneficia todos os proximos builds gerados desta base.
+Uma alteração nas telas beneficia todos os próximos builds gerados desta base.
+Depois de aprovada no núcleo, cada clone deve abrir/receber um Pull Request de
+sincronização, rodar seus testes com `CAMARA=<id>` e gerar seu próprio build.
 Cada app instalado precisa receber sua propria publicacao. EAS Update exige
 publicar separadamente para cada projeto/canal e runtime compativel; alteracoes
 nativas exigem novo binario e revisao nas lojas. Nao ha publicacao automatica

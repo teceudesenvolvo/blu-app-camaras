@@ -2,7 +2,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 module.exports = ({ config }) => {
-  const chamber = process.env.CAMARA || 'paraipaba';
+  const chamber = process.env.CAMARA || (process.env.NODE_ENV !== 'production' ? 'paraipaba' : undefined);
+  if (!chamber) throw new Error('CAMARA nao definida. Use CAMARA=<id> para selecionar o tenant.');
   if (!/^[a-z0-9-]+$/.test(chamber)) throw new Error('CAMARA invalida');
   const file = path.join(__dirname, 'flavors', chamber, 'config.json');
   if (!fs.existsSync(file)) throw new Error('Camara nao configurada: ' + chamber);
@@ -22,7 +23,11 @@ module.exports = ({ config }) => {
     slug: tenant.slug,
     icon: tenant.assets.icon,
     splash: { ...config.splash, image: tenant.assets.splash },
-    ios: { ...config.ios, ...tenant.ios },
+    ios: {
+      ...config.ios,
+      ...tenant.ios,
+      infoPlist: { ...config.ios?.infoPlist, ...tenant.ios?.infoPlist },
+    },
     android: { ...config.android, ...tenant.android },
     web: { ...config.web, favicon: tenant.assets.icon },
     updates: { ...config.updates, url: 'https://u.expo.dev/' + tenant.easProjectId },

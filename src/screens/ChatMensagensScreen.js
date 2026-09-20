@@ -2,7 +2,7 @@ import chamberConfig from '../config';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { collection, doc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Text, TouchableOpacity, View } from 'react-native';
 import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import {
@@ -157,9 +157,14 @@ const MessageTime = styled.Text`
 `;
 
 const InputWrap = styled.View`
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
   flex-direction: row;
   align-items: flex-end;
-  padding: 10px 14px 118px;
+  padding: 10px 14px;
   background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(7, 19, 31, 0.96)' : 'rgba(248, 251, 255, 0.96)'};
   border-top-width: 1px;
   border-top-color: ${({ theme }) => theme.portal.border};
@@ -226,7 +231,7 @@ function getConversationTitle(item) {
     'Atendimento';
 }
 
-export default function ChatMensagensScreen({ navigation }) {
+export default function ChatMensagensScreen({ navigation, route, mode }) {
   const theme = useTheme();
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
@@ -234,6 +239,17 @@ export default function ChatMensagensScreen({ navigation }) {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
+  const isDetailRoute = route?.name === 'ChatMensagensDetalhe';
+
+  useEffect(() => {
+    navigation.setOptions({ hideTabBar: Boolean(selectedConversation) });
+    navigation.setParams({ chatOpen: Boolean(selectedConversation) });
+    return () => {
+      navigation.setOptions({ hideTabBar: false });
+      navigation.setParams({ chatOpen: false });
+    };
+  }, [navigation, selectedConversation]);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -291,11 +307,19 @@ export default function ChatMensagensScreen({ navigation }) {
       .flat()
       .sort((a, b) => b.lastMessageAt - a.lastMessageAt);
   }, [bySource]);
+  useEffect(() => { setPageSize(10); }, [conversations.length]);
+  const visibleConversations = conversations.slice(0, pageSize);
 
   const selectedFreshConversation = useMemo(() => {
     if (!selectedConversation) return null;
     return conversations.find((item) => item.sourceKey === selectedConversation.sourceKey && item.id === selectedConversation.id) || selectedConversation;
   }, [conversations, selectedConversation]);
+
+  useEffect(() => {
+    if (!isDetailRoute || !route.params?.sourceKey || !route.params?.conversationId) return;
+    const conversation = conversations.find(item => item.sourceKey === route.params.sourceKey && item.id === route.params.conversationId);
+    if (conversation) setSelectedConversation(conversation);
+  }, [conversations, isDetailRoute, route.params?.conversationId, route.params?.sourceKey]);
 
   const handleSend = async () => {
     if (!selectedFreshConversation || !messageText.trim()) return;
@@ -329,13 +353,13 @@ export default function ChatMensagensScreen({ navigation }) {
     }
   };
 
-  if (selectedFreshConversation) {
+  if (selectedFreshConversation && mode !== 'list') {
     return (
       <PortalBackground>
         <ChatContainer>
           <PortalHeader compact>
             <PortalHeaderRow>
-              <ChatHeaderButton onPress={() => setSelectedConversation(null)} activeOpacity={0.75}>
+              <ChatHeaderButton onPress={() => isDetailRoute ? navigation.goBack() : setSelectedConversation(null)} activeOpacity={0.75}>
                 <Ionicons name="arrow-back" size={22} color={theme.portal.primary} />
               </ChatHeaderButton>
               <PortalTitleGroup>
@@ -348,7 +372,7 @@ export default function ChatMensagensScreen({ navigation }) {
           <MessagesList
             data={selectedFreshConversation.messages}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={{ padding: 18, paddingBottom: 16 }}
+            contentContainerStyle={{ padding: 18, paddingBottom: 130 }}
             renderItem={({ item }) => {
               const isUser = item.sender === 'user';
 
@@ -402,7 +426,7 @@ export default function ChatMensagensScreen({ navigation }) {
         <ActivityIndicator size="large" color={theme.portal.primary} style={{ marginTop: 24 }} />
       ) : (
         <List
-          data={conversations}
+          data={visibleConversations}
           keyExtractor={(item) => `${item.sourceKey}-${item.id}`}
           contentContainerStyle={{ paddingBottom: 124 }}
           ListHeaderComponent={<Content />}
@@ -412,12 +436,13 @@ export default function ChatMensagensScreen({ navigation }) {
               <EmptyText>Nenhuma conversa encontrada. As mensagens aparecerão aqui quando houver retorno em seus atendimentos.</EmptyText>
             </EmptyState>
           }
+          ListFooterComponent={pageSize < conversations.length ? <TouchableOpacity onPress={() => setPageSize(value => value + 10)} style={{ marginHorizontal: 18, marginBottom: 120, padding: 14, alignItems: 'center', borderRadius: 12, backgroundColor: theme.portal.card, borderWidth: 1, borderColor: theme.portal.border }}><Text style={{ color: theme.portal.primary, fontWeight: '900' }}>Carregar mais 10 mensagens</Text></TouchableOpacity> : <View style={{ height: 110 }} />}
           renderItem={({ item }) => {
             const text = item.lastMessage?.text || item.lastMessage?.message || item.lastMessage?.msg || '';
 
             return (
               <Content style={{ paddingTop: 0, paddingBottom: 0 }}>
-                <ConversationCard activeOpacity={0.78} onPress={() => setSelectedConversation(item)}>
+                <ConversationCard activeOpacity={0.78} onPress={() => (navigation.getParent()?.navigate('ChatMensagensDetalhe', { sourceKey: item.sourceKey, conversationId: item.id }) || navigation.navigate('ChatMensagensDetalhe', { sourceKey: item.sourceKey, conversationId: item.id }))}>
                   <ConversationRow>
                     <ConversationIcon bg={`${item.sourceColor}18`}>
                       <MaterialCommunityIcons name={item.sourceIcon} size={23} color={item.sourceColor} />

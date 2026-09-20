@@ -26,14 +26,11 @@ const Content = styled.ScrollView.attrs({
   flex: 1;
 `;
 
-const Cover = styled.View`
-  padding: 58px 20px 46px;
-`;
-
 const HeaderActions = styled.View`
-  flex-direction: row;
-  justify-content: flex-end;
-  align-items: center;
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
 `;
 
 const HeaderButton = styled.TouchableOpacity`
@@ -55,12 +52,13 @@ const HeaderButtonText = styled.Text`
 `;
 
 const ProfileCard = styled(PortalCard)`
-  margin: -28px 18px 14px;
+  margin: 18px 18px 14px;
+  position: relative;
   align-items: center;
 `;
 
 const AvatarButton = styled.TouchableOpacity`
-  margin-top: -48px;
+  margin-top: 8px;
   margin-bottom: 12px;
 `;
 
@@ -508,7 +506,7 @@ export default function PerfilScreen({ navigation }) {
   return (
     <Container>
       <Content contentContainerStyle={{ paddingBottom: 140 }}>
-        <Cover>
+        <ProfileCard>
           <HeaderActions>
             <HeaderButton
               onPress={handleLogout}
@@ -516,12 +514,9 @@ export default function PerfilScreen({ navigation }) {
               accessibilityLabel="Sair da conta"
             >
               <Ionicons name="log-out-outline" size={17} color={portalTheme.danger} />
-              <HeaderButtonText> Sair</HeaderButtonText>
+              <HeaderButtonText>Sair</HeaderButtonText>
             </HeaderButton>
           </HeaderActions>
-        </Cover>
-
-        <ProfileCard>
           <AvatarButton activeOpacity={0.75} onPress={() => navigation.navigate('PerfilDadosPessoais')}>
             <AvatarBox>
               {avatarUri ? (

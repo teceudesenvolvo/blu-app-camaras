@@ -1,12 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const resolve = require('../app.config');
 const base = require('../app.json').expo;
 
 test('preserves released Paraipaba identifiers and isolates update project', () => {
   const original = process.env.CAMARA;
   process.env.CAMARA = 'paraipaba';
   try {
+    const resolve = require('../app.config');
     const result = resolve({ config: structuredClone(base) });
     assert.equal(result.ios.bundleIdentifier, 'com.bluappcmparaipaba');
     assert.equal(result.android.package, 'com.blutecnologias.appcamara');
@@ -24,6 +24,7 @@ test('preserves released Paraipaba identifiers and isolates update project', () 
 test('unknown or invalid chambers never fall back to Paraipaba', () => {
   const original = process.env.CAMARA;
   try {
+    const resolve = require('../app.config');
     for (const chamber of ['nao-configurada', '../paraipaba']) {
       process.env.CAMARA = chamber;
       assert.throws(() => resolve({ config: structuredClone(base) }));

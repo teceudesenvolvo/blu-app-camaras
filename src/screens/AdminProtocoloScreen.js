@@ -1,0 +1,52 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, ScrollView, TextInput } from 'react-native';
+import styled from 'styled-components/native';
+
+import { PortalBackground, PortalCard, PortalScreenHeader } from '../components/PortalScaffold';
+import { useMobileModules } from '../context/MobileModulesContext';
+import { firestore } from '../../services/firebaseConfig';
+import { arquivarProcesso, concluirProcesso, receberProcesso, solicitarPendencia, tramitarProcesso } from '../../services/ProcessEngine';
+
+const Bar = styled.View`padding: 14px 18px 6px;`;
+const Horizontal = styled(ScrollView).attrs({ horizontal: true, showsHorizontalScrollIndicator: false })`margin-bottom: 8px;`;
+const Chip = styled.TouchableOpacity`padding: 10px 13px; margin-right: 8px; border-radius: 12px; background-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.card}; border-width: 1px; border-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.border};`;
+const ChipText = styled.Text`color: ${({ active, theme }) => active ? '#fff' : theme.portal.text}; font-size: 12px; font-weight: 800;`;
+const Search = styled(TextInput)`height: 44px; padding: 0 12px; border-radius: 11px; border-width: 1px; border-color: ${({ theme }) => theme.portal.border}; color: ${({ theme }) => theme.portal.text}; background-color: ${({ theme }) => theme.portal.card};`;
+const Card = styled.TouchableOpacity`margin: 6px 18px; padding: 16px; border-radius: 14px; background-color: ${({ theme }) => theme.portal.card}; border-width: 1px; border-color: ${({ theme }) => theme.portal.border};`;
+const Row = styled.View`flex-direction: row; align-items: center;`;
+const Info = styled.View`flex: 1; margin-left: 12px;`;
+const Title = styled.Text`color: ${({ theme }) => theme.portal.text}; font-size: 15px; font-weight: 900;`;
+const Detail = styled.Text`color: ${({ theme }) => theme.portal.muted}; font-size: 12px; margin-top: 4px;`;
+const Empty = styled.Text`color: ${({ theme }) => theme.portal.muted}; text-align: center; margin: 36px 24px;`;
+const DetailCard = styled(PortalCard)`margin: 18px;`;
+const Label = styled.Text`color: ${({ theme }) => theme.portal.muted}; font-size: 12px; font-weight: 800; margin-top: 14px;`;
+const Value = styled.Text`color: ${({ theme }) => theme.portal.text}; font-size: 15px; line-height: 22px; margin-top: 4px;`;
+const Tabs = styled.View`flex-direction: row; flex-wrap: wrap; padding: 14px 18px 0;`;
+const Tab = styled.TouchableOpacity`padding: 10px 12px; margin: 0 7px 8px 0; border-radius: 10px; background-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.card};`;
+const TabText = styled.Text`color: ${({ active, theme }) => active ? '#fff' : theme.portal.text}; font-size: 12px; font-weight: 900;`;
+const Action = styled.TouchableOpacity`margin-top: 10px; padding: 12px; border-radius: 10px; align-items: center; background-color: ${({ theme }) => theme.portal.primary};`;
+const ActionText = styled.Text`color: #fff; font-weight: 900;`;
+const Input = styled(TextInput)`min-height: 80px; margin-top: 10px; padding: 12px; border-radius: 10px; border-width: 1px; border-color: ${({ theme }) => theme.portal.border}; color: ${({ theme }) => theme.portal.text}; background-color: ${({ theme }) => theme.portal.pageAlt}; text-align-vertical: top;`;
+const STATUSES = ['Todas', 'awaiting_receipt', 'in_progress', 'awaiting_citizen', 'completed', 'archived', 'cancelled', 'suspended'];
+const LABELS = { awaiting_receipt: 'Recebido', in_progress: 'Em análise', awaiting_citizen: 'Aguardando cidadão', completed: 'Concluído', archived: 'Arquivado', cancelled: 'Cancelado', suspended: 'Suspenso' };
+const dateText = value => value?.toDate ? value.toDate().toLocaleString('pt-BR') : value ? new Date(value).toLocaleString('pt-BR') : 'Não informado';
+
+export default function AdminProtocoloScreen({ navigation }) {
+  const { canUseAdminApp } = useMobileModules();
+  const [items, setItems] = useState([]); const [filter, setFilter] = useState('Todas'); const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(null); const [tab, setTab] = useState('dados'); const [events, setEvents] = useState([]); const [pending, setPending] = useState([]); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false);
+  useEffect(() => { if (!canUseAdminApp('protocolo')) return undefined; return onSnapshot(collection(firestore, 'processes'), snapshot => setItems(snapshot.docs.map(row => ({ id: row.id, ...row.data() })))); }, [canUseAdminApp]);
+  useEffect(() => { if (!selected?.id) return undefined; const stopEvents = onSnapshot(query(collection(firestore, 'processes', selected.id, 'timeline'), orderBy('createdAt', 'asc')), snapshot => setEvents(snapshot.docs.map(row => ({ id: row.id, ...row.data() })))); const stopPending = onSnapshot(collection(firestore, 'processes', selected.id, 'pendingItems'), snapshot => setPending(snapshot.docs.map(row => ({ id: row.id, ...row.data() })))); return () => { stopEvents(); stopPending(); }; }, [selected?.id]);
+  const visible = useMemo(() => items.filter(item => { const text = `${item.protocolNumber || ''} ${item.subject || ''} ${item.requesterName || ''}`.toLowerCase(); return (filter === 'Todas' || item.status === filter) && (!search.trim() || text.includes(search.toLowerCase().trim())); }).sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)), [items, filter, search]);
+  if (!canUseAdminApp('protocolo')) return <PortalBackground><PortalScreenHeader navigation={navigation} title="Acesso indisponível" /></PortalBackground>;
+  const run = async operation => { if (!selected || busy) return; setBusy(true); try { await operation(); Alert.alert('Sucesso', 'Processo atualizado.'); } catch (error) { Alert.alert('Erro', error.message || 'Não foi possível atualizar o processo.'); } finally { setBusy(false); } };
+  if (selected) return <PortalBackground><PortalScreenHeader navigation={{ goBack: () => setSelected(null) }} eyebrow="Área administrativa" title={selected.protocolNumber || 'Processo'} subtitle={selected.subject || 'Detalhes do processo'} /><Tabs>{[['dados', 'Dados'], ['andamento', 'Andamento'], ['pendencias', 'Pendências'], ['documentos', 'Documentos']].map(([id, label]) => <Tab key={id} active={tab === id} onPress={() => setTab(id)}><TabText active={tab === id}>{label}</TabText></Tab>)}</Tabs><DetailCard>
+    {tab === 'dados' && <><Label>Interessado</Label><Value>{selected.requesterName || 'Não informado'}</Value><Label>Tipo</Label><Value>{selected.typeName || selected.typeId || 'Processo'}</Value><Label>Assunto</Label><Value>{selected.subject || 'Não informado'}</Value><Label>Descrição</Label><Value>{selected.description || 'Não informada'}</Value><Label>Setor atual</Label><Value>{selected.currentDepartmentId || 'Protocolo'}</Value><Label>Aberto em</Label><Value>{dateText(selected.createdAt)}</Value><Label>Status</Label><Value>{LABELS[selected.status] || selected.status || 'Não informado'}</Value><Action disabled={busy} onPress={() => run(() => receberProcesso(selected.id))}><ActionText>Receber processo</ActionText></Action><Action disabled={busy} onPress={() => run(() => concluirProcesso(selected.id))}><ActionText>Concluir processo</ActionText></Action><Action disabled={busy} onPress={() => run(() => arquivarProcesso(selected.id))}><ActionText>Arquivar processo</ActionText></Action></>}
+    {tab === 'andamento' && <>{events.map(item => <Value key={item.id}>{String(item.action || 'Atualização').replaceAll('_', ' ')} · {item.detail || 'Evento registrado'} · {dateText(item.createdAt)}</Value>)}{!events.length && <Value>Nenhuma atualização registrada.</Value>}<Input multiline value={note} onChangeText={setNote} placeholder="Observação ou encaminhamento" placeholderTextColor="#94a3b8" /><Action disabled={busy || !note.trim()} onPress={() => run(() => tramitarProcesso(selected.id, { destinationId: selected.currentDepartmentId || 'protocolo', detail: note.trim() }))}><ActionText>Registrar tramitação</ActionText></Action></>}
+    {tab === 'pendencias' && <>{pending.map(item => <Value key={item.id}>{item.reason || item.detail || 'Pendência'} · {item.status || 'aberta'}</Value>)}{!pending.length && <Value>Nenhuma pendência registrada.</Value>}<Input multiline value={note} onChangeText={setNote} placeholder="Descreva a documentação ou informação pendente" placeholderTextColor="#94a3b8" /><Action disabled={busy || !note.trim()} onPress={() => run(() => solicitarPendencia(selected.id, { reason: note.trim(), detail: note.trim() }))}><ActionText>Solicitar pendência</ActionText></Action></>}
+    {tab === 'documentos' && <>{(selected.documents || selected.files || []).map((item, index) => <Value key={item.id || index}>{item.name || `Documento ${index + 1}`} · {item.accessLevel || 'restrito'}</Value>)}{!(selected.documents || selected.files || []).length && <Value>Nenhum documento cadastrado.</Value>}</>}
+  </DetailCard></PortalBackground>;
+  return <PortalBackground><PortalScreenHeader navigation={navigation} eyebrow="Área administrativa" title="Protocolo e Processos" subtitle="Protocolos, tramitação, documentos e acompanhamento." /><Bar><Horizontal>{STATUSES.map(status => <Chip key={status} active={filter === status} onPress={() => setFilter(status)}><ChipText active={filter === status}>{LABELS[status] || status}</ChipText></Chip>)}</Horizontal><Search value={search} onChangeText={setSearch} placeholder="Buscar protocolo, interessado ou assunto" placeholderTextColor="#94a3b8" /></Bar><FlatList data={visible} keyExtractor={item => item.id} contentContainerStyle={{ paddingBottom: 36 }} ListEmptyComponent={<Empty>Nenhum processo encontrado.</Empty>} renderItem={({ item }) => <Card onPress={() => { setSelected(item); setTab('dados'); }}><Row><MaterialCommunityIcons name="clipboard-text-outline" size={29} color="#0284C7" /><Info><Title>{item.protocolNumber || item.id}</Title><Detail>{item.subject || 'Processo sem assunto'}</Detail><Detail>{item.requesterName || 'Interessado não informado'} · {LABELS[item.status] || item.status || 'Não informado'}</Detail><Detail>{dateText(item.createdAt)}</Detail></Info><MaterialCommunityIcons name="chevron-right" size={22} color="#94a3b8" /></Row></Card>} /></PortalBackground>;
+}

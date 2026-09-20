@@ -8,7 +8,6 @@ import {
     Alert,
     Modal,
     ScrollView,
-    Text,
     View
 } from 'react-native';
 import styled, { useTheme } from 'styled-components/native';
@@ -171,6 +170,12 @@ const ModalItem = styled.TouchableOpacity`
   padding: 15px;
   border-bottom-width: 1px;
   border-bottom-color: ${({ theme }) => theme.portal.border};
+`;
+
+const ModalItemText = styled.Text`
+  color: ${({ theme }) => theme.portal.text};
+  font-size: 15px;
+  font-weight: 600;
 `;
 
 const ATENDIMENTO_TYPES = [
@@ -461,7 +466,7 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
                         <ScrollView>
                             {ATENDIMENTO_TYPES.map(t => (
                                 <ModalItem key={t} onPress={() => { setTipoAtendimento(t); setModalTipoVisible(false); }}>
-                                    <Text>{t}</Text>
+                                    <ModalItemText>{t}</ModalItemText>
                                 </ModalItem>
                             ))}
                         </ScrollView>
@@ -474,7 +479,7 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
                     <ModalContent>
                         {VIOLENCIA_TYPES.map(t => (
                             <ModalItem key={t} onPress={() => { setTipoViolencia(t); setModalViolenciaVisible(false); }}>
-                                <Text>{t}</Text>
+                                <ModalItemText>{t}</ModalItemText>
                             </ModalItem>
                         ))}
                     </ModalContent>
@@ -486,7 +491,7 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
                     <ModalContent>
                         {IDENTIFICACAO_TYPES.map(i => (
                             <ModalItem key={i.value} onPress={() => { setIdentificacao(i.value); setModalIdentVisible(false); }}>
-                                <Text>{i.label}</Text>
+                                <ModalItemText>{i.label}</ModalItemText>
                             </ModalItem>
                         ))}
                     </ModalContent>
@@ -498,7 +503,7 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
                     <ModalContent>
                         {RELACAO_VITIMA_TYPES.map(t => (
                             <ModalItem key={t} onPress={() => { setRelacaoVitima(t); setModalRelacaoVisible(false); }}>
-                                <Text>{t}</Text>
+                                <ModalItemText>{t}</ModalItemText>
                             </ModalItem>
                         ))}
                     </ModalContent>

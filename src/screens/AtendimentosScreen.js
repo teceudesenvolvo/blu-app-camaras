@@ -7,6 +7,7 @@ import {
 } from '../components/PortalScaffold';
 import { portalTheme } from '../styles/portalTheme';
 import { useMobileModules } from '../context/MobileModulesContext';
+import { routeForModule } from '../config/mobileModules';
 
 const Content = styled.ScrollView`
   flex: 1;
@@ -71,8 +72,9 @@ const SERVICES = [
 ];
 
 export default function AtendimentosScreen({ navigation }) {
-  const { canUse } = useMobileModules();
-  const available = SERVICES.filter(service => canUse(service.module));
+  const { canUse, role, settings } = useMobileModules();
+  const bottomBarModules = Array.isArray(settings?.appBottomBarModules) ? settings.appBottomBarModules : [];
+  const available = SERVICES.filter(service => canUse(service.module) && !bottomBarModules.includes(service.module));
   return (
     <PortalBackground>
       <PortalScreenHeader
@@ -87,7 +89,7 @@ export default function AtendimentosScreen({ navigation }) {
         <Inner>
           <ListLabel>Serviços disponíveis</ListLabel>
           {available.length === 0 ? <ListLabel>Nenhum serviço está disponível no momento.</ListLabel> : available.map(service => (
-            <ServiceItem key={service.module} onPress={() => navigation.navigate(service.screen)} activeOpacity={0.78} accessibilityRole="button">
+            <ServiceItem key={service.module} onPress={() => navigation.navigate(routeForModule(settings, role, service.module, service.screen))} activeOpacity={0.78} accessibilityRole="button">
               <PortalIconBadge>
                 <Ionicons name={service.icon} size={22} color={portalTheme.primary} />
               </PortalIconBadge>

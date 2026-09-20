@@ -239,7 +239,16 @@ export default function LicitacoesScreen({ navigation }) {
       const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error(`API de licitações HTTP ${response.status}`);
+        const responseText = await response.text().catch(() => '');
+        let responseDetail = responseText;
+        try {
+          const responseJson = JSON.parse(responseText);
+          responseDetail = responseJson.message || responseJson.error || responseJson.detail || responseText;
+        } catch (_) {
+          responseDetail = responseText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+        const detail = responseDetail ? `: ${responseDetail.slice(0, 180)}` : '';
+        throw new Error(`API de licitações HTTP ${response.status}${detail}`);
       }
 
       const json = await response.json();

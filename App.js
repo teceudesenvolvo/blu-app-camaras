@@ -92,7 +92,12 @@ function ThemedApp() {
     <NavigationContainer theme={navigationTheme}>
       <ThemeProvider theme={appTheme}>
         <ThemePreferenceContext.Provider value={themePreferenceValue}>
-          <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
+          <StatusBar
+            key={themeMode}
+            style={themeMode === 'dark' ? 'light' : 'dark'}
+            backgroundColor={portal.page}
+            translucent={false}
+          />
 
           {/* O AppNavigator agora controla qual tela mostrar */}
           <AppNavigator />

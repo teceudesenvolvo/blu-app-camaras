@@ -1,4 +1,5 @@
 import { httpsCallable } from 'firebase/functions';
+import * as DocumentPicker from 'expo-document-picker';
 import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
 import { useContext, useEffect, useState } from 'react';
@@ -6,6 +7,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useTheme } from 'styled-components/native';
 import { firestore, functions, storage } from '../../services/firebaseConfig';
+import { uploadFileToStorage } from '../../services/storageService';
 import { ModuleButton, ModuleError, ModuleField, ModulePage, ModuleRow, ModuleText } from '../components/CitizenModuleUi';
 import { AuthContext } from '../context/AuthContext';
 
@@ -32,6 +34,7 @@ export default function ProtocoloScreen({ navigation }) {
   const [code, setCode] = useState('');
   const [lookup, setLookup] = useState(null);
   const [webview, setWebview] = useState(null);
+  const [documents, setDocuments] = useState([]);
   const selectedType = types.find(item => item.id === form.typeId);
 
   useEffect(() => {
@@ -55,7 +58,7 @@ export default function ProtocoloScreen({ navigation }) {
   const create = async () => {
     if (busy || !selectedType) return;
     if (!form.subject.trim() || !signature) { setError('Informe o assunto e assine antes de protocolar.'); return; }
-    if ((selectedType.requiredDocuments || []).length) { setError('Este serviço exige documentos anexos. O envio de documentos ainda não está disponível no app; não é possível concluir este protocolo aqui.'); return; }
+    if ((selectedType.requiredDocuments || []).length && !documents.length) { setError('Adicione os documentos exigidos antes de protocolar.'); return; }
     const missing = (selectedType.formFields || []).find(field => field.required && !String(form.additionalData[field.id] || '').trim());
     if (missing) { setError(`Preencha o campo obrigatório: ${missing.label}.`); return; }
     setBusy(true); setError('');
@@ -68,9 +71,19 @@ export default function ProtocoloScreen({ navigation }) {
       await uploadString(target, signature, 'data_url', { contentType: 'image/png' });
       const url = await getDownloadURL(target);
       await httpsCallable(functions, 'processCommand')({ action: 'document', processId: created.id, name: `Assinatura-${created.protocolNumber}.png`, storagePath: path, url, mimeType: 'image/png', accessLevel: 'public', version: 1 });
-      setForm({ typeId: '', subject: '', description: '', additionalData: {} }); setSignature(''); setMode('list');
+      await Promise.all(documents.map(async (file, index) => {
+        const folder = `processes/${created.id}/documents`;
+        const fileUrl = await uploadFileToStorage(file.uri, folder, { contentType: file.mimeType || 'application/octet-stream' });
+        return httpsCallable(functions, 'processCommand')({ action: 'document', processId: created.id, name: file.name || `Documento-${index + 1}`, storagePath: `${folder}/${file.name || index}`, url: fileUrl, mimeType: file.mimeType || 'application/octet-stream', accessLevel: 'public', version: 1 });
+      }));
+      setForm({ typeId: '', subject: '', description: '', additionalData: {} }); setSignature(''); setDocuments([]); setMode('list');
     } catch (failure) { setError(created ? `Protocolo ${created.protocolNumber} criado, mas a assinatura não foi anexada. Contate o setor de Protocolo antes de enviar outro pedido. ${failure.message || ''}` : failure.message || 'Não foi possível criar o protocolo.'); }
     finally { setBusy(false); }
+  };
+
+  const pickDocuments = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: '*/*', multiple: true, copyToCacheDirectory: true });
+    if (!result.canceled) setDocuments(result.assets || []);
   };
 
   const respond = async item => {
@@ -106,13 +119,16 @@ export default function ProtocoloScreen({ navigation }) {
         <ModuleField label="Assunto" value={form.subject} onChangeText={value => setForm(previous => ({ ...previous, subject: value }))} />
         <ModuleField label="Descrição" value={form.description} onChangeText={value => setForm(previous => ({ ...previous, description: value }))} multiline maxLength={10000} />
         {(selectedType.formFields || []).map(field => <ModuleField key={field.id} label={`${field.label}${field.required ? ' *' : ''}`} value={String(form.additionalData[field.id] || '')} onChangeText={value => setForm(previous => ({ ...previous, additionalData: { ...previous.additionalData, [field.id]: value } }))} multiline={field.type === 'textarea'} />)}
-        {(selectedType.requiredDocuments || []).length ? <ModuleText muted style={{ marginTop: 16 }}>Documentos exigidos: {selectedType.requiredDocuments.join(', ')}. Este serviço ainda não pode ser enviado pelo app.</ModuleText> : <>
+        {(selectedType.requiredDocuments || []).length ? <ModuleText muted style={{ marginTop: 16 }}>Documentos exigidos: {selectedType.requiredDocuments.join(', ')}</ModuleText> : null}
+        <ModuleButton secondary onPress={pickDocuments}>Adicionar documentos ({documents.length})</ModuleButton>
+        {documents.map((file, index) => <ModuleRow key={`${file.uri}-${index}`} title={file.name || `Documento ${index + 1}`} detail={file.mimeType || 'Arquivo selecionado'} disabled />)}
+        <>
           <ModuleText style={{ marginTop: 20, fontWeight: '800' }}>Assinatura eletrônica</ModuleText>
           <View style={{ height: 170, marginTop: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 8, overflow: 'hidden' }}><WebView originWhitelist={['*']} source={{ html: signHtml }} onMessage={event => setSignature(event.nativeEvent.data === 'cleared' ? '' : event.nativeEvent.data)} ref={setWebview} scrollEnabled={false} /></View>
           <ModuleText muted style={{ marginTop: 5 }}>{signature ? 'Assinatura registrada' : 'Assine no espaço acima'}</ModuleText>
           <ModuleButton secondary onPress={() => { webview?.postMessage('clear'); setSignature(''); }}>Limpar assinatura</ModuleButton>
           <ModuleButton disabled={busy || !signature} onPress={create}>{busy ? 'Enviando...' : 'Protocolar'}</ModuleButton>
-        </>}
+        </>
       </> : null}
     </> : null}
     {mode === 'detail' && selected ? <>
