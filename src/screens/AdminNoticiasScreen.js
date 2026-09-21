@@ -35,6 +35,7 @@ const Action = styled.TouchableOpacity`margin-top: 12px; padding: 13px; border-r
 const SecondaryAction = styled(Action)`background-color: ${({ theme }) => theme.portal.pageAlt}; border-width: 1px; border-color: ${({ theme }) => theme.portal.border};`;
 const DangerAction = styled(Action)`background-color: ${({ theme }) => theme.portal.danger};`;
 const ActionText = styled.Text`color: ${({ inverse, theme }) => inverse ? theme.portal.text : '#fff'}; font-weight: 900;`;
+const FloatingAdd = styled.TouchableOpacity`position: absolute; right: 22px; bottom: 28px; width: 60px; height: 60px; border-radius: 30px; align-items: center; justify-content: center; background-color: ${({ theme }) => theme.portal.primary}; elevation: 7; shadow-color: #000; shadow-opacity: 0.2; shadow-radius: 8px; shadow-offset: 0px 4px;`;
 const Cover = styled(Image)`width: 92px; height: 64px; border-radius: 8px; background-color: ${({ theme }) => theme.portal.pageAlt};`;
 const Preview = styled(Image)`width: 100%; height: 170px; margin-top: 12px; border-radius: 10px; background-color: ${({ theme }) => theme.portal.pageAlt};`;
 
@@ -141,8 +142,8 @@ export default function AdminNoticiasScreen({ navigation }) {
 
   return <PortalBackground>
     <PortalScreenHeader navigation={navigation} eyebrow="Área administrativa" title="Notícias" subtitle="Publique novidades e avisos para os cidadãos." />
-    <Action onPress={() => openForm()}><ActionText>Nova notícia</ActionText></Action>
     <FilterBar><Horizontal>{STATUSES.map(status => <Chip key={status} active={statusFilter === status} onPress={() => setStatusFilter(status)}><ChipText active={statusFilter === status}>{status}</ChipText></Chip>)}</Horizontal><Search value={search} onChangeText={setSearch} placeholder="Buscar notícia" placeholderTextColor="#94a3b8" /></FilterBar>
-    <FlatList data={visibleItems} keyExtractor={item => item.id} contentContainerStyle={{ paddingBottom: 36 }} ListEmptyComponent={<Empty>Nenhuma notícia encontrada.</Empty>} renderItem={({ item }) => <Card onPress={() => openForm(item)}><Row>{item.capaUrl ? <Cover source={{ uri: item.capaUrl }} contentFit="cover" /> : <MaterialCommunityIcons name="newspaper-variant-outline" size={48} color="#94a3b8" />}<Info><Title>{item.titulo || 'Notícia sem título'}</Title><Detail numberOfLines={2}>{cleanText(item.subtitulo || item.conteudo)}</Detail><Detail>{item.status || 'Rascunho'}{item.autor ? ` · ${item.autor}` : ''}</Detail></Info><MaterialCommunityIcons name="chevron-right" size={22} color="#94a3b8" /></Row></Card>} />
+    <FlatList data={visibleItems} keyExtractor={item => item.id} contentContainerStyle={{ paddingBottom: 110 }} ListEmptyComponent={<Empty>Nenhuma notícia encontrada.</Empty>} renderItem={({ item }) => <Card onPress={() => openForm(item)}><Row>{item.capaUrl ? <Cover source={{ uri: item.capaUrl }} contentFit="cover" /> : <MaterialCommunityIcons name="newspaper-variant-outline" size={48} color="#94a3b8" />}<Info><Title>{item.titulo || 'Notícia sem título'}</Title><Detail numberOfLines={2}>{cleanText(item.subtitulo || item.conteudo)}</Detail><Detail>{item.status || 'Rascunho'}{item.autor ? ` · ${item.autor}` : ''}</Detail></Info><MaterialCommunityIcons name="chevron-right" size={22} color="#94a3b8" /></Row></Card>} />
+    <FloatingAdd onPress={() => openForm()} accessibilityRole="button" accessibilityLabel="Nova notícia"><MaterialCommunityIcons name="plus" size={30} color="#fff" /></FloatingAdd>
   </PortalBackground>;
 }
