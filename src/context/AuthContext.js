@@ -26,6 +26,7 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [profileName, setProfileName] = useState('');
+    const [profilePhoto, setProfilePhoto] = useState('');
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
@@ -39,12 +40,14 @@ export const AuthProvider = ({ children }) => {
             setLoading(false);
             if (!userState) {
                 setProfileName('');
+                setProfilePhoto('');
                 return;
             }
             getDoc(doc(firestore, 'users', userState.uid)).then(snapshot => {
                 const data = snapshot.data() || {};
                 setProfileName(String(data.name || data.nome || '').trim());
-            }).catch(() => setProfileName(''));
+                setProfilePhoto(String(data.avatarUrl || data.avatarBase64 || data.photoURL || data.fotoUrl || '').trim());
+            }).catch(() => { setProfileName(''); setProfilePhoto(''); });
         });
 
         return unsubscribe;
@@ -299,6 +302,7 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider value={{
             user,
             profileName,
+            profilePhoto,
             loading,
             login,
             register,

@@ -46,7 +46,7 @@ const NotificationButton = styled.TouchableOpacity`
   justify-content: center;
 `;
 
-const ProfileAvatar = styled.View`
+const ProfileAvatar = styled.TouchableOpacity`
   width: 42px;
   height: 42px;
   border-radius: 21px;
@@ -318,7 +318,7 @@ const newsSubtitle = item => stripHtml(item.subtitulo || item.resumo || item.exc
 
 const HomeScreen = ({ navigation }) => {
   const theme = useTheme();
-  const { user, profileName, unreadCount } = useContext(AuthContext);
+  const { user, profileName, profilePhoto, unreadCount } = useContext(AuthContext);
   const firstName = String(profileName || user?.displayName || user?.email?.split('@')[0] || '').trim().split(/\s+/)[0];
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Bom dia' : currentHour < 18 ? 'Boa tarde' : 'Boa noite';
@@ -400,8 +400,8 @@ const HomeScreen = ({ navigation }) => {
               {unreadCount > 0 && <Badge><BadgeText>{unreadCount > 9 ? '9+' : unreadCount}</BadgeText></Badge>}
             </View>
           </NotificationButton>
-          <ProfileAvatar>
-            {user?.photoURL ? <ProfileAvatarImage source={{ uri: user.photoURL }} contentFit="cover" /> : <MaterialCommunityIcons name="account" size={25} color={theme.portal.secondary} />}
+          <ProfileAvatar activeOpacity={0.7} onPress={() => navigation.navigate('Perfil')} accessibilityRole="button" accessibilityLabel="Abrir perfil">
+            {profilePhoto || user?.photoURL ? <ProfileAvatarImage source={{ uri: profilePhoto || user.photoURL }} contentFit="cover" /> : <MaterialCommunityIcons name="account" size={25} color={theme.portal.secondary} />}
           </ProfileAvatar>
         </HeaderActions>
       </Header>
