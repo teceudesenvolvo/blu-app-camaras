@@ -47,7 +47,9 @@ export function canUseModule(settings, role, moduleId) {
 
 export function canUseAdminAppModule(settings, role, moduleId) {
   if (!moduleId) return true;
-  if (settings?.modules?.[moduleId]?.adminApp === false) return false;
+  // O perfil não pode acessar o módulo administrativo se ele estiver
+  // desativado globalmente no Controle do Sistema.
+  if (settings?.modules?.[moduleId]?.app === false || settings?.modules?.[moduleId]?.adminApp === false) return false;
   if (!role || role === 'Cidadão') return false;
   const configured = settings?.security?.rolePermissions?.[role || 'Cidadão']?.[moduleId]?.adminApp;
   return configured !== false;
