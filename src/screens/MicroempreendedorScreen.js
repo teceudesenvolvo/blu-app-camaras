@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { addDoc, collection, doc, getDoc, onSnapshot, query, runTransaction, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { PortalBackground, PortalScreenHeader } from '../components/PortalScaffold';
 import { AuthContext } from '../context/AuthContext';
+import { appointmentQrUrl } from '../utils/appointmentQr';
 
 const TYPES = [
   'Orientação para abertura de um novo negócio (MEI)',
@@ -169,7 +170,7 @@ export default function MicroempreendedorScreen({ navigation }) {
         const currentBooked = bookedSnap.data()?.[dateString] || [];
         if (!Array.isArray(currentBooked) || currentBooked.includes(time)) throw new Error('Este horário acabou de ser reservado.');
         transaction.set(bookedRef, { [dateString]: [...currentBooked, time] }, { merge: true });
-        transaction.update(requestRef, { status: 'Agendado', appointmentDate: dateString, appointmentTime: time, ultimaAtualizacao: serverTimestamp() });
+        transaction.update(requestRef, { status: 'Agendado', appointmentDate: dateString, appointmentTime: time, appointmentQrCode: appointmentQrUrl({ collection: 'assessoria-microempreendedor', id: selected.id, module: 'microempreendedor', appointmentDate: dateString, appointmentTime: time }), ultimaAtualizacao: serverTimestamp() });
       });
       Alert.alert('Agendamento confirmado', `${date.toLocaleDateString('pt-BR')} às ${time}`);
       setTime('');
@@ -226,7 +227,7 @@ export default function MicroempreendedorScreen({ navigation }) {
             <Text style={textStyle}>CNPJ: {selected.dadosAssessoria?.cnpj || 'Não informado'}</Text>
             <Text style={textStyle}>Contato: {selected.dadosAssessoria?.contatoPreferencial || 'Não informado'}</Text>
             <Text style={{ ...textStyle, marginTop: 10 }}>{selected.dadosAssessoria?.descricao}</Text>
-            {selected.status === 'Agendado' ? <Text style={{ ...textStyle, marginTop: 12, fontWeight: '800' }}>Agendado para {selected.appointmentDate?.split('-').reverse().join('/')} às {selected.appointmentTime}</Text> : null}
+            {selected.status === 'Agendado' ? <><Text style={{ ...textStyle, marginTop: 12, fontWeight: '800' }}>Agendado para {selected.appointmentDate?.split('-').reverse().join('/')} às {selected.appointmentTime}</Text>{selected.appointmentQrCode ? <Image source={{ uri: selected.appointmentQrCode }} resizeMode="contain" style={{ width: 220, height: 220, alignSelf: 'center', marginTop: 14 }} /> : null}</> : null}
           </View>
           {selected.status === 'Agendamento Liberado' ? <View style={{ marginTop: 22 }}>
             <Text style={headingStyle}>Agendamento</Text>

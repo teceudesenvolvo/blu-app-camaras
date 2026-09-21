@@ -79,6 +79,7 @@ import AdminAlmoxarifadoScreen from '../screens/AdminAlmoxarifadoScreen';
 import AdminPatrimonioScreen from '../screens/AdminPatrimonioScreen';
 import AdminManutencaoScreen from '../screens/AdminManutencaoScreen';
 import AdminFrotasScreen from '../screens/AdminFrotasScreen';
+import AdminLegislativoScreen from '../screens/AdminLegislativoScreen';
 import AdminEsicScreen from '../screens/AdminEsicScreen';
 import AdminJuridicoScreen from '../screens/AdminJuridicoScreen';
 import AdminMicroempreendedorScreen from '../screens/AdminMicroempreendedorScreen';
@@ -86,6 +87,8 @@ import AdminMensagensScreen from '../screens/AdminMensagensScreen';
 import AdminMensagensListaScreen from '../screens/AdminMensagensListaScreen';
 import AdminOuvidoriaScreen from '../screens/AdminOuvidoriaScreen';
 import AdminProconScreen from '../screens/AdminProconScreen';
+import AdminRecepcaoScreen from '../screens/AdminRecepcaoScreen';
+import AdminRecepcaoConfirmacaoScreen from '../screens/AdminRecepcaoConfirmacaoScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -543,9 +546,10 @@ function NavigationContent() {
                     <Stack.Screen name="ProcuradoriaDetalhe" component={guardedScreens.ProcuradoriaDetalhe} />
                     <Stack.Screen name="ChatMensagensDetalhe" component={guardScreen(ChatMensagensScreen, 'mensagens')} />
                     <Stack.Screen name="AdminMensagensDetalhe" component={guardScreen(AdminMensagensScreen, 'mensagens')} />
+                    <Stack.Screen name="AdminRecepcaoConfirmacao" component={AdminRecepcaoConfirmacaoScreen} />
                     <Stack.Screen name="PanicLocation" component={guardedScreens.PanicLocation} />
                     {Object.entries(ADMIN_ROUTE_MODULES).map(([name, moduleId]) => (
-                        <Stack.Screen key={name} name={name} component={name === 'AdminBalcao' ? AdminBalcaoScreen : name === 'AdminVereadores' ? AdminVereadoresScreen : name === 'AdminPiel' ? AdminPielScreen : name === 'AdminProcuradoria' ? AdminProcuradoriaScreen : name === 'AdminGabinete' ? AdminGabineteScreen : name === 'AdminAvaliacoes' ? AdminAvaliacoesScreen : name === 'AdminOuvidoria' ? AdminOuvidoriaScreen : name === 'AdminProcon' ? AdminProconScreen : name === 'AdminNoticias' ? AdminNoticiasScreen : name === 'AdminProtocolo' ? AdminProtocoloScreen : name === 'AdminContratos' ? AdminContratosScreen : name === 'AdminAlmoxarifado' ? AdminAlmoxarifadoScreen : name === 'AdminPatrimonio' ? AdminPatrimonioScreen : name === 'AdminManutencao' ? AdminManutencaoScreen : name === 'AdminFrotas' ? AdminFrotasScreen : name === 'AdminEsic' ? AdminEsicScreen : name === 'AdminJuridico' ? AdminJuridicoScreen : name === 'AdminMicroempreendedor' ? AdminMicroempreendedorScreen : name === 'AdminMensagens' ? AdminMensagensScreen : name === 'AdminTvCamara' ? TvCamaraScreen : AdminModuleScreen} initialParams={{ moduleId }} />
+                        <Stack.Screen key={name} name={name} component={name === 'AdminBalcao' ? AdminBalcaoScreen : name === 'AdminVereadores' ? AdminVereadoresScreen : name === 'AdminPiel' ? AdminPielScreen : name === 'AdminProcuradoria' ? AdminProcuradoriaScreen : name === 'AdminGabinete' ? AdminGabineteScreen : name === 'AdminAvaliacoes' ? AdminAvaliacoesScreen : name === 'AdminOuvidoria' ? AdminOuvidoriaScreen : name === 'AdminProcon' ? AdminProconScreen : name === 'AdminRecepcao' ? AdminRecepcaoScreen : name === 'AdminNoticias' ? AdminNoticiasScreen : name === 'AdminProtocolo' ? AdminProtocoloScreen : name === 'AdminContratos' ? AdminContratosScreen : name === 'AdminAlmoxarifado' ? AdminAlmoxarifadoScreen : name === 'AdminPatrimonio' ? AdminPatrimonioScreen : name === 'AdminManutencao' ? AdminManutencaoScreen : name === 'AdminFrotas' ? AdminFrotasScreen : name === 'AdminLegislativo' ? AdminLegislativoScreen : name === 'AdminEsic' ? AdminEsicScreen : name === 'AdminJuridico' ? AdminJuridicoScreen : name === 'AdminMicroempreendedor' ? AdminMicroempreendedorScreen : name === 'AdminMensagens' ? AdminMensagensScreen : name === 'AdminTvCamara' ? TvCamaraScreen : AdminModuleScreen} initialParams={{ moduleId }} />
                     ))}
                 </>
             )}

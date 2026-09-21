@@ -9,6 +9,7 @@ import {
     ActivityIndicator,
     Alert,
     Platform,
+    Image,
     Text,
     TouchableOpacity,
     View
@@ -17,6 +18,7 @@ import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
+import { appointmentQrUrl } from '../utils/appointmentQr';
 
 const flavorId = chamberConfig.flavorId;
 
@@ -515,7 +517,8 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
             await updateDoc(fsDocRef, {
                 status: 'Agendado',
                 appointmentDate: appointmentDate.toLocaleDateString('pt-BR'),
-                appointmentTime: appointmentTime
+                appointmentTime: appointmentTime,
+                appointmentQrCode: appointmentQrUrl({ collection: 'balcao-cidadao', id: solicitacaoId, module: 'balcao', appointmentDate: dateISO, appointmentTime })
             });
 
             Alert.alert("Sucesso", "Agendamento confirmado!");
@@ -686,6 +689,7 @@ export default function BalcaoDetalheScreen({ route, navigation }) {
                             <Text style={{ fontSize: 14, color: theme.portal.text }}>
                                 {item.appointmentDate} às {item.appointmentTime}
                             </Text>
+                            {item.appointmentQrCode ? <Image source={{ uri: item.appointmentQrCode }} resizeMode="contain" style={{ width: 210, height: 210, alignSelf: 'center', marginTop: 12 }} /> : null}
                         </View>
                     )}
                 </Section>

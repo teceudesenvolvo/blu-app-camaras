@@ -22,10 +22,10 @@ const dateLabel = value => { const stamp = time(value); return stamp ? new Date(
 const HeaderIcon = styled.View`width: 42px; height: 42px; border-radius: 21px; align-items: center; justify-content: center; background-color: ${({ theme }) => `${theme.portal.primary}18`}; margin-right: 12px;`;
 const Body = styled.View`flex: 1; flex-direction: row; padding: 14px 18px 112px; gap: 14px;`;
 const Sidebar = styled.View`width: 42%; max-width: 300px;`;
-const AreaTabs = styled.ScrollView.attrs({ contentContainerStyle: { alignItems: 'center' } })`height: 52px; flex-grow: 0; margin-bottom: 10px;`;
+const AreaTabs = styled.ScrollView.attrs({ contentContainerStyle: { alignItems: 'center' } })`height: 52px; flex-grow: 0; margin-bottom: 12px;`;
 const Tab = styled.TouchableOpacity`height: 42px; align-self: center; justify-content: center; padding: 0 15px; border-radius: 12px; background-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.card}; border-width: 1px; border-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.border}; margin-right: 7px;`;
 const TabText = styled.Text`color: ${({ active, theme }) => active ? '#fff' : theme.portal.text}; font-size: 12px; font-weight: 900;`;
-const FilterRow = styled.View`flex-direction: row; gap: 6px; margin-bottom: 10px;`;
+const FilterRow = styled.View`flex-direction: row; gap: 6px; margin-bottom: 16px;`;
 const Filter = styled.TouchableOpacity`flex: 1; padding: 8px 4px; border-radius: 10px; align-items: center; background-color: ${({ active, theme }) => active ? `${theme.portal.primary}20` : theme.portal.card}; border-width: 1px; border-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.border};`;
 const FilterText = styled.Text`color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.muted}; font-size: 10px; font-weight: 900;`;
 const Thread = styled.TouchableOpacity`padding: 11px; border-radius: 14px; background-color: ${({ active, theme }) => active ? `${theme.portal.primary}16` : theme.portal.card}; border-width: 1px; border-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.border}; margin-bottom: 8px;`;
@@ -48,6 +48,14 @@ const BubbleText = styled.Text`color: ${({ mine, theme }) => mine ? '#fff' : the
 const BubbleTime = styled.Text`color: ${({ mine, theme }) => mine ? 'rgba(255,255,255,.72)' : theme.portal.subtle}; font-size: 9px; text-align: right; margin-top: 4px;`;
 const Composer = styled.View`flex-direction: row; align-items: flex-end; padding: 9px; border-top-width: 1px; border-top-color: ${({ theme }) => theme.portal.border};`;
 const Input = styled.TextInput`flex: 1; min-height: 42px; max-height: 110px; border-radius: 15px; padding: 10px 12px; color: ${({ theme }) => theme.portal.text}; background-color: ${({ theme }) => theme.portal.background}; border-width: 1px; border-color: ${({ theme }) => theme.portal.border};`;
+const SearchInput = styled(Input)`
+  flex: 0 0 auto;
+  height: 58px;
+  min-height: 58px;
+  max-height: 58px;
+  padding: 0 14px;
+  margin-bottom: 10px;
+`;
 const Send = styled.TouchableOpacity`width: 42px; height: 42px; border-radius: 21px; margin-left: 8px; align-items: center; justify-content: center; background-color: ${({ theme }) => theme.portal.primary}; opacity: ${({ disabled }) => disabled ? .5 : 1};`;
 const Empty = styled.View`flex: 1; align-items: center; justify-content: center; padding: 20px;`;
 const EmptyText = styled.Text`color: ${({ theme }) => theme.portal.muted}; text-align: center; font-weight: 800; margin-top: 10px;`;
@@ -118,7 +126,7 @@ export default function AdminMensagensScreen({ navigation, route, mode }) {
     <Body>
       <Sidebar style={{ width: "100%", maxWidth: "none" }}>
         <AreaTabs horizontal showsHorizontalScrollIndicator={false}>{AREAS.map(item => <Tab key={item.id} active={areaId === item.id} onPress={() => { setAreaId(item.id); setSelected(null); }}><TabText active={areaId === item.id}>{item.label}</TabText></Tab>)}</AreaTabs>
-        <Input value={search} onChangeText={setSearch} placeholder="Buscar conversa" placeholderTextColor={theme.portal.subtle} />
+        <SearchInput value={search} onChangeText={setSearch} placeholder="Buscar conversa" placeholderTextColor={theme.portal.subtle} />
         <FilterRow><Filter active={filter === 'all'} onPress={() => setFilter('all')}><FilterText active={filter === 'all'}>Todas</FilterText></Filter><Filter active={filter === 'unread'} onPress={() => setFilter('unread')}><FilterText active={filter === 'unread'}>Não lidas</FilterText></Filter></FilterRow>
         <ScrollView showsVerticalScrollIndicator contentContainerStyle={{ paddingBottom: 18 }}>{visibleThreads.map(item => <Thread key={item.id} active={current?.id === item.id} onPress={() => mode === 'list' ? navigation.getParent()?.navigate('AdminMensagensDetalhe', { areaId: item.area.id, conversationId: item.id }) : setSelected(item)}><ThreadRow><Avatar color={item.area.color}><AvatarText color={item.area.color}>{initials(item.dadosUsuario?.name || item.dadosUsuario?.email)}</AvatarText></Avatar><ThreadInfo><ThreadName numberOfLines={1}>{item.dadosUsuario?.name || item.dadosUsuario?.email || 'Cidadão'}</ThreadName><ThreadPreview numberOfLines={1}>{item.last?.text || item.last?.message || get(item, area.subject) || 'Mensagem'}</ThreadPreview></ThreadInfo><ThreadTime>{dateLabel(item.last?.timestamp || item.last?.createdAt)}</ThreadTime></ThreadRow>{item.unread > 0 && <Badge><BadgeText>{item.unread}</BadgeText></Badge>}</Thread>)}{pageSize < filtered.length ? <TouchableOpacity onPress={() => setPageSize(value => value + 10)} style={{ padding: 13, alignItems: 'center', borderRadius: 12, backgroundColor: theme.portal.card, borderWidth: 1, borderColor: theme.portal.border }}><ThreadName>Carregar mais 10</ThreadName></TouchableOpacity> : null}</ScrollView>
         {!filtered.length && <Empty><EmptyText>Nenhuma conversa encontrada.</EmptyText></Empty>}

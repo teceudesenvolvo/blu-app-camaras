@@ -31,6 +31,7 @@ export const SCREEN_MODULES = {
   Patrimonio: 'patrimonio',
   Manutencao: 'manutencao',
   Frotas: 'frotas',
+  Recepcao: 'recepcao',
 };
 
 export function canUseModule(settings, role, moduleId) {
@@ -69,7 +70,7 @@ export function routeForModule(settings, role, moduleId, citizenRoute) {
   protocolo: 'AdminProtocolo', contratos: 'AdminContratos', almoxarifado: 'AdminAlmoxarifado', patrimonio: 'AdminPatrimonio', manutencao: 'AdminManutencao', frotas: 'AdminFrotas', balcao: 'AdminBalcao', ouvidoria: 'AdminOuvidoria', procuradoria: 'AdminProcuradoria',
     mensagens: 'AdminMensagens', noticias: 'AdminNoticias', tvCamara: 'AdminTvCamara', avaliacoes: 'AdminAvaliacoes',
     vereadores: 'AdminVereadores', agendaVereadores: 'AdminGabinete', legislativo: 'AdminLegislativo', esic: 'AdminEsic',
-    microempreendedor: 'AdminMicroempreendedor', juridico: 'AdminJuridico', piel: 'AdminPiel', escolaParlamento: 'AdminEscolaParlamento', procon: 'AdminProcon',
+    microempreendedor: 'AdminMicroempreendedor', juridico: 'AdminJuridico', piel: 'AdminPiel', escolaParlamento: 'AdminEscolaParlamento', procon: 'AdminProcon', recepcao: 'AdminRecepcao',
   };
   const defaultAdminRoute = defaultAdminRoutes[moduleId];
   if (defaultAdminRoute && canUseAdminAppModule(settings, role, moduleId)) return defaultAdminRoute;

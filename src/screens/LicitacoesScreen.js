@@ -197,6 +197,23 @@ const normalizeProcurementItem = (item, fields = {}) => ({
   arquivos: readPath(item, fields.files || 'arquivos') || readPath(item, 'documentos') || readPath(item, 'anexos') || [],
 });
 
+const fetchProcurementApi = async url => {
+  let lastResponse;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeout = controller ? setTimeout(() => controller.abort(), 45000) : null;
+    try {
+      const response = await fetch(url, controller ? { signal: controller.signal } : undefined);
+      lastResponse = response;
+      if (![502, 503, 504].includes(response.status) || attempt === 1) return response;
+      await new Promise(resolve => setTimeout(resolve, 700));
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
+  }
+  return lastResponse;
+};
+
 export default function LicitacoesScreen({ navigation }) {
   const { settings } = useSystemControl();
   const [loading, setLoading] = useState(false);
@@ -236,7 +253,7 @@ export default function LicitacoesScreen({ navigation }) {
       };
       if (selectedModality.value) queryParams.codigoModalidadeContratacao = selectedModality.value;
       const url = appendQuery(configuredUrl, queryParams);
-      const response = await fetch(url);
+      const response = await fetchProcurementApi(url);
 
       if (!response.ok) {
         const responseText = await response.text().catch(() => '');
@@ -248,7 +265,10 @@ export default function LicitacoesScreen({ navigation }) {
           responseDetail = responseText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
         }
         const detail = responseDetail ? `: ${responseDetail.slice(0, 180)}` : '';
-        throw new Error(`API de licitações HTTP ${response.status}${detail}`);
+        const statusMessage = response.status === 504
+          ? 'O servidor de licitações demorou para responder. Tente novamente em instantes.'
+          : `API de licitações HTTP ${response.status}${detail}`;
+        throw new Error(statusMessage);
       }
 
       const json = await response.json();
@@ -260,7 +280,7 @@ export default function LicitacoesScreen({ navigation }) {
       setApiError('');
     } catch (error) {
       console.warn('Erro ao buscar licitações pela API configurada:', error.message);
-      setApiError(error.message);
+      setApiError('O PNCP não está carregando no momento. Tente novamente em instantes.');
       if (pageNumber === 1) setLicitacoes([]);
     } finally {
       setLoading(false);

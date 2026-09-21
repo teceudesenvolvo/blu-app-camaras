@@ -8,6 +8,7 @@ import { ActivityIndicator, Alert, FlatList, Text, TouchableOpacity, View } from
 import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { AuthContext } from '../context/AuthContext';
+import { appointmentQrUrl } from '../utils/appointmentQr';
 
 const flavorId = chamberConfig.flavorId;
 
@@ -362,7 +363,8 @@ const AgendamentoInlineForm = ({ solicitacaoId }) => {
                 transaction.update(solicitacaoRef, {
                     status: 'Agendado',
                     appointmentDate: appointmentDate.toLocaleDateString('pt-BR'),
-                    appointmentTime: appointmentTime
+                    appointmentTime: appointmentTime,
+                    appointmentQrCode: appointmentQrUrl({ collection: 'balcao-cidadao', id: solicitacaoId, module: 'balcao', appointmentDate: dateISO, appointmentTime })
                 });
 
                 transaction.set(bookedSlotRef, {

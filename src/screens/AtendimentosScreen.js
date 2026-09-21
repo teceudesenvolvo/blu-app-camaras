@@ -53,6 +53,12 @@ const ServiceDesc = styled.Text`
 `;
 
 const SERVICES = [
+  { module: 'legislativo', screen: 'Legislativo', icon: 'scale-outline', title: 'Gestão Legislativa', description: 'Matérias, sessões e tramitação legislativa.' },
+  { module: 'contratos', screen: 'Contratos', icon: 'document-text-outline', title: 'Fiscalização de Contratos', description: 'Acompanhe contratos, medições e ocorrências.' },
+  { module: 'almoxarifado', screen: 'Almoxarifado', icon: 'cube-outline', title: 'Almoxarifado', description: 'Requisições e movimentações de estoque.' },
+  { module: 'patrimonio', screen: 'Patrimonio', icon: 'business-outline', title: 'Patrimônio', description: 'Bens, responsáveis e inventário patrimonial.' },
+  { module: 'manutencao', screen: 'Manutencao', icon: 'construct-outline', title: 'Manutenção Patrimonial', description: 'Chamados e ordens de manutenção.' },
+  { module: 'frotas', screen: 'Frotas', icon: 'car-outline', title: 'Gestão de Frotas', description: 'Veículos, abastecimentos e manutenção.' },
   { module: 'ouvidoria', screen: 'OuvidoriaMunicipal', icon: 'chatbubbles-outline', title: 'Ouvidoria', description: 'Manifestações e acompanhamento.' },
   { module: 'balcao', screen: 'BalcaoCidadao', icon: 'people-outline', title: 'Balcão do Cidadão', description: 'Solicitações e agendamentos.' },
   { module: 'microempreendedor', screen: 'Microempreendedor', icon: 'briefcase-outline', title: 'Microempreendedor', description: 'Orientação para seu negócio.' },
@@ -69,12 +75,13 @@ const SERVICES = [
   { module: 'juridico', screen: 'AtendimentoJuridico', icon: 'briefcase-outline', title: 'Atendimento Jurídico', description: 'Orientações e solicitações jurídicas.' },
   { module: 'escolaParlamento', screen: 'EscolaParlamento', icon: 'school-outline', title: 'Escola do Parlamento', description: 'Cursos e formação legislativa.' },
   { module: 'procon', screen: 'Procon', icon: 'shield-checkmark-outline', title: 'PROCON', description: 'Reclamações e agendamentos.' },
+  { module: 'recepcao', screen: 'AdminRecepcao', icon: 'qr-code-outline', title: 'Recepção', description: 'Leia QR Codes e confirme agendamentos.', adminOnly: true },
 ];
 
 export default function AtendimentosScreen({ navigation }) {
-  const { canUse, role, settings } = useMobileModules();
+  const { canUse, canUseAdminApp, role, settings } = useMobileModules();
   const bottomBarModules = Array.isArray(settings?.appBottomBarModules) ? settings.appBottomBarModules : [];
-  const available = SERVICES.filter(service => canUse(service.module) && !bottomBarModules.includes(service.module));
+  const available = SERVICES.filter(service => (service.adminOnly ? canUseAdminApp(service.module) : canUse(service.module)) && !bottomBarModules.includes(service.module));
   return (
     <PortalBackground>
       <PortalScreenHeader

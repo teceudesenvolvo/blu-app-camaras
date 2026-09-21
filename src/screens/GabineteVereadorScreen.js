@@ -3,12 +3,13 @@ import { addDoc, collection, doc, getDoc, onSnapshot, runTransaction, serverTime
 import { useContext, useEffect, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Location from 'expo-location';
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text } from 'react-native';
+import { ActivityIndicator, Image, Modal, Platform, Pressable, ScrollView, Text } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { ModuleButton, ModuleError, ModuleField, ModulePage, ModuleRow, ModuleText } from '../components/CitizenModuleUi';
 import { AuthContext } from '../context/AuthContext';
+import { appointmentQrUrl } from '../utils/appointmentQr';
 import { fetchAddressByCep, formatCep } from '../utils/brasilForms';
 
 const emptyForm = { assunto: '', descricao: '', endereco: '', categoria: 'Outra demanda' };
@@ -101,7 +102,9 @@ export default function GabineteVereadorScreen({ navigation }) {
           const reserved = current[appointmentDateValue] || [];
           if (reserved.includes(appointmentTime)) throw new Error('Este horário acabou de ser reservado. Escolha outro.');
           transaction.set(slotRef, { [appointmentDateValue]: [...reserved, appointmentTime].sort() }, { merge: true });
-          transaction.set(doc(collection(firestore, 'solicitacoes-vereadores')), request);
+          const requestRef = doc(collection(firestore, 'solicitacoes-vereadores'));
+          request.appointmentQrCode = appointmentQrUrl({ collection: 'solicitacoes-vereadores', id: requestRef.id, module: 'agendaVereadores', appointmentDate: appointmentDateValue, appointmentTime });
+          transaction.set(requestRef, request);
         });
       } else await addDoc(collection(firestore, 'solicitacoes-vereadores'), request);
       setNotice(`Solicitação recebida. Protocolo ${protocol}.`); setForm(emptyForm); setDemandImages([]); setAppointmentTime(''); setMode('list');
@@ -164,7 +167,7 @@ export default function GabineteVereadorScreen({ navigation }) {
     if (busy) return;
     setBusy(true); setError('');
     try {
-      await updateDoc(doc(firestore, 'solicitacoes-vereadores', item.id), { status: 'Agendado', appointmentDate: offer.date, appointmentTime: offer.time, agendadoPor: user.uid, ultimaAtualizacao: serverTimestamp() });
+      await updateDoc(doc(firestore, 'solicitacoes-vereadores', item.id), { status: 'Agendado', appointmentDate: offer.date, appointmentTime: offer.time, appointmentQrCode: appointmentQrUrl({ collection: 'solicitacoes-vereadores', id: item.id, module: 'agendaVereadores', appointmentDate: offer.date, appointmentTime: offer.time }), agendadoPor: user.uid, ultimaAtualizacao: serverTimestamp() });
       setNotice('Horário confirmado.');
     } catch (failure) { setError(failure.message || 'Não foi possível confirmar o horário.'); }
     finally { setBusy(false); }
@@ -188,7 +191,7 @@ export default function GabineteVereadorScreen({ navigation }) {
       <ModuleText style={{ marginTop: 16 }}>Vereador: {selectedRequest.dadosSolicitacao?.vereadorNome || 'Não informado'}</ModuleText>
       <ModuleText style={{ marginTop: 12 }}>Situação: {selectedRequest.status || 'Recebida'}</ModuleText>
       {selectedRequest.dadosSolicitacao?.descricao ? <ModuleText style={{ marginTop: 12 }}>{selectedRequest.dadosSolicitacao.descricao}</ModuleText> : null}
-      {selectedRequest.status === 'Agendado' ? <ModuleRow title="Visita aprovada" detail={`${selectedRequest.appointmentDate?.split('-').reverse().join('/')} às ${selectedRequest.appointmentTime || 'horário não informado'}`} disabled /> : null}
+      {selectedRequest.status === 'Agendado' ? <><ModuleRow title="Visita aprovada" detail={`${selectedRequest.appointmentDate?.split('-').reverse().join('/')} às ${selectedRequest.appointmentTime || 'horário não informado'}`} disabled />{selectedRequest.appointmentQrCode ? <Image source={{ uri: selectedRequest.appointmentQrCode }} resizeMode="contain" style={{ width: 220, height: 220, alignSelf: 'center', marginTop: 18 }} /> : null}</> : null}
       {APPOINTMENT_RELEASED_STATUSES.includes(selectedRequest.status) ? <><ModuleText heading style={{ marginTop: 22 }}>Escolha um horário</ModuleText>{(selectedRequest.horariosOferecidos || []).map(offer => <ModuleButton key={`${offer.date}-${offer.time}`} disabled={busy} onPress={() => acceptTime(selectedRequest, offer)}>{offer.date?.split('-').reverse().join('/')} às {offer.time}</ModuleButton>)}</> : null}
       {!['Agendado', ...APPOINTMENT_RELEASED_STATUSES].includes(selectedRequest.status) ? <ModuleText muted style={{ marginTop: 18 }}>O gabinete ainda está analisando esta solicitação. O agendamento aparecerá aqui quando for aprovado.</ModuleText> : null}
       <ModuleButton secondary onPress={() => setMode('list')}>Voltar às solicitações</ModuleButton>

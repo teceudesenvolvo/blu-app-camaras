@@ -16,6 +16,7 @@
     },
     "ios": {
       "supportsTablet": true,
+      "deploymentTarget": "16.4",
       "bundleIdentifier": "com.bluappcmparaipaba",
       "googleServicesFile": "./services/firebase/paraipaba/GoogleService-Info.plist",
       "infoPlist": {
@@ -47,9 +48,14 @@
       "@react-native-community/datetimepicker",
       "expo-notifications",
       "expo-font",
-      "expo-router",
       "expo-web-browser",
       "expo-quick-actions",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "A Câmara usa a câmera para ler QR Codes e códigos de barras do almoxarifado."
+        }
+      ],
       [
         "expo-image-picker",
         {

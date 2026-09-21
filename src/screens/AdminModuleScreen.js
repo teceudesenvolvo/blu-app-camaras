@@ -39,7 +39,7 @@ const MODULES = {
   vereadores: ['Vereadores', 'parlamentares e gabinetes'], agendaVereadores: ['Gabinete Vereador', 'demandas e agenda'],
   legislativo: ['Gestão Legislativa', 'matérias, sessões e comissões'], esic: ['e-SIC', 'pedidos de acesso à informação'],
   microempreendedor: ['Microempreendedor', 'solicitações de empreendedores'], juridico: ['Atendimento Jurídico', 'orientações e solicitações'],
-  piel: ['PIEL', 'participantes e atividades'], contratos: ['Fiscalização de Contratos', 'execução e acompanhamento contratual'], almoxarifado: ['Almoxarifado', 'materiais, depósitos e requisições'], patrimonio: ['Patrimônio', 'bens, movimentações e inventários'], manutencao: ['Manutenção Patrimonial', 'chamados, ordens e planos preventivos'], frotas: ['Gestão de Frotas', 'veículos, condutores e custos'], escolaParlamento: ['Escola do Parlamento', 'cursos e materiais'], procon: ['PROCON', 'atendimentos e consumidores'],
+  piel: ['PIEL', 'participantes e atividades'], contratos: ['Fiscalização de Contratos', 'execução e acompanhamento contratual'], almoxarifado: ['Almoxarifado', 'materiais, depósitos e requisições'], patrimonio: ['Patrimônio', 'bens, movimentações e inventários'], manutencao: ['Manutenção Patrimonial', 'chamados, ordens e planos preventivos'], frotas: ['Gestão de Frotas', 'veículos, condutores e custos'], escolaParlamento: ['Escola do Parlamento', 'cursos e materiais'], procon: ['PROCON', 'atendimentos e consumidores'], recepcao: ['Recepção', 'confirmação de agendamentos'],
 };
 
 const MODULE_ACTIONS = {
@@ -57,7 +57,7 @@ const ROUTE_MODULES = {
   AdminProtocolo: 'protocolo', AdminBalcao: 'balcao', AdminOuvidoria: 'ouvidoria', AdminProcuradoria: 'procuradoria',
   AdminMensagens: 'mensagens', AdminNoticias: 'noticias', AdminTvCamara: 'tvCamara', AdminAvaliacoes: 'avaliacoes',
   AdminVereadores: 'vereadores', AdminGabinete: 'agendaVereadores', AdminLegislativo: 'legislativo', AdminEsic: 'esic',
-  AdminMicroempreendedor: 'microempreendedor', AdminJuridico: 'juridico', AdminPiel: 'piel', AdminContratos: 'contratos', AdminAlmoxarifado: 'almoxarifado', AdminPatrimonio: 'patrimonio', AdminManutencao: 'manutencao', AdminFrotas: 'frotas', AdminEscolaParlamento: 'escolaParlamento', AdminProcon: 'procon',
+  AdminMicroempreendedor: 'microempreendedor', AdminJuridico: 'juridico', AdminPiel: 'piel', AdminContratos: 'contratos', AdminAlmoxarifado: 'almoxarifado', AdminPatrimonio: 'patrimonio', AdminManutencao: 'manutencao', AdminFrotas: 'frotas', AdminEscolaParlamento: 'escolaParlamento', AdminProcon: 'procon', AdminRecepcao: 'recepcao',
 };
 
 export const ADMIN_ROUTE_MODULES = ROUTE_MODULES;

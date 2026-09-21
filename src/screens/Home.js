@@ -25,7 +25,7 @@ const Header = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 62px 22px 18px;
+  padding: 70px 22px 18px;
 `;
 
 const HeaderIdentity = styled.View`
@@ -180,7 +180,7 @@ const GradientIconCircle = styled(LinearGradient)`
 
 const NewsCarousel = styled.View`
   height: 260px;
-  margin: 0 16px 20px;
+  margin: 0 16px 12px;
   align-items: center;
 `;
 
@@ -413,7 +413,7 @@ const HomeScreen = ({ navigation }) => {
               const item = news[activeNewsIndex];
               const imageUrl = item.capaUrl || item._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://via.placeholder.com/400x220.png?text=Notícia';
               const openNews = () => navigation.navigate('NoticiaDetalhe', { news: item, id: item.id });
-              return <NewsSlide activeOpacity={0.88} onPress={openNews}><NewsSlideImage resizeMode="cover" source={{ uri: imageUrl }} /><NewsSlideOverlay><NewsSlideTitle numberOfLines={2}>{newsTitle(item)}</NewsSlideTitle><NewsSlideSubtitle numberOfLines={1}>{newsSubtitle(item)}</NewsSlideSubtitle><NewsSlideButton onPress={openNews}><NewsSlideButtonText>Ver notícia completa</NewsSlideButtonText></NewsSlideButton></NewsSlideOverlay></NewsSlide>;
+              return <NewsSlide activeOpacity={0.88} onPress={openNews}><NewsSlideImage resizeMode="cover" source={{ uri: imageUrl }} /><NewsSlideOverlay><NewsSlideTitle numberOfLines={1} ellipsizeMode="tail">{newsTitle(item)}</NewsSlideTitle><NewsSlideSubtitle numberOfLines={1} ellipsizeMode="tail">{newsSubtitle(item)}</NewsSlideSubtitle><NewsSlideButton onPress={openNews}><NewsSlideButtonText>Ver notícia completa</NewsSlideButtonText></NewsSlideButton></NewsSlideOverlay></NewsSlide>;
             })()}
           </Animated.View>
           <NewsDots>{news.map((item, index) => <NewsDot key={item.id} active={index === activeNewsIndex} />)}</NewsDots>

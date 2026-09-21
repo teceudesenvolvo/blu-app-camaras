@@ -1,11 +1,12 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { addDoc, collection, doc, getDoc, onSnapshot, query, runTransaction, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, View } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { ModuleButton, ModuleError, ModuleField, ModulePage, ModuleRow, ModuleText } from '../components/CitizenModuleUi';
 import { AuthContext } from '../context/AuthContext';
+import { appointmentQrUrl } from '../utils/appointmentQr';
 
 const isoDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const brDate = value => { const [year, month, day] = String(value || '').split('-'); return `${day}/${month}/${year}`; };
@@ -101,7 +102,7 @@ export default function ProconScreen({ navigation }) {
           protocolo: appointmentRef.id, userId: user.uid, nome: profile.name || profile.nome || user.displayName || user.email || '',
           cpf: profile.cpf || '', email: user.email || '', telefone: profile.phone || profile.telefone || '',
           dadosUsuario: { name: profile.name || profile.nome || user.displayName || '', cpf: profile.cpf || '', email: user.email || '' },
-          status: 'Agendado', setorAtendimento: 'PROCON', origem: 'app', createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+          status: 'Agendado', setorAtendimento: 'PROCON', origem: 'app', appointmentQrCode: appointmentQrUrl({ collection: 'procon-agendamentos', id: appointmentRef.id, module: 'procon', appointmentDate: dateValue, appointmentTime: time }), createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
         });
       });
       setMode('list'); setSubject(''); setTime(''); Alert.alert('Agendamento confirmado', `${brDate(dateValue)} às ${time}`);
@@ -150,7 +151,7 @@ export default function ProconScreen({ navigation }) {
       <ModuleText muted style={{ marginTop: 8 }}>{selected.status} · {selected.protocolo || selected.id}</ModuleText>
       {selected.descricao ? <ModuleText style={{ marginTop: 16 }}>{selected.descricao}</ModuleText> : null}
       {selected.pedidoConsumidor ? <ModuleText style={{ marginTop: 16 }}>Pedido: {selected.pedidoConsumidor}</ModuleText> : null}
-      {selected.appointmentDate ? <ModuleText style={{ marginTop: 16 }}>Atendimento: {brDate(selected.appointmentDate)} às {selected.appointmentTime}</ModuleText> : null}
+      {selected.appointmentDate ? <><ModuleText style={{ marginTop: 16 }}>Atendimento: {brDate(selected.appointmentDate)} às {selected.appointmentTime}</ModuleText>{selected.appointmentQrCode ? <Image source={{ uri: selected.appointmentQrCode }} resizeMode="contain" style={{ width: 220, height: 220, alignSelf: 'center', marginTop: 18 }} /> : null}</> : null}
     </View> : null}
     {mode !== 'list' ? <ModuleButton secondary onPress={() => { setError(''); setMode('list'); }}>Voltar aos atendimentos</ModuleButton> : null}
     <ModuleError>{error}</ModuleError>
