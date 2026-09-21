@@ -34,6 +34,10 @@ export const SCREEN_MODULES = {
   Recepcao: 'recepcao',
 };
 
+export const ADMIN_SERVICE_MODULES = new Set([
+  'contratos', 'almoxarifado', 'patrimonio', 'manutencao', 'frotas', 'recepcao',
+]);
+
 export function canUseModule(settings, role, moduleId) {
   if (!moduleId) return true;
   if (settings?.modules?.[moduleId]?.app === false) return false;
@@ -67,10 +71,10 @@ export function routeForModule(settings, role, moduleId, citizenRoute) {
   const configured = settings?.security?.roleRoutes?.[role || 'Cidadão']?.[moduleId];
   if (typeof configured === 'string' && configured.trim() && canUseAdminAppModule(settings, role, moduleId)) return configured.trim();
   const defaultAdminRoutes = {
-  protocolo: 'AdminProtocolo', contratos: 'AdminContratos', almoxarifado: 'AdminAlmoxarifado', patrimonio: 'AdminPatrimonio', manutencao: 'AdminManutencao', frotas: 'AdminFrotas', balcao: 'AdminBalcao', ouvidoria: 'AdminOuvidoria', procuradoria: 'AdminProcuradoria',
+  protocolo: 'AdminProtocolo', contratos: 'AdminContratos', almoxarifado: 'AdminAlmoxarifado', patrimonio: 'AdminPatrimonio', manutencao: 'AdminManutencao', frotas: 'AdminFrotas', recepcao: 'AdminRecepcao', balcao: 'AdminBalcao', ouvidoria: 'AdminOuvidoria', procuradoria: 'AdminProcuradoria',
     mensagens: 'AdminMensagens', noticias: 'AdminNoticias', tvCamara: 'AdminTvCamara', avaliacoes: 'AdminAvaliacoes',
     vereadores: 'AdminVereadores', agendaVereadores: 'AdminGabinete', legislativo: 'AdminLegislativo', esic: 'AdminEsic',
-    microempreendedor: 'AdminMicroempreendedor', juridico: 'AdminJuridico', piel: 'AdminPiel', escolaParlamento: 'AdminEscolaParlamento', procon: 'AdminProcon', recepcao: 'AdminRecepcao',
+    microempreendedor: 'AdminMicroempreendedor', juridico: 'AdminJuridico', piel: 'AdminPiel', escolaParlamento: 'AdminEscolaParlamento', procon: 'AdminProcon',
   };
   const defaultAdminRoute = defaultAdminRoutes[moduleId];
   if (defaultAdminRoute && canUseAdminAppModule(settings, role, moduleId)) return defaultAdminRoute;

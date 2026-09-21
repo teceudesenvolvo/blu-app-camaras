@@ -7,7 +7,7 @@ import {
 } from '../components/PortalScaffold';
 import { portalTheme } from '../styles/portalTheme';
 import { useMobileModules } from '../context/MobileModulesContext';
-import { routeForModule } from '../config/mobileModules';
+import { ADMIN_SERVICE_MODULES, routeForModule } from '../config/mobileModules';
 
 const Content = styled.ScrollView`
   flex: 1;
@@ -81,7 +81,10 @@ const SERVICES = [
 export default function AtendimentosScreen({ navigation }) {
   const { canUse, canUseAdminApp, role, settings } = useMobileModules();
   const bottomBarModules = Array.isArray(settings?.appBottomBarModules) ? settings.appBottomBarModules : [];
-  const available = SERVICES.filter(service => (service.adminOnly ? canUseAdminApp(service.module) : canUse(service.module)) && !bottomBarModules.includes(service.module));
+  const available = SERVICES.filter(service => {
+    const requiresAdmin = service.adminOnly || ADMIN_SERVICE_MODULES.has(service.module);
+    return (requiresAdmin ? canUseAdminApp(service.module) : canUse(service.module)) && !bottomBarModules.includes(service.module);
+  });
   return (
     <PortalBackground>
       <PortalScreenHeader

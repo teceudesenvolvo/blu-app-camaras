@@ -5,29 +5,20 @@
   },
   "build": {
     "development": {
-      "env": { "CAMARA": "paraipaba" },
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development"
     },
     "preview": {
-      "env": { "CAMARA": "paraipaba" },
       "distribution": "internal",
       "channel": "preview"
     },
     "production": {
-      "env": { "CAMARA": "paraipaba" },
       "autoIncrement": true,
       "channel": "production"
     }
   },
   "submit": {
-    "production": {
-      "ios": {
-        "appleId": "paraipabacamara5@gmail.com",
-        "ascAppId": "6769832252",
-        "appleTeamId": "8696VZUUR7"
-      }
-    }
+    "production": {}
   }
 }

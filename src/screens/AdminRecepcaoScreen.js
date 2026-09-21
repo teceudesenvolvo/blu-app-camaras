@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { addDoc, collection, getDocs, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Modal, StyleSheet, View } from 'react-native';
 import styled from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { PortalBackground, PortalCard, PortalScreenHeader } from '../components/PortalScaffold';
@@ -60,6 +60,7 @@ export default function AdminRecepcaoScreen({ navigation }) {
   const [attachments, setAttachments] = useState([]);
   const [priority, setPriority] = useState(false);
   const [shouldQueue, setShouldQueue] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
 
   useEffect(() => {
     if (activeSectors.length && !activeSectors.some(([, label]) => label === requestForm.setor)) {
@@ -73,7 +74,7 @@ export default function AdminRecepcaoScreen({ navigation }) {
     const [iso, br] = todayKeys();
     Promise.all(APPOINTMENT_SOURCES.map(async source => {
       const snapshot = await getDocs(collection(firestore, source));
-      return snapshot.docs.map(item => ({ id: item.id, collectionName: source, ...item.data() })).filter(item => [item.appointmentDate, item.dadosSolicitacao?.appointmentDate].some(value => String(value || '') === iso || String(value || '') === br));
+      return snapshot.docs.map(item => ({ id: item.id, collectionName: source, ...item.data() })).filter(item => !item.atendimentoConfirmado && !item.senhaAtendimento && [item.appointmentDate, item.dadosSolicitacao?.appointmentDate].some(value => String(value || '') === iso || String(value || '') === br || String(value || '').slice(0, 10) === iso));
     })).then(groups => { if (active) setAppointments(groups.flat().sort((a, b) => String(a.appointmentTime || '').localeCompare(String(b.appointmentTime || '')))); }).catch(failure => { if (active) setError(failure.message || 'Não foi possível carregar os agendamentos de hoje.'); });
     const unsubscribe = onSnapshot(query(collection(firestore, 'atendimento-fila'), where('status', 'in', ['Aguardando', 'Chamando', 'Em Atendimento'])), snapshot => setQueue(snapshot.docs.map(item => ({ id: item.id, ...item.data() }))));
     return () => { active = false; unsubscribe(); };
@@ -123,7 +124,7 @@ export default function AdminRecepcaoScreen({ navigation }) {
       <TabBar>{[['fila', 'Fila'], ['agenda', 'Agendamentos'], ['novo', 'Novo atendimento']].map(([id, label]) => <TabChip key={id} active={tab === id} onPress={() => { setError(''); setTab(id); }}><TabText active={tab === id}>{label}</TabText></TabChip>)}</TabBar>
       <Button onPress={() => navigation.navigate('AdminRecepcaoConfirmacao')}><ButtonText>Confirmar atendimento</ButtonText></Button>
       {tab === 'fila' ? <SectionCard><Title>Fila da recepção</Title><Text>{queue.length ? `${queue.length} atendimento(s) em andamento.` : 'Nenhum atendimento na fila.'}</Text>{queue.slice(0, 20).map(item => <ListItem key={item.id}><ListTitle>{item.nome || 'Cidadão'}</ListTitle><Text>{item.assunto || 'Atendimento'} · {item.status}</Text></ListItem>)}</SectionCard> : null}
-      {tab === 'agenda' ? <SectionCard><Title>Agendamentos de hoje</Title><Text>{appointments.length ? `${appointments.length} agendamento(s) encontrado(s).` : 'Nenhum agendamento para hoje.'}</Text>{appointments.map(item => <AppointmentCard key={`${item.collectionName}-${item.id}`}><AppointmentTop><AppointmentTime>{item.appointmentTime || '--:--'}</AppointmentTime><AppointmentStatus>{item.atendimentoConfirmado ? 'Confirmado' : 'Aguardando chegada'}</AppointmentStatus></AppointmentTop><AppointmentName>{item.dadosUsuario?.name || item.nome || item.dadosBeneficiario?.name || 'Cidadão'}</AppointmentName><AppointmentMeta>{item.setorAtendimento || item.collectionName}</AppointmentMeta><AppointmentMeta>{item.assunto || item.dadosSolicitacao?.assunto || item.tipoReclamacao || 'Atendimento presencial'}</AppointmentMeta><AppointmentMeta>Protocolo: {item.protocolo || item.id}</AppointmentMeta></AppointmentCard>)}</SectionCard> : null}
+      {tab === 'agenda' ? <SectionCard><Title>Agendamentos de hoje</Title><Text>{appointments.length ? `${appointments.length} agendamento(s) aguardando confirmação.` : 'Nenhum agendamento pendente para hoje.'}</Text>{appointments.map(item => <AppointmentCard key={`${item.collectionName}-${item.id}`}><AppointmentTop><AppointmentTime>{item.appointmentTime || '--:--'}</AppointmentTime><AppointmentStatus>Aguardando chegada</AppointmentStatus></AppointmentTop><AppointmentName>{item.dadosUsuario?.name || item.nome || item.dadosBeneficiario?.name || 'Cidadão'}</AppointmentName><AppointmentMeta>{item.setorAtendimento || item.collectionName}</AppointmentMeta><AppointmentMeta>{item.assunto || item.dadosSolicitacao?.assunto || item.tipoReclamacao || 'Atendimento presencial'}</AppointmentMeta><AppointmentMeta>Protocolo: {item.protocolo || item.id}</AppointmentMeta><Button onPress={() => setSelectedAppointment(item)}><ButtonText>Ver detalhes e confirmar</ButtonText></Button></AppointmentCard>)}</SectionCard> : null}
       {tab === 'novo' ? <FormCard><Title>Nova solicitação / encaixe</Title><Step>Etapa {flowStep + 1} de 7 · {['Setor', 'Atendimento', 'Usuário', 'Solicitação', 'Anexos', 'Protocolos e fila', 'Início'][flowStep]}</Step>
         {flowStep === 0 ? <>{activeSectors.length ? activeSectors.map(([moduleId, value]) => <Choice key={moduleId} active={requestForm.setor === value} onPress={() => setRequestForm(current => ({ ...current, setor: value }))}><ButtonText>{value}</ButtonText></Choice>) : <Text>Nenhum módulo de atendimento está ativo no Controle do Sistema.</Text>}</> : null}
         {flowStep === 1 ? <Text>O atendimento será definido pelos serviços disponíveis do setor selecionado.</Text> : null}
@@ -135,10 +136,12 @@ export default function AdminRecepcaoScreen({ navigation }) {
         <View style={styles.flowActions}>{flowStep > 0 && flowStep < 6 ? <Button onPress={previousStep}><ButtonText>Voltar</ButtonText></Button> : null}{flowStep < 5 ? <Button onPress={advanceStep}><ButtonText>Continuar</ButtonText></Button> : null}</View>
       </FormCard> : null}
       {error ? <ErrorText>{error}</ErrorText> : null}
+      <Modal visible={Boolean(selectedAppointment)} transparent animationType="slide" onRequestClose={() => setSelectedAppointment(null)}><View style={styles.modalBackdrop}><SectionCard><Title>Detalhes do agendamento</Title>{selectedAppointment ? <><AppointmentName>{selectedAppointment.dadosUsuario?.name || selectedAppointment.nome || selectedAppointment.dadosBeneficiario?.name || 'Cidadão'}</AppointmentName><AppointmentMeta>Data: hoje · Horário: {selectedAppointment.appointmentTime || '--:--'}</AppointmentMeta><AppointmentMeta>Setor: {selectedAppointment.setorAtendimento || selectedAppointment.collectionName}</AppointmentMeta><AppointmentMeta>Assunto: {selectedAppointment.assunto || selectedAppointment.dadosSolicitacao?.assunto || selectedAppointment.tipoReclamacao || 'Atendimento presencial'}</AppointmentMeta><AppointmentMeta>Protocolo: {selectedAppointment.protocolo || selectedAppointment.id}</AppointmentMeta><Button onPress={() => { const item = selectedAppointment; setSelectedAppointment(null); navigation.navigate('AdminRecepcaoConfirmacao', { appointmentId: item.id, collectionName: item.collectionName, autoConfirm: true }); }}><ButtonText>Confirmar e enviar para a fila</ButtonText></Button><Button onPress={() => { const item = selectedAppointment; setSelectedAppointment(null); navigation.navigate('AdminRecepcaoConfirmacao', { appointmentId: item.id, collectionName: item.collectionName }); }}><ButtonText>Ler QR Code</ButtonText></Button></> : null}<Button onPress={() => setSelectedAppointment(null)}><ButtonText>Fechar</ButtonText></Button></SectionCard></View></Modal>
     </Content>
   </PortalBackground>;
 }
 
 const styles = StyleSheet.create({
   flowActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, marginTop: 6 },
+  modalBackdrop: { flex: 1, justifyContent: 'flex-end', padding: 18, backgroundColor: 'rgba(2, 15, 27, 0.58)' },
 });

@@ -2,8 +2,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 module.exports = ({ config }) => {
-  const chamber = process.env.CAMARA || (process.env.NODE_ENV !== 'production' ? 'paraipaba' : undefined);
-  if (!chamber) throw new Error('CAMARA nao definida. Use CAMARA=<id> para selecionar o tenant.');
+  const flavorsDir = path.join(__dirname, 'flavors');
+  const configuredFlavors = fs.readdirSync(flavorsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(flavorsDir, entry.name, 'config.json')))
+    .map((entry) => entry.name);
+  const chamber = process.env.CAMARA || (configuredFlavors.length === 1 ? configuredFlavors[0] : undefined);
+  if (!chamber) {
+    throw new Error('Nenhum tenant unico configurado. Adicione um flavor ou use CAMARA=<id> para selecionar o tenant.');
+  }
   if (!/^[a-z0-9-]+$/.test(chamber)) throw new Error('CAMARA invalida');
   const file = path.join(__dirname, 'flavors', chamber, 'config.json');
   if (!fs.existsSync(file)) throw new Error('Camara nao configurada: ' + chamber);
@@ -30,6 +36,7 @@ module.exports = ({ config }) => {
     },
     android: { ...config.android, ...tenant.android },
     web: { ...config.web, favicon: tenant.assets.icon },
+    plugins: [...(config.plugins || []), 'expo-asset'],
     updates: { ...config.updates, url: 'https://u.expo.dev/' + tenant.easProjectId },
     extra: {
       ...tenant,
