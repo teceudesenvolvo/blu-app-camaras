@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import * as QuickActions from 'expo-quick-actions';
 import React, { useEffect, useRef, useState } from 'react';
-import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 import { useTheme } from 'styled-components/native';
 import Animated, {
@@ -135,6 +135,19 @@ function LoginOpeningOverlay({ visible }) {
                 <Text style={styles.loginOpeningName}>{name}</Text>
                 <View style={styles.loginOpeningLine} />
             </Animated.View>
+        </View>
+    );
+}
+
+function ModulePreloader() {
+    const theme = useTheme();
+    const { settings } = useSystemControl();
+    const name = settings.tenant?.shortName || settings.tenant?.name || 'Câmara Municipal';
+
+    return (
+        <View style={[styles.modulePreloader, { backgroundColor: theme.portal.page }]}>
+            <ActivityIndicator size="large" color={theme.portal.primary} />
+            <Text style={[styles.modulePreloaderText, { color: theme.portal.muted }]}>Carregando {name}...</Text>
         </View>
     );
 }
@@ -475,6 +488,7 @@ function BottomTabNavigator() {
 function NavigationContent() {
     const { user, loading } = React.useContext(AuthContext);
     const { loading: modulesLoading, canUse } = useMobileModules();
+    const { loading: settingsLoading } = useSystemControl();
     const navigation = useNavigation();
     const previousUserRef = useRef(null);
     const [showLoginOpening, setShowLoginOpening] = useState(false);
@@ -552,8 +566,8 @@ function NavigationContent() {
         return () => subscription?.remove?.();
     }, [navigation, user, canUse]);
 
-    if (loading || modulesLoading) {
-        return null; // Or a splash screen
+    if (loading || settingsLoading || modulesLoading) {
+        return <ModulePreloader />;
     }
 
     return (
@@ -622,6 +636,8 @@ export default function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
+    modulePreloader: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+    modulePreloaderText: { marginTop: 14, fontSize: 14, fontWeight: '700', textAlign: 'center' },
     navigationRoot: { flex: 1 },
     loginOpeningOverlay: {
         ...StyleSheet.absoluteFillObject,
