@@ -37,6 +37,8 @@ O fluxo normal não exige `CAMARA=...`. Quando existe apenas um diretório em `f
 
 O código compartilhado fica em `src/`. Não troque a Câmara editando telas ou criando condicionais espalhadas pelo app; a configuração deve ficar no flavor e no `.env`.
 
+A TV Câmara prioriza `system-control/portal.integrations.youtubeApiUrl`, configurado pelo portal. O endpoint derivado do projeto Firebase do build permanece apenas como fallback para instalações que ainda não publicaram essa configuração.
+
 As logomarcas exibidas dentro do aplicativo podem ser administradas pelo portal em `system-control/portal > branding`. O app prioriza `branding.logoUrl` do Firebase e usa o logo local do flavor como fallback para login, cadastro e inicialização offline.
 
 O ícone instalado, splash screen, favicon nativo e ícone enviado às lojas não podem ser alterados depois que o app iniciou. Eles precisam continuar nos assets do flavor e ser atualizados antes de cada novo build.
@@ -162,6 +164,10 @@ eas update --branch production --message "Descrição da atualização"
 ```
 
 Alterações em Expo SDK, plugins, permissões, câmera, Firebase nativo ou Swift/Kotlin exigem novo build e nova distribuição nas lojas.
+
+## Splash e identidade visual
+
+Depois que o app inicia, a tela de splash usa `system-control/portal.design` para as cores e `system-control/portal.branding.logoUrl` para a logomarca armazenada no Firebase Storage. O splash nativo local continua sendo mantido como fallback, pois é empacotado no build antes de o Firebase estar disponível. Login, cadastro e demais telas consomem a mesma configuração dinâmica.
 
 ## Estrutura principal
 

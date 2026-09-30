@@ -6,8 +6,8 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import * as QuickActions from 'expo-quick-actions';
-import React, { useEffect } from 'react';
-import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 import { useTheme } from 'styled-components/native';
 import Animated, {
@@ -89,6 +89,8 @@ import AdminOuvidoriaScreen from '../screens/AdminOuvidoriaScreen';
 import AdminProconScreen from '../screens/AdminProconScreen';
 import AdminRecepcaoScreen from '../screens/AdminRecepcaoScreen';
 import AdminRecepcaoConfirmacaoScreen from '../screens/AdminRecepcaoConfirmacaoScreen';
+import { useSystemControl } from '../context/SystemControlContext';
+import { chamberLogo } from '../config/branding';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -101,6 +103,41 @@ const UnavailableText = styled.Text`
   line-height: 22px;
   margin: 20px;
 `;
+
+function LoginOpeningOverlay({ visible }) {
+    const { settings } = useSystemControl();
+    const opacity = useSharedValue(0);
+    const scale = useSharedValue(0.94);
+    const translateY = useSharedValue(10);
+    const primary = settings.design?.primaryColor || '#025AA1';
+    const secondary = settings.design?.secondaryColor || '#0284C7';
+    const logo = settings.branding?.logoUrl ? { uri: settings.branding.logoUrl } : chamberLogo;
+    const name = settings.tenant?.shortName || settings.tenant?.name || 'Câmara Municipal';
+
+    useEffect(() => {
+        if (!visible) return;
+        opacity.set(withTiming(1, { duration: 220 }));
+        scale.set(withSpring(1, { duration: 420, dampingRatio: 0.9 }));
+        translateY.set(withTiming(0, { duration: 360 }));
+    }, [opacity, scale, translateY, visible]);
+
+    const contentStyle = useAnimatedStyle(() => ({
+        opacity: opacity.get(),
+        transform: [{ translateY: translateY.get() }, { scale: scale.get() }],
+    }));
+
+    if (!visible) return null;
+    return (
+        <View style={styles.loginOpeningOverlay} pointerEvents="none">
+            <LinearGradient colors={[primary, secondary]} style={StyleSheet.absoluteFill} />
+            <Animated.View style={[styles.loginOpeningContent, contentStyle]}>
+                <Image source={logo} resizeMode="contain" style={styles.loginOpeningLogo} />
+                <Text style={styles.loginOpeningName}>{name}</Text>
+                <View style={styles.loginOpeningLine} />
+            </Animated.View>
+        </View>
+    );
+}
 
 const guardScreen = (Screen, moduleId) => function GuardedScreen(props) {
     const { loading, canUse } = useMobileModules();
@@ -439,6 +476,18 @@ function NavigationContent() {
     const { user, loading } = React.useContext(AuthContext);
     const { loading: modulesLoading, canUse } = useMobileModules();
     const navigation = useNavigation();
+    const previousUserRef = useRef(null);
+    const [showLoginOpening, setShowLoginOpening] = useState(false);
+
+    useEffect(() => {
+        const justAuthenticated = Boolean(user && !previousUserRef.current);
+        previousUserRef.current = user;
+        if (!justAuthenticated) return undefined;
+
+        setShowLoginOpening(true);
+        const timeout = setTimeout(() => setShowLoginOpening(false), 900);
+        return () => clearTimeout(timeout);
+    }, [user]);
 
     useEffect(() => {
         // Listener para quando o usuário CLICA na notificação
@@ -508,7 +557,8 @@ function NavigationContent() {
     }
 
     return (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <View style={styles.navigationRoot}>
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
             {!user ? (
                 <>
                     <Stack.Screen name="Login" component={LoginScreen} />
@@ -555,7 +605,9 @@ function NavigationContent() {
                     ))}
                 </>
             )}
-        </Stack.Navigator>
+            </Stack.Navigator>
+            <LoginOpeningOverlay visible={showLoginOpening} />
+        </View>
     );
 }
 
@@ -570,6 +622,17 @@ export default function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
+    navigationRoot: { flex: 1 },
+    loginOpeningOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    loginOpeningContent: { alignItems: 'center', paddingHorizontal: 28 },
+    loginOpeningLogo: { width: 112, height: 112, marginBottom: 22 },
+    loginOpeningName: { color: '#fff', fontSize: 22, fontWeight: '800', textAlign: 'center' },
+    loginOpeningLine: { width: 48, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.8)', marginTop: 26 },
     navContainer: {
         position: 'absolute',
         bottom: 28,

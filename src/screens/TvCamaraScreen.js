@@ -10,8 +10,8 @@ import {
   PortalScreenHeader,
 } from '../components/PortalScaffold';
 import { portalGradients, portalTheme } from '../styles/portalTheme';
+import { useSystemControl } from '../context/SystemControlContext';
 
-const videosEndpoint = chamberConfig.videosEndpoint;
 const { width } = Dimensions.get('window');
 const playerWidth = width - 36;
 const playerHeight = Math.round(playerWidth * 9 / 16);
@@ -250,6 +250,7 @@ function formatVideoDate(value) {
 }
 
 export default function TvCamaraScreen({ navigation, route }) {
+  const { settings } = useSystemControl();
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [videosLoading, setVideosLoading] = useState(true);
@@ -260,6 +261,7 @@ export default function TvCamaraScreen({ navigation, route }) {
   const WebView = useMemo(getWebViewComponent, []);
   const cannotLoadNativeWebView = !WebView;
   const requestedVideoId = route?.params?.videoId;
+  const videosEndpoint = settings?.integrations?.youtubeApiUrl || chamberConfig.videosEndpoint;
 
   useEffect(() => {
     let mounted = true;
@@ -309,7 +311,7 @@ export default function TvCamaraScreen({ navigation, route }) {
     return () => {
       mounted = false;
     };
-  }, [requestedVideoId]);
+  }, [requestedVideoId, videosEndpoint]);
 
   const handleSelectVideo = (video) => {
     setLoading(true);

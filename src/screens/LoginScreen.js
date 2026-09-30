@@ -22,27 +22,35 @@ const Screen = styled.View`
 `;
 
 const Hero = styled.View`
-  min-height: 154px;
-  background-color: transparent;
-  align-items: flex-start;
+  min-height: 205px;
+  background-color: ${({ theme }) => theme.portal.primary};
+  align-items: center;
   justify-content: flex-end;
-  padding: 30px 24px 8px;
+  padding: 34px 24px 28px;
+  border-bottom-left-radius: 32px;
+  border-bottom-right-radius: 32px;
 `;
 
 const Content = styled.View`
   flex: 1;
-  padding: 16px 24px 34px;
+  margin: -20px 16px 0;
+  padding: 26px 20px 34px;
+  border-radius: 24px;
+  background-color: ${({ theme }) => theme.portal.card};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
 `;
 
 const BrandImage = styled.Image`
-  width: 62px;
-  height: 62px;
+  width: 112px;
+  height: 112px;
+  padding: 10px;
 `;
 
 const Title = styled.Text`
   color: ${({ theme }) => theme.portal.text};
-  font-size: 26px;
-  line-height: 32px;
+  font-size: 30px;
+  line-height: 36px;
   font-weight: 900;
   text-align: left;
 `;
@@ -53,7 +61,7 @@ const Subtitle = styled.Text`
   line-height: 22px;
   font-weight: 700;
   margin-top: 8px;
-  margin-bottom: 34px;
+  margin-bottom: 26px;
   text-align: left;
 `;
 
@@ -201,7 +209,14 @@ export default function LoginScreen({ navigation }) {
       <Screen>
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
           <Hero>
-            <BrandImage source={settings?.branding?.logoUrl ? { uri: settings.branding.logoUrl } : chamberLogo} resizeMode="contain" />
+            <BrandImage
+              source={settings?.branding?.loginCoverUrl
+                ? { uri: settings.branding.loginCoverUrl }
+                : settings?.branding?.logoUrl
+                  ? { uri: settings.branding.logoUrl }
+                  : chamberLogo}
+              resizeMode="contain"
+            />
           </Hero>
           <Content>
             <Title>Entrar</Title>

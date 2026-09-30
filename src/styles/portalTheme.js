@@ -64,8 +64,8 @@ export const applyPortalTheme = (mode, design = {}) => {
     primary: design.primaryColor || base.primary,
     secondary: design.secondaryColor || base.secondary,
     accent: design.accentColor || base.accent,
-    page: mode === 'dark' ? base.page : (design.backgroundColor || base.page),
-    text: mode === 'dark' ? base.text : (design.textColor || base.text),
+    page: design.backgroundColor || base.page,
+    text: design.textColor || base.text,
   });
   Object.assign(portalGradients, mode === 'dark' ? darkGradients : lightGradients);
   portalGradients.primary = [portalTheme.primary, design.secondaryColor || portalTheme.primary];

@@ -14,45 +14,66 @@ import {
 import styled, { useTheme } from 'styled-components/native';
 import { AuthContext } from '../context/AuthContext';
 import { useSystemControl } from '../context/SystemControlContext';
+import { formatCep, formatCpf, formatPhone, isValidCpf, onlyDigits } from '../utils/brasilForms';
 
 const Screen = styled.View`
   flex: 1;
   background-color: ${({ theme }) => theme.portal.page};
+  position: relative;
 `;
 
 const Hero = styled.View`
-  min-height: 154px;
-  background-color: transparent;
-  align-items: flex-start;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 300px;
+  background-color: ${({ theme }) => theme.portal.primary};
+  align-items: center;
   justify-content: flex-end;
-  padding: 30px 24px 8px;
+  padding: 54px 24px 68px;
+  border-bottom-left-radius: 32px;
+  border-bottom-right-radius: 32px;
+  z-index: 1;
 `;
 
 const BackButton = styled.TouchableOpacity`
   position: absolute;
   left: 18px;
-  top: 30px;
+  top: 56px;
   width: 42px;
   height: 42px;
   border-radius: 21px;
-  background-color: ${({ theme }) => theme.mode === 'dark' ? 'rgba(16, 37, 54, 0.9)' : 'rgba(255, 255, 255, 0.82)'};
+  background-color: rgba(255, 255, 255, 0.16);
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.35);
   align-items: center;
   justify-content: center;
+  z-index: 10;
+  elevation: 10;
 `;
 
 const BrandImage = styled.Image`
-  width: 62px;
-  height: 62px;
+  width: 128px;
+  height: 128px;
 `;
 
 const Content = styled.View`
-  padding: 16px 24px 34px;
+  margin: -28px 0 0;
+  padding: 26px 20px 34px;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  background-color: ${({ theme }) => theme.portal.card};
+  border-width: 1px;
+  border-color: ${({ theme }) => theme.portal.border};
+  z-index: 3;
+  elevation: 3;
 `;
 
 const Title = styled.Text`
   color: ${({ theme }) => theme.portal.text};
-  font-size: 26px;
-  line-height: 32px;
+  font-size: 30px;
+  line-height: 36px;
   font-weight: 900;
   text-align: left;
 `;
@@ -202,6 +223,8 @@ export default function CadastroScreen({ navigation }) {
   const [nome, setNome] = useState('');
   const [sexo, setSexo] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [cep, setCep] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confSenha, setConfSenha] = useState('');
@@ -213,8 +236,12 @@ export default function CadastroScreen({ navigation }) {
   const { register } = useContext(AuthContext);
 
   const handleRegister = async () => {
-    if (!nome || !email || !senha || !telefone) {
-      Alert.alert('Erro', 'Por favor, preencha os campos obrigatórios.');
+    if (!nome || !email || !senha || !telefone || !cpf || !cep) {
+      Alert.alert('Atenção', 'Preencha nome, CPF, telefone, CEP, email e senha.');
+      return;
+    }
+    if (!isValidCpf(cpf)) {
+      Alert.alert('Atenção', 'Informe um CPF válido.');
       return;
     }
     if (senha !== confSenha) {
@@ -228,7 +255,9 @@ export default function CadastroScreen({ navigation }) {
         name: nome,
         nome,
         sexo,
-        phone: telefone,
+        phone: onlyDigits(telefone),
+        cpf: onlyDigits(cpf),
+        cep: onlyDigits(cep),
         cadastroCompleto: false,
       });
       setTimeout(() => {
@@ -266,14 +295,25 @@ export default function CadastroScreen({ navigation }) {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <Screen>
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
-          <Hero>
-            <BackButton onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={22} color={theme.portal.primary} />
-            </BackButton>
-            <BrandImage source={settings?.branding?.logoUrl ? { uri: settings.branding.logoUrl } : chamberLogo} resizeMode="contain" />
-          </Hero>
-
+        <BackButton onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={22} color="#ffffff" />
+        </BackButton>
+        <Hero>
+          <BrandImage
+            source={settings?.branding?.loginCoverUrl
+              ? { uri: settings.branding.loginCoverUrl }
+              : settings?.branding?.logoUrl
+                ? { uri: settings.branding.logoUrl }
+                : chamberLogo}
+            resizeMode="contain"
+          />
+        </Hero>
+        <ScrollView
+          style={{ zIndex: 2 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexGrow: 1, paddingTop: 272 }}
+        >
           <Content>
             <Title>Criar conta</Title>
             <Subtitle>Faça seu cadastro para acompanhar solicitações e acessar os serviços digitais.</Subtitle>
@@ -295,10 +335,32 @@ export default function CadastroScreen({ navigation }) {
               <Label>Telefone</Label>
               <Input
                 value={telefone}
-                onChangeText={setTelefone}
+                onChangeText={value => setTelefone(formatPhone(value))}
                 placeholder="(XX) X XXXX-XXXX"
                 placeholderTextColor={theme.portal.subtle}
                 keyboardType="phone-pad"
+              />
+            </FieldBlock>
+
+            <FieldBlock>
+              <Label>CPF</Label>
+              <Input
+                value={cpf}
+                onChangeText={value => setCpf(formatCpf(value))}
+                placeholder="000.000.000-00"
+                placeholderTextColor={theme.portal.subtle}
+                keyboardType="number-pad"
+              />
+            </FieldBlock>
+
+            <FieldBlock>
+              <Label>CEP</Label>
+              <Input
+                value={cep}
+                onChangeText={value => setCep(formatCep(value))}
+                placeholder="00000-000"
+                placeholderTextColor={theme.portal.subtle}
+                keyboardType="number-pad"
               />
             </FieldBlock>
 

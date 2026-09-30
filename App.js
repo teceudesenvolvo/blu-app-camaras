@@ -1,9 +1,11 @@
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Image, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ThemeProvider } from 'styled-components/native';
 
 // Importamos apenas o Navegador Principal
@@ -11,6 +13,9 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { THEME_PREFERENCES, ThemePreferenceContext } from './src/context/ThemePreferenceContext';
 import { applyPortalTheme, getAutomaticThemeMode, portalGradients } from './src/styles/portalTheme';
 import { SystemControlProvider, useSystemControl } from './src/context/SystemControlContext';
+import { chamberLogo } from './src/config/branding';
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Pegamos os dados do Antigravity/Switch (Paraipaba)
 const THEME_PREFERENCE_KEY = '@' + Constants.expoConfig.extra.slug + '/theme-preference';
@@ -20,7 +25,7 @@ const resolveThemeMode = preference => preference === 'automatic'
   : preference;
 
 function ThemedApp() {
-  const { settings } = useSystemControl();
+  const { settings, loading } = useSystemControl();
   const [themePreference, setThemePreferenceState] = useState('automatic');
   const [themeMode, setThemeMode] = useState(() => resolveThemeMode('automatic'));
   const portal = useMemo(() => applyPortalTheme(themeMode, settings.design), [themeMode, settings.design]);
@@ -88,6 +93,29 @@ function ThemedApp() {
     };
   }, [themePreference]);
 
+  useEffect(() => {
+    if (!loading) SplashScreen.hideAsync().catch(() => {});
+  }, [loading]);
+
+  if (loading) {
+    const primary = settings.design?.primaryColor || '#025AA1';
+    const secondary = settings.design?.secondaryColor || '#0284C7';
+    const logo = settings.branding?.logoUrl ? { uri: settings.branding.logoUrl } : chamberLogo;
+    const name = settings.tenant?.shortName || settings.tenant?.name || 'Câmara Municipal';
+
+    return (
+      <View style={styles.splashRoot}>
+        <LinearGradient colors={[primary, secondary]} style={StyleSheet.absoluteFill} />
+        <View style={styles.splashGlow} />
+        <View style={styles.splashBrand}>
+          <Image source={logo} resizeMode="contain" style={styles.splashLogo} />
+          <Text style={styles.splashName}>{name}</Text>
+          <View style={styles.splashLoader} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer theme={navigationTheme}>
       <ThemeProvider theme={appTheme}>
@@ -110,3 +138,12 @@ function ThemedApp() {
 export default function App() {
   return <SystemControlProvider><ThemedApp /></SystemControlProvider>;
 }
+
+const styles = StyleSheet.create({
+  splashRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#025AA1' },
+  splashGlow: { position: 'absolute', width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(255,255,255,0.1)', top: '18%' },
+  splashBrand: { alignItems: 'center', paddingHorizontal: 32 },
+  splashLogo: { width: 116, height: 116, marginBottom: 24 },
+  splashName: { color: '#fff', fontSize: 22, fontWeight: '800', textAlign: 'center' },
+  splashLoader: { width: 52, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.75)', marginTop: 28 },
+});
