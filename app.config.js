@@ -1,7 +1,18 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+function loadStaticEnv() {
+  const file = path.join(__dirname, '.env');
+  if (!fs.existsSync(file)) return;
+  for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const match = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (!match || process.env[match[1]]) continue;
+    process.env[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+  }
+}
+
 module.exports = ({ config }) => {
+  loadStaticEnv();
   const flavorsDir = path.join(__dirname, 'flavors');
   const configuredFlavors = fs.readdirSync(flavorsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(flavorsDir, entry.name, 'config.json')))
@@ -14,14 +25,30 @@ module.exports = ({ config }) => {
   const file = path.join(__dirname, 'flavors', chamber, 'config.json');
   if (!fs.existsSync(file)) throw new Error('Camara nao configurada: ' + chamber);
   const tenant = JSON.parse(fs.readFileSync(file, 'utf8'));
-  for (const value of [tenant.name, tenant.slug, tenant.institutionName, tenant.firebase?.projectId,
-    tenant.firebase?.apiKey, tenant.firebase?.appId, tenant.firebase?.storageBucket,
+  const firebase = {
+    ...tenant.firebase,
+    apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || tenant.firebase?.apiKey,
+    authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || tenant.firebase?.authDomain,
+    databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || tenant.firebase?.databaseURL,
+    projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || tenant.firebase?.projectId,
+    storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || tenant.firebase?.storageBucket,
+    messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || tenant.firebase?.messagingSenderId,
+    appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || tenant.firebase?.appId,
+    measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || tenant.firebase?.measurementId,
+  };
+  for (const value of [tenant.name, tenant.slug, tenant.institutionName, firebase.projectId,
+    firebase.apiKey, firebase.appId, firebase.storageBucket,
     tenant.easProjectId, tenant.ios?.bundleIdentifier, tenant.android?.package]) {
     if (typeof value !== 'string' || !value.trim()) throw new Error('Configuracao incompleta: ' + chamber);
   }
   if (tenant.flavorId !== chamber) throw new Error('flavorId deve corresponder a CAMARA');
   for (const asset of Object.values(tenant.assets)) {
     if (!fs.existsSync(path.resolve(__dirname, asset))) throw new Error('Asset ausente: ' + asset);
+  }
+  for (const serviceFile of [tenant.ios?.googleServicesFile, tenant.android?.googleServicesFile]) {
+    if (!serviceFile || !fs.existsSync(path.resolve(__dirname, serviceFile))) {
+      throw new Error('Arquivo nativo do Firebase ausente: ' + (serviceFile || chamber));
+    }
   }
   return {
     ...config,
@@ -40,9 +67,10 @@ module.exports = ({ config }) => {
     updates: { ...config.updates, url: 'https://u.expo.dev/' + tenant.easProjectId },
     extra: {
       ...tenant,
+      firebase,
       bundleIdentifier: tenant.ios.bundleIdentifier,
       eas: { projectId: tenant.easProjectId },
-      videosEndpoint: 'https://' + tenant.youtubeRegion + '-' + tenant.firebase.projectId + '.cloudfunctions.net/listarVideosTvCamara',
+      videosEndpoint: 'https://' + tenant.youtubeRegion + '-' + firebase.projectId + '.cloudfunctions.net/listarVideosTvCamara',
     },
   };
 };

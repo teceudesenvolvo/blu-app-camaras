@@ -125,7 +125,13 @@ export const AuthProvider = ({ children }) => {
                     return;
                 }
 
-                const { status } = await Notifications.requestPermissionsAsync();
+                const { status } = await Notifications.requestPermissionsAsync({
+                    ios: {
+                        allowAlert: true,
+                        allowBadge: true,
+                        allowSound: true,
+                    },
+                });
                 if (status !== 'granted') {
                     console.log('Permissão de notificação negada');
                     return;
@@ -237,6 +243,13 @@ export const AuthProvider = ({ children }) => {
 
         return () => unsubscribe();
     }, [user]);
+
+    // Mantém o contador de notificações sincronizado com o badge nativo do app.
+    useEffect(() => {
+        Notifications.setBadgeCountAsync(user ? unreadCount : 0).catch(error => {
+            console.warn('Não foi possível atualizar o badge de notificações:', error?.message || error);
+        });
+    }, [user, unreadCount]);
 
     // 🔐 LOGIN
     const login = async (email, password) => {

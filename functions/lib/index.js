@@ -257,30 +257,61 @@ async function subscribeToYoutubeWebSub(callbackUrl, attempt = 1) {
         "hub.verify_token": verifyToken,
         "hub.lease_seconds": String(60 * 60 * 24 * 5),
     });
-    const response = await fetch("https://pubsubhubbub.appspot.com/subscribe", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params.toString(),
-    });
-    const responseBody = await response.text();
-    firebase_functions_1.logger.info("Resposta do WebSub ao renovar inscrição.", {
+    const maxAttempts = 5;
+    let response;
+    let responseBody = "";
+    let networkError;
+    try {
+        response = await fetch("https://pubsubhubbub.appspot.com/subscribe", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: params.toString(),
+            signal: AbortSignal.timeout(20000),
+        });
+        responseBody = await response.text();
+    }
+    catch (error) {
+        networkError = error;
+    }
+    if (response?.ok) {
+        firebase_functions_1.logger.info("Inscrição WebSub renovada.", { attempt, callbackUrl });
+        return;
+    }
+    const status = response?.status;
+    const retryable = !response || [429, 500, 502, 503, 504].includes(status);
+    firebase_functions_1.logger.warn("Tentativa de renovação WebSub não concluída.", {
         attempt,
-        status: response.status,
-        body: responseBody.slice(0, 1000),
+        status: status ?? null,
+        retryable,
+        body: responseBody.slice(0, 500),
+        networkError: networkError ? getApiErrorMessage(networkError) : null,
         callbackUrl,
         channelId,
     });
-    if (response.ok)
-        return;
-    const retryable = [429, 500, 502, 503, 504].includes(response.status);
-    if (retryable && attempt < 4) {
-        const delayMs = attempt * 3000;
+    if (retryable && attempt < maxAttempts) {
+        const retryAfter = response?.headers.get("retry-after");
+        const retryAfterMs = retryAfter ? getRetryAfterMs(retryAfter) : 0;
+        const exponentialMs = Math.min(3000 * (2 ** (attempt - 1)), 30000);
+        const jitterMs = Math.floor(Math.random() * 1000);
+        const delayMs = Math.max(exponentialMs + jitterMs, retryAfterMs);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         return subscribeToYoutubeWebSub(callbackUrl, attempt + 1);
     }
-    throw new Error(`Falha ao renovar WebSub: HTTP ${response.status} - ${responseBody.slice(0, 500)}`);
+    const reason = networkError ? getApiErrorMessage(networkError) :
+        `HTTP ${status} - ${responseBody.slice(0, 500)}`;
+    throw new Error(`Falha ao renovar WebSub: ${reason}`);
+}
+function getRetryAfterMs(value) {
+    const seconds = Number(value);
+    if (Number.isFinite(seconds)) {
+        return Math.min(Math.max(seconds, 0) * 1000, 30000);
+    }
+    const retryAt = Date.parse(value);
+    if (Number.isNaN(retryAt))
+        return 0;
+    return Math.min(Math.max(retryAt - Date.now(), 0), 30000);
 }
 exports.youtubeChannelWebhook = (0, https_1.onRequest)({
     region: "southamerica-east1",
@@ -373,6 +404,11 @@ exports.renovarWebhookYoutube = (0, scheduler_1.onSchedule)({
     schedule: "0 3 */3 * *",
     timeZone: "America/Fortaleza",
     region: "southamerica-east1",
+    retryCount: 3,
+    minBackoffSeconds: 60,
+    maxBackoffSeconds: 300,
+    maxDoublings: 3,
+    timeoutSeconds: 300,
     secrets: [
         youtubeChannelId,
         youtubeWebhookVerifyToken,

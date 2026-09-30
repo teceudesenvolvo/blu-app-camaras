@@ -55,7 +55,7 @@ const ProfileAvatar = styled.TouchableOpacity`
   overflow: hidden;
   background-color: ${({ theme }) => theme.portal.pageAlt};
   border-width: 1px;
-  border-color: ${({ theme }) => theme.portal.secondary};
+  border-color: ${({ theme }) => theme.portal.primary};
 `;
 
 const ProfileAvatarImage = styled(Image)`
@@ -396,12 +396,12 @@ const HomeScreen = ({ navigation }) => {
         <HeaderActions>
           <NotificationButton activeOpacity={0.6} onPress={() => navigation.navigate('Notificacoes')}>
             <View>
-              <Ionicons name="notifications" size={26} color={theme.portal.secondary} />
+              <Ionicons name="notifications" size={26} color={theme.portal.accent} />
               {unreadCount > 0 && <Badge><BadgeText>{unreadCount > 9 ? '9+' : unreadCount}</BadgeText></Badge>}
             </View>
           </NotificationButton>
           <ProfileAvatar activeOpacity={0.7} onPress={() => navigation.navigate('Perfil')} accessibilityRole="button" accessibilityLabel="Abrir perfil">
-            {profilePhoto || user?.photoURL ? <ProfileAvatarImage source={{ uri: profilePhoto || user.photoURL }} contentFit="cover" /> : <MaterialCommunityIcons name="account" size={25} color={theme.portal.secondary} />}
+            {profilePhoto || user?.photoURL ? <ProfileAvatarImage source={{ uri: profilePhoto || user.photoURL }} contentFit="cover" /> : <MaterialCommunityIcons name="account" size={25} color={theme.portal.primary} />}
           </ProfileAvatar>
         </HeaderActions>
       </Header>

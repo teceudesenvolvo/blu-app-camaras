@@ -8,6 +8,11 @@ const nodemailer = require('nodemailer'); // Keep nodemailer for email sending
 
 admin.initializeApp();
 
+const APP_FLAVOR_ID = process.env.APP_FLAVOR_ID || 'paraipaba';
+const APP_DISPLAY_NAME = process.env.APP_DISPLAY_NAME || 'Câmara Municipal';
+const APP_STORE_IOS_URL = process.env.APP_STORE_IOS_URL || '';
+const APP_STORE_ANDROID_URL = process.env.APP_STORE_ANDROID_URL || '';
+
 exports.logoutOtherDevices = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
@@ -261,17 +266,17 @@ exports.onTrustedContactWritten = onDocumentWritten(
         }
 
         const ownerUserId = event.params.userId;
-        const flavorId = after.flavorId || 'paraipaba';
+        const flavorId = after.flavorId || APP_FLAVOR_ID;
 
         try {
             const ownerDoc = await admin.firestore().collection('users').doc(ownerUserId).get();
             const owner = ownerDoc.exists ? ownerDoc.data() : {};
             const ownerName = owner.name || owner.displayName || 'Uma usuária';
-            const appStoreUrl = 'https://apps.apple.com/app/id6769832252';
-            const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.blutecnologias.appcamara';
+            const appStoreUrl = APP_STORE_IOS_URL;
+            const playStoreUrl = APP_STORE_ANDROID_URL;
             const html = `
                 <p>Olá,</p>
-                <p><strong>${ownerName}</strong> adicionou você como contato de confiança no aplicativo <strong>CM Paraipaba</strong>.</p>
+                <p><strong>${ownerName}</strong> adicionou você como contato de confiança no aplicativo <strong>${APP_DISPLAY_NAME}</strong>.</p>
                 <p>Se ela acionar o Botão do Pânico, você receberá um alerta no aplicativo com a localização enviada.</p>
                 <p>Para receber o alarme no celular, baixe o app, faça login/cadastro com este mesmo e-mail e permita notificações.</p>
                 <p>
@@ -282,7 +287,7 @@ exports.onTrustedContactWritten = onDocumentWritten(
 
             const transport = await initializeMailTransport();
             await transport.sendMail({
-                from: `"CM Paraipaba" <${gmailEmail.value()}>`,
+                from: `"${APP_DISPLAY_NAME}" <${gmailEmail.value()}>`,
                 to: contactEmail,
                 subject: 'Você foi adicionado como contato de confiança',
                 html,
@@ -294,7 +299,7 @@ exports.onTrustedContactWritten = onDocumentWritten(
                     contactUserId,
                     flavorId,
                     'Contato de confiança',
-                    `${ownerName} adicionou você como contato de confiança no CM Paraipaba.`,
+                    `${ownerName} adicionou você como contato de confiança no ${APP_DISPLAY_NAME}.`,
                     {
                         screen: 'Procuradoria',
                         type: 'trusted-contact-invite',
@@ -440,7 +445,7 @@ exports.sendMailOnNewRequest = onDocumentCreated(
 
                 await addFirestoreNotification(
                     mailData.userId,
-                    "paraipaba",
+                    APP_FLAVOR_ID,
                     "Status de Solicitação Atualizado",
                     desc,
                     {
@@ -640,7 +645,7 @@ exports.notifyUsersOnNewsPublished = onDocumentWritten(
             promises.push(
                 addFirestoreNotification(
                     userDoc.id,
-                    "paraipaba",
+                    APP_FLAVOR_ID,
                     "📢 " + afterData.titulo,
                     afterData.subtitulo || "Novidade no app.",
                     {

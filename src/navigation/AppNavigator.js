@@ -227,6 +227,8 @@ const LiquidTabItem = ({ icon, isFocused, onPress, primaryColor, dotColor, activ
     );
 };
 
+const LIQUID_GLASS_COLOR = '#7cc4f2';
+
 // 3. O COMPONENTE DA BARRA
 const LiquidTabBar = ({ state, descriptors, navigation }) => {
     const { unreadMessagesCount } = React.useContext(AuthContext);
@@ -288,12 +290,12 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
 
     return (
         <View style={styles.navContainer}>
-            <BlurView intensity={96} tint={isDark ? 'dark' : 'light'} style={[styles.blur, { width: pillWidth, borderColor: isDark ? 'rgba(226,242,255,0.72)' : 'rgba(255,255,255,0.92)' }]}>
+            <BlurView intensity={96} tint={isDark ? 'dark' : 'light'} style={[styles.blur, { width: pillWidth, borderColor: appTheme.portal.border, backgroundColor: isDark ? 'rgba(7,19,31,0.46)' : 'rgba(255,255,255,0.46)' }]}>
                 <LinearGradient
                     pointerEvents="none"
                     colors={isDark
-                        ? ['rgba(16,37,54,0.92)', 'rgba(7,19,31,0.72)', 'rgba(41,65,84,0.46)']
-                        : ['rgba(255,255,255,0.86)', 'rgba(255,255,255,0.42)', 'rgba(255,255,255,0.22)']}
+                        ? ['rgba(16,37,54,0.42)', 'rgba(7,19,31,0.28)', 'rgba(41,65,84,0.24)']
+                        : ['rgba(255,255,255,0.48)', 'rgba(255,255,255,0.24)', 'rgba(255,255,255,0.14)']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={StyleSheet.absoluteFillObject}
@@ -311,7 +313,7 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                                     height: bubbleSize,
                                     borderRadius: bubbleSize / 2,
                                     left: (tabWidth - bubbleSize) / 2,
-                                    backgroundColor: `${primaryColor}1c`,
+                                backgroundColor: `${LIQUID_GLASS_COLOR}38`,
                                 },
                             ]}
                         />
@@ -325,14 +327,14 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                                     borderRadius: 32,
                                     left: (tabWidth - bubbleSize) / 2 - 5,
                                     borderWidth: 1,
-                                    borderColor: isDark ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.88)',
+                                    borderColor: appTheme.portal.border,
                                 },
                             ]}
                         >
                             <LinearGradient
                                 colors={isDark
-                                    ? ['rgba(255,255,255,0.98)', `${primaryColor}92`, 'rgba(226,242,255,0.78)']
-                                    : ['rgba(255,255,255,0.98)', `${primaryColor}28`, 'rgba(255,255,255,0.48)']}
+                                    ? [`${LIQUID_GLASS_COLOR}e6`, `${LIQUID_GLASS_COLOR}b8`, `${LIQUID_GLASS_COLOR}8c`]
+                                    : [`${LIQUID_GLASS_COLOR}e6`, `${LIQUID_GLASS_COLOR}b8`, `${LIQUID_GLASS_COLOR}70`]}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                                 style={styles.bubbleGradient}
@@ -353,9 +355,9 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                             icon={icon}
                             isFocused={isFocused}
                             primaryColor={primaryColor}
-                            dotColor={isDark ? appTheme.portal.accent : appTheme.portal.secondary}
-                            activeIconColor={isDark ? appTheme.portal.accent : appTheme.portal.secondary}
-                            inactiveColor={appTheme.portal.text}
+                            dotColor={appTheme.portal.accent}
+                            activeIconColor={appTheme.portal.primary}
+                            inactiveColor={appTheme.portal.muted}
                             showBadge={showBadge}
                             onPress={() => navigation.navigate(options.routeTarget || route.name)}
                         />
@@ -363,14 +365,14 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                 })}
             </BlurView>
 
-            <TouchableOpacity activeOpacity={0.76} onPress={() => navigation.navigate(profileRoute.name)} style={[styles.profileButtonOuter, { borderColor: isDark ? 'rgba(226,242,255,0.72)' : 'rgba(255,255,255,0.92)' }]}>
+            <TouchableOpacity activeOpacity={0.76} onPress={() => navigation.navigate(profileRoute.name)} style={[styles.profileButtonOuter, { borderColor: appTheme.portal.border }]}>
                 <BlurView intensity={96} tint={isDark ? 'dark' : 'light'} style={styles.profileButton}>
                     <LinearGradient
                         colors={state.index === state.routes.length - 1
-                            ? ['rgba(125, 211, 252, 0.96)', 'rgba(16, 185, 129, 0.56)', 'rgba(255,255,255,0.55)']
+                            ? [`${LIQUID_GLASS_COLOR}e6`, `${LIQUID_GLASS_COLOR}b8`, `${LIQUID_GLASS_COLOR}70`]
                             : isDark
-                                ? ['rgba(16,37,54,0.94)', 'rgba(7,19,31,0.72)', 'rgba(41,65,84,0.5)']
-                                : ['rgba(255,255,255,0.88)', 'rgba(255,255,255,0.42)', 'rgba(255,255,255,0.24)']}
+                                ? [appTheme.portal.card, appTheme.portal.page, appTheme.portal.pageAlt]
+                                : [appTheme.portal.card, appTheme.portal.pageAlt, appTheme.portal.card]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={StyleSheet.absoluteFillObject}
@@ -378,7 +380,7 @@ const LiquidTabBar = ({ state, descriptors, navigation }) => {
                     <MaterialCommunityIcons
                         name={descriptors[profileRoute.key].options.tabBarIconName || 'account-outline'}
                         size={34}
-                        color={state.index === state.routes.length - 1 ? (isDark ? appTheme.portal.accent : appTheme.portal.secondary) : appTheme.portal.text}
+                        color={state.index === state.routes.length - 1 ? appTheme.portal.primary : appTheme.portal.muted}
                     />
                 </BlurView>
             </TouchableOpacity>

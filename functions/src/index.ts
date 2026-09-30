@@ -16,6 +16,8 @@ const youtubeRefreshToken = defineSecret("YOUTUBE_REFRESH_TOKEN");
 const youtubeChannelId = defineSecret("YOUTUBE_CHANNEL_ID");
 const youtubePlaylistId = defineSecret("YOUTUBE_PLAYLIST_ID");
 const youtubeWebhookVerifyToken = defineSecret("YOUTUBE_WEBHOOK_VERIFY_TOKEN");
+const functionsRegion = process.env.FUNCTIONS_REGION || "southamerica-east1";
+const firebaseProjectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "";
 
 type PlaylistVideo = {
   playlistItemId: string;
@@ -307,7 +309,7 @@ async function notifyUsersAboutNewYoutubeVideo(params: {
 
     batch.set(notificationRef, {
       userId: userDoc.id,
-      flavorId: userData.flavorId || "paraipaba",
+      flavorId: userData.flavorId || process.env.APP_FLAVOR_ID || "tenant",
       tituloNotification: "Novo video na TV Câmara",
       descricaoNotification: title || "Há um novo vídeo disponível para assistir.",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -337,9 +339,15 @@ async function notifyUsersAboutNewYoutubeVideo(params: {
   return created;
 }
 
-async function subscribeToYoutubeWebSub(callbackUrl: string, attempt = 1): Promise<void> {
+async function subscribeToYoutubeWebSub(
+  callbackUrl: string,
+  attempt = 1,
+): Promise<void> {
   const channelId = readSecret(youtubeChannelId, "YOUTUBE_CHANNEL_ID");
-  const verifyToken = readSecret(youtubeWebhookVerifyToken, "YOUTUBE_WEBHOOK_VERIFY_TOKEN");
+  const verifyToken = readSecret(
+    youtubeWebhookVerifyToken,
+    "YOUTUBE_WEBHOOK_VERIFY_TOKEN",
+  );
   const params = new URLSearchParams({
     "hub.callback": callbackUrl,
     "hub.mode": "subscribe",
@@ -348,41 +356,70 @@ async function subscribeToYoutubeWebSub(callbackUrl: string, attempt = 1): Promi
     "hub.verify_token": verifyToken,
     "hub.lease_seconds": String(60 * 60 * 24 * 5),
   });
+  const maxAttempts = 5;
+  let response: Response | undefined;
+  let responseBody = "";
+  let networkError: unknown;
 
-  const response = await fetch("https://pubsubhubbub.appspot.com/subscribe", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params.toString(),
-  });
-  const responseBody = await response.text();
+  try {
+    response = await fetch("https://pubsubhubbub.appspot.com/subscribe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+      signal: AbortSignal.timeout(20000),
+    });
+    responseBody = await response.text();
+  } catch (error) {
+    networkError = error;
+  }
 
-  logger.info("Resposta do WebSub ao renovar inscrição.", {
+  if (response?.ok) {
+    logger.info("Inscrição WebSub renovada.", {attempt, callbackUrl});
+    return;
+  }
+
+  const status = response?.status;
+  const retryable = !response || [429, 500, 502, 503, 504].includes(status!);
+  logger.warn("Tentativa de renovação WebSub não concluída.", {
     attempt,
-    status: response.status,
-    body: responseBody.slice(0, 1000),
+    status: status ?? null,
+    retryable,
+    body: responseBody.slice(0, 500),
+    networkError: networkError ? getApiErrorMessage(networkError) : null,
     callbackUrl,
     channelId,
   });
 
-  if (response.ok) return;
-
-  const retryable = [429, 500, 502, 503, 504].includes(response.status);
-  if (retryable && attempt < 4) {
-    const delayMs = attempt * 3000;
+  if (retryable && attempt < maxAttempts) {
+    const retryAfter = response?.headers.get("retry-after");
+    const retryAfterMs = retryAfter ? getRetryAfterMs(retryAfter) : 0;
+    const exponentialMs = Math.min(3000 * (2 ** (attempt - 1)), 30000);
+    const jitterMs = Math.floor(Math.random() * 1000);
+    const delayMs = Math.max(exponentialMs + jitterMs, retryAfterMs);
     await new Promise((resolve) => setTimeout(resolve, delayMs));
     return subscribeToYoutubeWebSub(callbackUrl, attempt + 1);
   }
 
-  throw new Error(
-    `Falha ao renovar WebSub: HTTP ${response.status} - ${responseBody.slice(0, 500)}`,
-  );
+  const reason = networkError ? getApiErrorMessage(networkError) :
+    `HTTP ${status} - ${responseBody.slice(0, 500)}`;
+  throw new Error(`Falha ao renovar WebSub: ${reason}`);
+}
+
+function getRetryAfterMs(value: string): number {
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) {
+    return Math.min(Math.max(seconds, 0) * 1000, 30000);
+  }
+  const retryAt = Date.parse(value);
+  if (Number.isNaN(retryAt)) return 0;
+  return Math.min(Math.max(retryAt - Date.now(), 0), 30000);
 }
 
 export const youtubeChannelWebhook = onRequest(
   {
-    region: "southamerica-east1",
+    region: functionsRegion,
     secrets: [
       youtubeClientId,
       youtubeClientSecret,
@@ -492,15 +529,23 @@ export const renovarWebhookYoutube = onSchedule(
   {
     schedule: "0 3 */3 * *",
     timeZone: "America/Fortaleza",
-    region: "southamerica-east1",
+    region: functionsRegion,
+    retryCount: 3,
+    minBackoffSeconds: 60,
+    maxBackoffSeconds: 300,
+    maxDoublings: 3,
+    timeoutSeconds: 300,
     secrets: [
       youtubeChannelId,
       youtubeWebhookVerifyToken,
     ],
   },
   async () => {
+    if (!firebaseProjectId) {
+      throw new Error("Projeto Firebase não identificado para renovar o webhook do YouTube.");
+    }
     const callbackUrl =
-      "https://southamerica-east1-blu-app-camara.cloudfunctions.net/youtubeChannelWebhook";
+      `https://${functionsRegion}-${firebaseProjectId}.cloudfunctions.net/youtubeChannelWebhook`;
 
     await subscribeToYoutubeWebSub(callbackUrl);
     logger.info("Inscricao WebSub do YouTube renovada.");
@@ -509,7 +554,7 @@ export const renovarWebhookYoutube = onSchedule(
 
 export const listarVideosTvCamara = onRequest(
   {
-    region: "southamerica-east1",
+    region: functionsRegion,
     cors: true,
     secrets: [
       youtubeClientId,
@@ -616,7 +661,7 @@ export const atualizarPlaylistYoutube = onSchedule(
   {
     schedule: "*/30 8-19 * * *",
     timeZone: "America/Fortaleza",
-    region: "southamerica-east1",
+    region: functionsRegion,
     secrets: [
       youtubeClientId,
       youtubeClientSecret,

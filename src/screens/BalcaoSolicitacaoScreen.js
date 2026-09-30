@@ -1,7 +1,6 @@
 import chamberConfig from '../config';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { addDoc, collection, doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
@@ -11,8 +10,6 @@ import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
-const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
 const flavorId = chamberConfig.flavorId;
 
 const getStartOfToday = () => {
@@ -138,7 +135,7 @@ const RequirementsCard = styled.View`
   border-radius: 8px;
   padding: 15px;
   border-left-width: 4px;
-  border-left-color: ${secondaryColor};
+  border-left-color: ${({ theme }) => theme.portal.secondary};
 `;
 
 const RequirementItem = styled.View`
@@ -863,7 +860,7 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
                 <Text style={{ fontWeight: 'bold', fontSize: 16, color: theme.portal.text, marginBottom: 15 }}>Documentos e Informações Necessárias:</Text>
                 {selectedDocData.requirements.map((req, index) => (
                   <RequirementItem key={index}>
-                    <Ionicons name="checkmark-circle-outline" size={20} color={primaryColor} style={{ marginRight: 8, marginTop: 1 }} />
+                    <Ionicons name="checkmark-circle-outline" size={20} color={theme.portal.primary} style={{ marginRight: 8, marginTop: 1 }} />
                     <RequirementText>{req}</RequirementText>
                   </RequirementItem>
                 ))}
@@ -920,7 +917,7 @@ export default function BalcaoSolicitacaoScreen({ navigation, route }) {
 
             {formData.dataAgendamento ? (
               <InputGroup>
-                <Label>Horários Disponíveis {loadingSlots && <ActivityIndicator size="small" color={primaryColor} />}</Label>
+                <Label>Horários Disponíveis {loadingSlots && <ActivityIndicator size="small" color={theme.portal.primary} />}</Label>
                 {availableSlots.length > 0 ? (
                   <SlotContainer>
                     {availableSlots.map((time) => (

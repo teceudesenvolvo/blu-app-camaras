@@ -1,22 +1,19 @@
 import chamberConfig from '../config';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { doc, serverTimestamp as firestoreTimestamp, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
-import styled from 'styled-components/native';
+import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
-const primaryColor = '#a21caf'; // Purple
-const backgroundColor = Constants.expoConfig?.extra?.theme?.background || '#f0f2f5';
 const flavorId = chamberConfig.flavorId;
 
 const Container = styled.View`
   flex: 1;
-  background-color: ${backgroundColor};
+  background-color: ${({ theme }) => theme.portal.page};
 `;
 
 const Header = styled.View`
@@ -61,7 +58,7 @@ const Section = styled.View`
 const SectionTitle = styled.Text`
   font-size: 16px;
   font-weight: 700;
-  color: ${primaryColor};
+  color: ${({ theme }) => theme.portal.primary};
   margin-bottom: 15px;
   border-bottom-width: 1px;
   border-bottom-color: #fce7f3;
@@ -155,7 +152,7 @@ const MessageBubble = styled.View`
   margin-bottom: 10px;
   max-width: 85%;
   align-self: ${props => props.isUser ? 'flex-end' : 'flex-start'};
-  background-color: ${props => props.isUser ? primaryColor : '#f0f0f0'};
+  background-color: ${({ theme, isUser }) => isUser ? theme.portal.primary : theme.portal.pageAlt};
 `;
 
 const MessageText = styled.Text`
@@ -188,6 +185,7 @@ const ChatInput = styled.TextInput`
 `;
 
 export default function ProcuradoriaDetalheScreen({ route, navigation }) {
+  const theme = useTheme();
     const { user } = useContext(AuthContext);
     const { item } = route.params;
     const { dadosSolicitacao: initialDados, dadosUsuario, dataSolicitacao: initialData, status: initialStatus, id: solicitacaoId } = item;
@@ -492,7 +490,7 @@ export default function ProcuradoriaDetalheScreen({ route, navigation }) {
                             multiline
                         />
                         <TouchableOpacity onPress={handleSendMessage}>
-                            <Ionicons name="send" size={24} color={primaryColor} />
+                            <Ionicons name="send" size={24} color={theme.portal.primary} />
                         </TouchableOpacity>
                     </InputRow>
                 </Section>

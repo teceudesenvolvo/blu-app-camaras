@@ -1,6 +1,5 @@
 import chamberConfig from '../config';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc, doc, onSnapshot, serverTimestamp as firestoreTimestamp, setDoc } from 'firebase/firestore';
 import { useContext, useEffect, useState } from 'react';
@@ -10,8 +9,6 @@ import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
-const primaryColor = Constants.expoConfig?.extra?.theme?.primary || '#004a99';
-const secondaryColor = Constants.expoConfig?.extra?.theme?.secondary || '#f9c204';
 const flavorId = chamberConfig.flavorId;
 
 const Container = styled.ScrollView`
@@ -80,7 +77,7 @@ const ServiceInfoCard = styled.View`
   padding: 15px;
   border-radius: 8px;
   border-left-width: 4px;
-  border-left-color: ${primaryColor};
+  border-left-color: ${({ theme }) => theme.portal.primary};
   margin-bottom: 20px;
 `;
 
@@ -154,7 +151,7 @@ const ReturnButton = styled.TouchableOpacity`
 `;
 
 const ReturnText = styled.Text`
-  color: ${secondaryColor};
+  color: ${({ theme }) => theme.portal.secondary};
   font-weight: 500;
   font-size: 14px;
 `;

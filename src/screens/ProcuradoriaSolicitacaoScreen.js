@@ -15,7 +15,6 @@ import { firestore } from '../../services/firebaseConfig';
 import { uploadFileToStorage } from '../../services/storageService';
 import { AuthContext } from '../context/AuthContext';
 
-const primaryColor = '#a21caf'; // Purple
 const flavorId = chamberConfig.flavorId;
 
 const Container = styled.ScrollView`
@@ -60,7 +59,7 @@ const FormContainer = styled.View`
 const SectionTitle = styled.Text`
   font-size: 15px;
   font-weight: 700;
-  color: ${primaryColor};
+  color: ${({ theme }) => theme.portal.primary};
   margin: 10px 0 15px 0;
   border-bottom-width: 1px;
   border-bottom-color: ${({ theme }) => theme.portal.border};
@@ -109,7 +108,7 @@ const AttachmentButton = styled.TouchableOpacity`
   align-items: center;
   padding: 12px;
   border-width: 1px;
-  border-color: ${primaryColor};
+  border-color: ${({ theme }) => theme.portal.primary};
   border-style: dashed;
   border-radius: 8px;
   margin-top: 5px;
@@ -118,7 +117,7 @@ const AttachmentButton = styled.TouchableOpacity`
 
 const AttachmentText = styled.Text`
   margin-left: 10px;
-  color: ${primaryColor};
+  color: ${({ theme }) => theme.portal.primary};
   font-size: 14px;
   font-weight: 500;
 `;
@@ -131,12 +130,12 @@ const ImagePreview = styled.Image`
 `;
 
 const SubmitButton = styled.TouchableOpacity`
-  background-color: ${primaryColor};
+  background-color: ${({ theme }) => theme.portal.primary};
   padding: 16px;
   border-radius: 12px;
   align-items: center;
   margin-top: 20px;
-  shadow-color: ${primaryColor};
+  shadow-color: ${({ theme }) => theme.portal.primary};
   shadow-offset: 0px 4px;
   shadow-opacity: 0.3;
   shadow-radius: 8px;
@@ -336,7 +335,7 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
                     <Label>Tipo de Atendimento *</Label>
                     <SelectPlaceholder onPress={() => setModalTipoVisible(true)}>
                         <SelectValue>{tipoAtendimento || 'Selecione o tipo'}</SelectValue>
-                        <Ionicons name="chevron-down" size={20} color={primaryColor} />
+                        <Ionicons name="chevron-down" size={20} color={theme.portal.primary} />
                     </SelectPlaceholder>
                 </InputGroup>
 
@@ -344,7 +343,7 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
                     <Label>Identificação</Label>
                     <SelectPlaceholder onPress={() => setModalIdentVisible(true)}>
                         <SelectValue>{IDENTIFICACAO_TYPES.find(i => i.value === identificacao)?.label}</SelectValue>
-                        <Ionicons name="chevron-down" size={20} color={primaryColor} />
+                        <Ionicons name="chevron-down" size={20} color={theme.portal.primary} />
                     </SelectPlaceholder>
                 </InputGroup>
 
@@ -353,7 +352,7 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
                         <Label>Tipo de Violência</Label>
                         <SelectPlaceholder onPress={() => setModalViolenciaVisible(true)}>
                             <SelectValue>{tipoViolencia || 'Selecione o tipo de violência'}</SelectValue>
-                            <Ionicons name="chevron-down" size={20} color={primaryColor} />
+                            <Ionicons name="chevron-down" size={20} color={theme.portal.primary} />
                         </SelectPlaceholder>
                     </InputGroup>
                 )}
@@ -386,7 +385,7 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
                             <Label>Quem é a vítima? *</Label>
                             <SelectPlaceholder onPress={() => setModalRelacaoVisible(true)}>
                                 <SelectValue>{relacaoVitima || 'Selecione a vítima'}</SelectValue>
-                                <Ionicons name="chevron-down" size={20} color={primaryColor} />
+                            <Ionicons name="chevron-down" size={20} color={theme.portal.primary} />
                             </SelectPlaceholder>
                         </InputGroup>
                         <InputGroup>
@@ -445,7 +444,7 @@ export default function ProcuradoriaSolicitacaoScreen({ navigation }) {
                         ))}
                     </View>
                     <AttachmentButton onPress={pickImage}>
-                        <Ionicons name="camera-outline" size={20} color={primaryColor} />
+                        <Ionicons name="camera-outline" size={20} color={theme.portal.primary} />
                         <AttachmentText>Adicionar Provas</AttachmentText>
                     </AttachmentButton>
                 </InputGroup>

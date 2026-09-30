@@ -6,6 +6,7 @@
     "start": "expo start",
     "config:check": "node --test tests/chamber-config.test.cjs",
     "config:print": "expo config --type public",
+    "validate": "npm run config:check && npx expo config --type public --json && npx expo-doctor",
     "reset-project": "node ./scripts/reset-project.js",
     "youtube:refresh-token": "tsx ./scripts/gerar-refresh-token.ts",
     "youtube:auth-test": "tsx ./scripts/youtube-auth-test.ts",

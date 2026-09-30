@@ -40,7 +40,7 @@ export default function NoticiasScreen({ navigation }) {
 
   return (
     <PortalBackground>
-      <PortalScreenHeader navigation={navigation} title="Notícias" subtitle="Publicações da Câmara" />
+      <PortalScreenHeader navigation={navigation} title="Notícias" subtitle="Publicações da {{nomeCurto}}" />
       {loading && items.length === 0 ? <ActivityIndicator style={{ marginTop: 28 }} color={theme.portal.primary} /> : (
         <FlatList
           data={items}

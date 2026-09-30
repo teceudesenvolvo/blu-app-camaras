@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Platform } from 'react-native';
 import styled from 'styled-components/native';
 import { portalGradients, portalTheme } from '../styles/portalTheme';
+import { useSystemControl } from '../context/SystemControlContext';
 
 export const PortalBackground = styled(LinearGradient).attrs(({ theme }) => ({
   colors: theme.gradients?.page || portalGradients.page,
@@ -139,6 +140,13 @@ export const PortalIconBadge = styled.View`
 `;
 
 export function PortalScreenHeader({ navigation, title, eyebrow, subtitle, canGoBack = true }) {
+  const { settings } = useSystemControl();
+  const tenantName = settings?.tenant?.name || 'Câmara Municipal';
+  const tenantShortName = settings?.tenant?.shortName || tenantName;
+  const resolveTenantText = value => String(value || '')
+    .replaceAll('{{nome}}', tenantName)
+    .replaceAll('{{nomeCurto}}', tenantShortName)
+    .replaceAll('{{cidade}}', settings?.tenant?.city || '');
   return (
     <PortalHeader compact>
       <PortalHeaderRow>
@@ -149,8 +157,8 @@ export function PortalScreenHeader({ navigation, title, eyebrow, subtitle, canGo
         ) : null}
         <PortalTitleGroup>
           {eyebrow ? <PortalEyebrow>{eyebrow}</PortalEyebrow> : null}
-          <PortalTitle>{title}</PortalTitle>
-          {subtitle ? <PortalSubtitle>{subtitle}</PortalSubtitle> : null}
+          <PortalTitle>{resolveTenantText(title)}</PortalTitle>
+          {subtitle ? <PortalSubtitle>{resolveTenantText(subtitle)}</PortalSubtitle> : null}
         </PortalTitleGroup>
       </PortalHeaderRow>
     </PortalHeader>

@@ -64,11 +64,11 @@ const SERVICES = [
   { module: 'microempreendedor', screen: 'Microempreendedor', icon: 'briefcase-outline', title: 'Microempreendedor', description: 'Orientação para seu negócio.' },
   { module: 'procuradoria', screen: 'Procuradoria', icon: 'heart-outline', title: 'Procuradoria da Mulher', description: 'Acolhimento e solicitações.' },
   { module: 'esic', screen: 'Esic', icon: 'document-text-outline', title: 'e-SIC', description: 'Acesso à informação e recursos.' },
-  { module: 'mensagens', screen: 'Mensagens', icon: 'chatbox-outline', title: 'Mensagens', description: 'Converse com as equipes da Câmara.' },
+  { module: 'mensagens', screen: 'Mensagens', icon: 'chatbox-outline', title: 'Mensagens', description: 'Converse com as equipes de {{nomeCurto}}.' },
   { module: 'avaliacoes', screen: 'Avaliacoes', icon: 'star-outline', title: 'Avaliações', description: 'Avalie atendimentos concluídos.' },
   { module: 'piel', screen: 'Piel', icon: 'id-card-outline', title: 'PIEL', description: 'Programa de integração do Legislativo.' },
   { module: 'vereadores', screen: 'Vereadores', icon: 'person-outline', title: 'Vereadores', description: 'Conheça os parlamentares.' },
-  { module: 'noticias', screen: 'Noticias', icon: 'newspaper-outline', title: 'Notícias', description: 'Publicações da Câmara.' },
+  { module: 'noticias', screen: 'Noticias', icon: 'newspaper-outline', title: 'Notícias', description: 'Publicações de {{nomeCurto}}.' },
   { module: 'tvCamara', screen: 'TvCamara', icon: 'tv-outline', title: 'TV Câmara', description: 'Vídeos e transmissões.' },
   { module: 'protocolo', screen: 'Protocolo', icon: 'folder-open-outline', title: 'Protocolo e Processos', description: 'Acompanhe processos e pendências.' },
   { module: 'agendaVereadores', screen: 'GabineteVereador', icon: 'calendar-outline', title: 'Gabinete Vereador', description: 'Demandas e agenda do gabinete.' },
@@ -105,7 +105,7 @@ export default function AtendimentosScreen({ navigation }) {
               </PortalIconBadge>
               <ServiceInfo>
                 <ServiceText>{service.title}</ServiceText>
-                <ServiceDesc>{service.description}</ServiceDesc>
+                <ServiceDesc>{service.description.replaceAll('{{nomeCurto}}', settings?.tenant?.shortName || settings?.tenant?.name || 'Câmara Municipal')}</ServiceDesc>
               </ServiceInfo>
               <Ionicons name="chevron-forward" size={20} color={portalTheme.subtle} />
             </ServiceItem>

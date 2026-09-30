@@ -21,6 +21,20 @@ test('preserves released Paraipaba identifiers and isolates update project', () 
   }
 });
 
+test('selects the only configured flavor without CAMARA', () => {
+  const original = process.env.CAMARA;
+  delete process.env.CAMARA;
+  try {
+    const resolve = require('../app.config');
+    const result = resolve({ config: structuredClone(base) });
+    assert.equal(result.extra.flavorId, 'paraipaba');
+    assert.equal(result.extra.firebase.projectId, 'blu-app-camara');
+  } finally {
+    if (original === undefined) delete process.env.CAMARA;
+    else process.env.CAMARA = original;
+  }
+});
+
 test('unknown or invalid chambers never fall back to Paraipaba', () => {
   const original = process.env.CAMARA;
   try {

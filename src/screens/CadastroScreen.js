@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import styled, { useTheme } from 'styled-components/native';
 import { AuthContext } from '../context/AuthContext';
+import { useSystemControl } from '../context/SystemControlContext';
 
 const Screen = styled.View`
   flex: 1;
@@ -197,6 +198,7 @@ const ModalItem = styled.TouchableOpacity`
 
 export default function CadastroScreen({ navigation }) {
   const theme = useTheme();
+  const { settings } = useSystemControl();
   const [nome, setNome] = useState('');
   const [sexo, setSexo] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -269,7 +271,7 @@ export default function CadastroScreen({ navigation }) {
             <BackButton onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={22} color={theme.portal.primary} />
             </BackButton>
-            <BrandImage source={chamberLogo} resizeMode="contain" />
+            <BrandImage source={settings?.branding?.logoUrl ? { uri: settings.branding.logoUrl } : chamberLogo} resizeMode="contain" />
           </Hero>
 
           <Content>

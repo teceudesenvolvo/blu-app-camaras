@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import styled, { useTheme } from 'styled-components/native';
 import { AuthContext } from '../context/AuthContext';
+import { useSystemControl } from '../context/SystemControlContext';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -157,6 +158,7 @@ const FooterText = styled.Text`
 
 export default function LoginScreen({ navigation }) {
   const theme = useTheme();
+  const { settings } = useSystemControl();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -199,11 +201,11 @@ export default function LoginScreen({ navigation }) {
       <Screen>
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
           <Hero>
-            <BrandImage source={chamberLogo} resizeMode="contain" />
+            <BrandImage source={settings?.branding?.logoUrl ? { uri: settings.branding.logoUrl } : chamberLogo} resizeMode="contain" />
           </Hero>
           <Content>
             <Title>Entrar</Title>
-            <Subtitle>Acesse seus serviços, acompanhe solicitações e mensagens da Câmara.</Subtitle>
+            <Subtitle>Acesse os serviços, acompanhe solicitações e mensagens da {settings?.tenant?.shortName || settings?.tenant?.name || 'Câmara Municipal'}.</Subtitle>
 
             <FieldBlock>
               <Label>E-mail</Label>
