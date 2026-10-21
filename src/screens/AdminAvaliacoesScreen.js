@@ -6,6 +6,7 @@ import { useTheme } from 'styled-components/native';
 import { PortalBackground, PortalCard, PortalScreenHeader } from '../components/PortalScaffold';
 import { useMobileModules } from '../context/MobileModulesContext';
 import { firestore } from '../../services/firebaseConfig';
+import { useInternalDetailNavigation } from '../hooks/useInternalDetailNavigation';
 
 const RATINGS = ['Todas', '5 estrelas', '4 estrelas', '3 estrelas', '2 estrelas', '1 estrela'];
 const rating = item => Number(item.notaAtendimento || item.nota || 0);
@@ -19,6 +20,7 @@ export default function AdminAvaliacoesScreen({ navigation }) {
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('Todas');
   const [selected, setSelected] = useState(null);
+  useInternalDetailNavigation(navigation, Boolean(selected), () => setSelected(null));
   useEffect(() => {
     if (!canUseAdminApp('avaliacoes')) return undefined;
     return onSnapshot(collection(firestore, 'atendimento-avaliacoes'), snapshot => setItems(snapshot.docs.map(row => ({ id: row.id, ...row.data() }))), () => setItems([]));

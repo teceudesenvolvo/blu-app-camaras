@@ -6,7 +6,9 @@ import styled from 'styled-components/native';
 
 import { PortalBackground, PortalCard, PortalScreenHeader } from '../components/PortalScaffold';
 import { useMobileModules } from '../context/MobileModulesContext';
+import AttachmentList from '../components/AttachmentList';
 import { firestore } from '../../services/firebaseConfig';
+import { useInternalDetailNavigation } from '../hooks/useInternalDetailNavigation';
 
 const FilterBar = styled.View`padding: 14px 18px 6px;`;
 const Horizontal = styled(ScrollView).attrs({ horizontal: true, showsHorizontalScrollIndicator: false })`margin-bottom: 8px;`;
@@ -30,7 +32,7 @@ const StatusText = styled.Text`color: ${({ active, theme }) => active ? '#fff' :
 const MessageInput = styled(TextInput)`min-height: 90px; margin-top: 10px; padding: 12px; border-radius: 10px; border-width: 1px; border-color: ${({ theme }) => theme.portal.border}; color: ${({ theme }) => theme.portal.text}; background-color: ${({ theme }) => theme.portal.pageAlt}; text-align-vertical: top;`;
 const Action = styled.TouchableOpacity`margin-top: 12px; padding: 13px; border-radius: 11px; align-items: center; background-color: ${({ theme }) => theme.portal.primary};`;
 const ActionText = styled.Text`color: #fff; font-weight: 900;`;
-const MessageRow = styled.View`padding: 12px 0; border-bottom-width: 1px; border-bottom-color: ${({ theme }) => theme.portal.border};`;
+const MessageRow = styled.TouchableOpacity`padding: 12px 0; border-bottom-width: 1px; border-bottom-color: ${({ theme }) => theme.portal.border};`;
 
 const STATUSES = ['Todas', 'Recebida', 'Em Acolhimento', 'Encaminhada', 'Concluída', 'Não Classificado'];
 const DETAIL_TABS = [['dados', 'Dados'], ['situacao', 'Situação'], ['agendamento', 'Agendamento'], ['arquivos', 'Arquivos'], ['chat', 'Chat']];
@@ -38,12 +40,7 @@ const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300
 const dateOf = item => item.dataSolicitacao?.toDate ? item.dataSolicitacao.toDate() : new Date(item.dataSolicitacao || item.createdAt || 0);
 const formatDate = item => { const date = dateOf(item); return Number.isNaN(date.getTime()) ? 'Data não informada' : date.toLocaleString('pt-BR'); };
 const messagesOf = item => Array.isArray(item.messages) ? item.messages : Object.entries(item.messages || {}).map(([id, message]) => ({ id, ...message }));
-const filesOf = item => {
-  const source = item.dadosSolicitacao?.anexos || item.anexos;
-  if (!source) return [];
-  if (Array.isArray(source)) return source.flatMap(file => Array.isArray(file) ? file : [file]);
-  return Object.values(source).flatMap(file => Array.isArray(file) ? file : [file]);
-};
+const filesOf = item => [item.dadosSolicitacao?.anexos, item.anexos, item.arquivos];
 const requestData = item => item.dadosSolicitacao || item.solicitacao || item.request || item;
 const userData = item => item.dadosUsuario || item.usuario || item.userDataAtTimeOfRequest || item.userData || item;
 
@@ -56,6 +53,7 @@ export default function AdminProcuradoriaScreen({ navigation }) {
   const [tab, setTab] = useState('dados');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  useInternalDetailNavigation(navigation, Boolean(selected), () => setSelected(null));
 
   useEffect(() => {
     if (!canUseAdminApp('procuradoria')) return undefined;
@@ -99,7 +97,7 @@ export default function AdminProcuradoriaScreen({ navigation }) {
         {STATUSES.slice(1, -1).map(status => <StatusButton key={status} active={selected.status === status} disabled={saving} onPress={() => updateRequest({ status })}><StatusText active={selected.status === status}>{status}</StatusText></StatusButton>)}
       </>}
       {tab === 'agendamento' && <><Label>Data</Label><Value>{selected.appointmentDate || 'Não agendado'}</Value><Label>Horário</Label><Value>{selected.appointmentTime || 'Não informado'}</Value><Label>Guichê</Label><Value>{selected.guiche || selected.guicheId || 'Não informado'}</Value></>}
-      {tab === 'arquivos' && <>{filesOf(selected).map((file, index) => <MessageRow key={file.url || index}><Value>{file.name || file.fileName || `Arquivo ${index + 1}`}</Value></MessageRow>)}{!filesOf(selected).length && <Value>Nenhum arquivo anexado.</Value>}</>}
+      {tab === 'arquivos' && <AttachmentList sources={filesOf(selected)} />}
       {tab === 'chat' && <>{messagesOf(selected).map((item, index) => <MessageRow key={item.id || index}><Value>{item.text || item.message || ''}</Value><Label>{item.sender || 'Atendimento'}</Label></MessageRow>)}{!messagesOf(selected).length && <Value>Nenhuma mensagem registrada.</Value>}<MessageInput multiline value={message} onChangeText={setMessage} placeholder="Digite uma mensagem para a solicitante..." placeholderTextColor="#94a3b8" /><Action disabled={saving || !message.trim()} onPress={() => { const id = `admin-${Date.now()}`; updateRequest({ [`messages.${id}`]: { text: message.trim(), sender: 'admin', timestamp: new Date().toISOString() } }); setMessage(''); }}><ActionText>{saving ? 'Enviando...' : 'Enviar mensagem'}</ActionText></Action></>}
     </DetailCard>
   </PortalBackground>;

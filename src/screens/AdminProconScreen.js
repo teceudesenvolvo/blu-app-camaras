@@ -6,6 +6,7 @@ import styled from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
 import { PortalBackground, PortalCard, PortalScreenHeader } from '../components/PortalScaffold';
 import { useMobileModules } from '../context/MobileModulesContext';
+import { useInternalDetailNavigation } from '../hooks/useInternalDetailNavigation';
 
 const STATUS = ['Todos', 'Em Análise', 'Pendente', 'Finalizada', 'Em Negociação', 'Documentação Reprovada', 'Documentação Reenviada'];
 const dateOf = item => item.createdAt?.toDate ? item.createdAt.toDate() : item.dataSolicitacao?.toDate ? item.dataSolicitacao.toDate() : new Date(item.createdAt || item.dataSolicitacao || 0);
@@ -38,6 +39,7 @@ const ActionText = styled.Text`color: #fff; font-weight: 900;`;
 export default function AdminProconScreen({ navigation }) {
   const { canUseAdminApp } = useMobileModules();
   const [items, setItems] = useState([]); const [filter, setFilter] = useState('Todos'); const [search, setSearch] = useState(''); const [selected, setSelected] = useState(null); const [tab, setTab] = useState('dados'); const [message, setMessage] = useState(''); const [saving, setSaving] = useState(false);
+  useInternalDetailNavigation(navigation, Boolean(selected), () => setSelected(null));
   useEffect(() => { if (!canUseAdminApp('procon')) return undefined; return onSnapshot(collection(firestore, 'procon-atendimentos'), snap => setItems(snap.docs.map(row => ({ id: row.id, ...row.data() })))); }, [canUseAdminApp]);
   const visible = useMemo(() => items.filter(item => { const text = normalize(`${item.nome || ''} ${item.dadosUsuario?.name || ''} ${item.cpf || ''} ${item.assunto || ''} ${item.descricao || ''} ${item.id}`); return (filter === 'Todos' || normalize(item.status || item.situacao || 'Em Análise') === normalize(filter)) && (!search.trim() || text.includes(normalize(search))); }).sort((a, b) => dateOf(b) - dateOf(a)), [filter, items, search]);
   if (!canUseAdminApp('procon')) return <PortalBackground><PortalScreenHeader navigation={navigation} title="Acesso indisponível" /></PortalBackground>;

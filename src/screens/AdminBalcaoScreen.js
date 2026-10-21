@@ -8,6 +8,8 @@ import styled, { useTheme } from 'styled-components/native';
 import { PortalBackground, PortalCard, PortalScreenHeader } from '../components/PortalScaffold';
 import { firestore } from '../../services/firebaseConfig';
 import { useMobileModules } from '../context/MobileModulesContext';
+import AttachmentList from '../components/AttachmentList';
+import { useInternalDetailNavigation } from '../hooks/useInternalDetailNavigation';
 
 const FilterRow = styled.View`padding: 14px 18px 4px;`;
 const FilterScroll = styled(ScrollView).attrs({ horizontal: true, showsHorizontalScrollIndicator: false })`margin-bottom: 8px;`;
@@ -42,7 +44,7 @@ const ActionText = styled.Text`color: #fff; font-weight: 900;`;
 const DetailTabs = styled.View`flex-direction: row; flex-wrap: wrap; padding: 14px 18px 0;`;
 const DetailTab = styled.TouchableOpacity`padding: 10px 12px; margin: 0 7px 8px 0; border-radius: 10px; background-color: ${({ active, theme }) => active ? theme.portal.primary : theme.portal.card};`;
 const DetailTabText = styled.Text`color: ${({ active, theme }) => active ? '#fff' : theme.portal.text}; font-size: 12px; font-weight: 900;`;
-const FileRow = styled.View`padding: 12px 0; border-bottom-width: 1px; border-bottom-color: ${({ theme }) => theme.portal.border};`;
+const FileRow = styled.TouchableOpacity`padding: 12px 0; border-bottom-width: 1px; border-bottom-color: ${({ theme }) => theme.portal.border};`;
 
 const STATUS_FILTERS = ['Todas', 'Aguardando Atendimento', 'Agendamento Liberado', 'Agendado', 'Em Análise', 'Documentação Reprovada', 'Documentação Reenviada', 'Documento em emissão', 'Documento Pronto', 'Concluído', 'Não Classificado'];
 const SUBJECT_FILTERS = ['Todos', 'Informações Gerais', 'Emissão de Documentos', 'Agendamento', 'Outros'];
@@ -94,6 +96,7 @@ export default function AdminBalcaoScreen({ navigation }) {
   const [note, setNote] = useState('');
   const [chatMessage, setChatMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  useInternalDetailNavigation(navigation, Boolean(selected), () => setSelected(null));
 
   useEffect(() => {
     if (!canUseAdminApp('balcao')) return undefined;
@@ -146,8 +149,7 @@ export default function AdminBalcaoScreen({ navigation }) {
         <DetailLabel>Guichê</DetailLabel><DetailValue>{selected.guiche || selected.guicheId || 'Não informado'}</DetailValue>
       </>}
       {detailTab === 'arquivos' && <>
-        {Object.values(selected.arquivos || {}).flat().map((file, index) => <FileRow key={`${file.url || file.uri || index}`}><DetailValue>{file.name || file.fileName || `Arquivo ${index + 1}`}</DetailValue></FileRow>)}
-        {(!selected.arquivos || Object.values(selected.arquivos || {}).flat().length === 0) && <DetailValue>Nenhum arquivo anexado.</DetailValue>}
+        <AttachmentList sources={[selected.dadosSolicitacao?.anexos, selected.arquivos, selected.anexos]} />
       </>}
       {detailTab === 'chat' && <>
         {Object.values(selected.messages || {}).map((message, index) => <FileRow key={message.id || index}><DetailValue>{message.text || message.message || ''}</DetailValue><DetailLabel>{message.sender || 'Atendimento'}</DetailLabel></FileRow>)}

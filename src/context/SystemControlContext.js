@@ -1,6 +1,7 @@
 import { doc, onSnapshot } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { firestore } from '../../services/firebaseConfig';
+import { DEFAULT_MODULE_SETTINGS } from '../config/mobileModules';
 
 const SystemControlContext = createContext(null);
 
@@ -12,13 +13,24 @@ const mergeSettings = (current, data = {}) => ({
   branding: { ...current.branding, ...(data.branding || {}) },
   integrations: { ...current.integrations, ...(data.integrations || {}) },
   apiFeatures: { ...current.apiFeatures, ...(data.apiFeatures || {}) },
-  modules: { ...current.modules, ...(data.modules || {}) },
+  modules: Object.fromEntries(
+    Object.keys({ ...DEFAULT_MODULE_SETTINGS, ...(data.modules || {}) }).map(id => [
+      id,
+      { ...(DEFAULT_MODULE_SETTINGS[id] || {}), ...(data.modules?.[id] || {}) },
+    ]),
+  ),
 });
 
 const defaults = {
   appBottomBarModules: ['servicos', 'licitacoes', 'mensagens'],
   tenant: { name: '', shortName: '', city: '', state: '', phone: '', email: '', website: '' },
-  design: { primaryColor: '#025AA1', secondaryColor: '#0284C7', accentColor: '#F59E0B', backgroundColor: '#F3F8FE', textColor: '#10233F', borderRadius: 14 },
+  design: {
+    primaryColor: '#025AA1', secondaryColor: '#0284C7', accentColor: '#F59E0B', backgroundColor: '#F3F8FE', textColor: '#10233F',
+    darkBackgroundColor: '#071827', darkSurfaceColor: '#133450', darkRaisedSurfaceColor: '#143957',
+    darkTextColor: '#E8F2FB', darkStrongTextColor: '#F4F9FD', darkMutedTextColor: '#B9CEE0',
+    darkBorderColor: '#315D7D', darkInputBackgroundColor: '#102F49', darkPrimaryColor: '#42A9D5', darkAccentColor: '#FBBF24',
+    borderRadius: 14,
+  },
   branding: { logoUrl: '', compactLogoUrl: '', loginCoverUrl: '', logoAlt: 'Câmara Municipal' },
   integrations: {
     functionsBaseUrl: '',
@@ -34,7 +46,7 @@ const defaults = {
       fields: {},
     },
   },
-  apiFeatures: {}, modules: {}, appHomeModules: [],
+  apiFeatures: {}, modules: DEFAULT_MODULE_SETTINGS, appHomeModules: [],
 };
 
 export function SystemControlProvider({ children }) {

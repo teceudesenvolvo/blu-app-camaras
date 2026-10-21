@@ -56,7 +56,7 @@ export const PortalEyebrow = styled.Text`
 
 export const PortalTitle = styled.Text`
   margin-top: 4px;
-  color: ${({ theme }) => theme.portal.text};
+  color: ${({ theme }) => theme.portal.strongText || theme.portal.text};
   font-size: ${props => props.large ? '30px' : '22px'};
   font-weight: 900;
   line-height: ${props => props.large ? '36px' : '28px'};
@@ -94,7 +94,7 @@ export const PortalInput = styled.TextInput`
 `;
 
 export const PortalLabel = styled.Text`
-  color: ${({ theme }) => theme.portal.text};
+  color: ${({ theme }) => theme.portal.strongText || theme.portal.text};
   font-size: 13px;
   font-weight: 800;
   margin-bottom: 8px;

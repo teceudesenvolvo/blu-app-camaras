@@ -60,14 +60,36 @@ export const getAutomaticThemeMode = (date = new Date()) => {
 
 export const applyPortalTheme = (mode, design = {}) => {
   const base = mode === 'dark' ? darkTheme : lightTheme;
+  const darkOverrides = mode === 'dark' ? {
+    primary: design.darkPrimaryColor || base.primary,
+    primaryDark: design.darkPrimaryColor || base.primaryDark,
+    secondary: design.darkAccentColor || base.secondary,
+    accent: design.darkAccentColor || base.accent,
+    page: design.darkBackgroundColor || base.page,
+    pageAlt: design.darkRaisedSurfaceColor || base.pageAlt,
+    text: design.darkTextColor || base.text,
+    strongText: design.darkStrongTextColor || base.text,
+    muted: design.darkMutedTextColor || base.muted,
+    subtle: design.darkMutedTextColor || base.subtle,
+    border: design.darkBorderColor || base.border,
+    card: design.darkSurfaceColor || base.card,
+    inputBackground: design.darkInputBackgroundColor || design.darkSurfaceColor || base.card,
+    highlight: design.darkAccentColor || base.accent,
+  } : {};
   Object.assign(portalTheme, base, {
-    primary: design.primaryColor || base.primary,
-    secondary: design.secondaryColor || base.secondary,
-    accent: design.accentColor || base.accent,
-    page: design.backgroundColor || base.page,
-    text: design.textColor || base.text,
+    ...darkOverrides,
+    ...(mode === 'light' ? {
+      primary: design.primaryColor || base.primary,
+      secondary: design.secondaryColor || base.secondary,
+      accent: design.accentColor || base.accent,
+      page: design.backgroundColor || base.page,
+      text: design.textColor || base.text,
+    } : {}),
   });
   Object.assign(portalGradients, mode === 'dark' ? darkGradients : lightGradients);
-  portalGradients.primary = [portalTheme.primary, design.secondaryColor || portalTheme.primary];
+  portalGradients.page = mode === 'dark'
+    ? [portalTheme.page, portalTheme.card, portalTheme.pageAlt]
+    : lightGradients.page;
+  portalGradients.primary = [portalTheme.primary, mode === 'dark' ? portalTheme.primaryDark : (design.secondaryColor || portalTheme.primary)];
   return { ...portalTheme };
 };

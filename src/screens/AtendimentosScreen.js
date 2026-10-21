@@ -79,7 +79,7 @@ const SERVICES = [
 ];
 
 export default function AtendimentosScreen({ navigation }) {
-  const { canUse, canUseAdminApp, role, settings } = useMobileModules();
+  const { canUse, canUseAdminApp, role, settings, userEmail } = useMobileModules();
   const bottomBarModules = Array.isArray(settings?.appBottomBarModules) ? settings.appBottomBarModules : [];
   const available = SERVICES.filter(service => {
     const requiresAdmin = service.adminOnly || ADMIN_SERVICE_MODULES.has(service.module);
@@ -99,7 +99,7 @@ export default function AtendimentosScreen({ navigation }) {
         <Inner>
           <ListLabel>Serviços disponíveis</ListLabel>
           {available.length === 0 ? <ListLabel>Nenhum serviço está disponível no momento.</ListLabel> : available.map(service => (
-            <ServiceItem key={service.module} onPress={() => navigation.navigate(routeForModule(settings, role, service.module, service.screen))} activeOpacity={0.78} accessibilityRole="button">
+            <ServiceItem key={service.module} onPress={() => navigation.navigate(routeForModule(settings, role, service.module, service.screen, userEmail))} activeOpacity={0.78} accessibilityRole="button">
               <PortalIconBadge>
                 <Ionicons name={service.icon} size={22} color={portalTheme.primary} />
               </PortalIconBadge>

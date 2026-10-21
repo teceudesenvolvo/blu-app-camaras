@@ -11,6 +11,14 @@ import {
 } from '../components/PortalScaffold';
 import { portalGradients, portalTheme } from '../styles/portalTheme';
 import { useSystemControl } from '../context/SystemControlContext';
+import {
+  buildTvPlayerUrl as buildPlayerUrl,
+  fetchEndpointTvVideos,
+  fetchManualTvVideos,
+  formatTvVideoDate as formatVideoDate,
+  getTvEmbedIdentity,
+  mergeTvVideos,
+} from '../services/tvCamara';
 
 const { width } = Dimensions.get('window');
 const playerWidth = width - 36;
@@ -208,25 +216,6 @@ const EmptyBox = styled(PortalCard)`
   padding: 24px;
 `;
 
-function buildPlayerUrl(videoId) {
-  if (!videoId) return null;
-
-  const params = new URLSearchParams({
-    rel: '0',
-    modestbranding: '1',
-    playsinline: '1',
-    enablejsapi: '1',
-    origin: 'https://www.youtube-nocookie.com',
-  });
-
-  return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
-}
-
-function getVideoTimestamp(video) {
-  const timestamp = new Date(video?.publishedAt ?? '').getTime();
-  return Number.isNaN(timestamp) ? 0 : timestamp;
-}
-
 function getWebViewComponent() {
   try {
     return require('react-native-webview').default;
@@ -234,19 +223,6 @@ function getWebViewComponent() {
     console.warn('react-native-webview ainda nao esta registrado no binario nativo.', error);
     return null;
   }
-}
-
-function formatVideoDate(value) {
-  if (!value) return 'TV Câmara';
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'TV Câmara';
-
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
 }
 
 export default function TvCamaraScreen({ navigation, route }) {
@@ -257,7 +233,14 @@ export default function TvCamaraScreen({ navigation, route }) {
   const [videosError, setVideosError] = useState(false);
   const [videos, setVideos] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
-  const playerUrl = useMemo(() => buildPlayerUrl(selectedVideo?.videoId), [selectedVideo]);
+  const embedIdentity = useMemo(
+    () => getTvEmbedIdentity(settings?.tenant?.website, chamberConfig.firebase.authDomain),
+    [settings?.tenant?.website],
+  );
+  const playerUrl = useMemo(() => buildPlayerUrl(selectedVideo?.videoId, {
+    origin: embedIdentity.origin,
+    widgetReferrer: embedIdentity.referrer,
+  }), [embedIdentity, selectedVideo?.videoId]);
   const WebView = useMemo(getWebViewComponent, []);
   const cannotLoadNativeWebView = !WebView;
   const requestedVideoId = route?.params?.videoId;
@@ -271,17 +254,16 @@ export default function TvCamaraScreen({ navigation, route }) {
         setVideosLoading(true);
         setVideosError(false);
 
-        const response = await fetch(videosEndpoint);
-
-        if (!response.ok) {
-          throw new Error(`Falha HTTP ${response.status}`);
+        const [endpointResult, manualResult] = await Promise.allSettled([
+          fetchEndpointTvVideos(videosEndpoint),
+          fetchManualTvVideos(),
+        ]);
+        if (endpointResult.status === 'rejected' && manualResult.status === 'rejected') {
+          throw endpointResult.reason;
         }
-
-        const payload = await response.json();
-        const playlistVideos = Array.isArray(payload?.videos) ? payload.videos : [];
-        const orderedVideos = [...playlistVideos].sort(
-          (firstVideo, secondVideo) => getVideoTimestamp(secondVideo) - getVideoTimestamp(firstVideo),
-        );
+        const endpointVideos = endpointResult.status === 'fulfilled' ? endpointResult.value.videos : [];
+        const manualVideos = manualResult.status === 'fulfilled' ? manualResult.value : [];
+        const orderedVideos = mergeTvVideos(manualVideos, endpointVideos);
 
         if (!mounted) return;
 
@@ -350,7 +332,8 @@ export default function TvCamaraScreen({ navigation, route }) {
               ) : (
                 <>
                   <WebView
-                    source={{ uri: playerUrl }}
+                    key={selectedVideo?.videoId}
+                    source={{ uri: playerUrl, headers: { Referer: embedIdentity.referrer } }}
                     style={{ flex: 1, backgroundColor: '#0f172a' }}
                     javaScriptEnabled
                     domStorageEnabled
@@ -365,7 +348,6 @@ export default function TvCamaraScreen({ navigation, route }) {
                     sharedCookiesEnabled
                     setSupportMultipleWindows={false}
                     allowsLinkPreview={false}
-                    userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
                     onLoadStart={() => setLoading(true)}
                     onLoadEnd={() => setLoading(false)}
                     onError={(event) => {

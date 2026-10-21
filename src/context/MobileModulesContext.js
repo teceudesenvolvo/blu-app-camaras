@@ -9,6 +9,7 @@ const MobileModulesContext = createContext(null);
 
 export function MobileModulesProvider({ children }) {
   const { user } = useContext(AuthContext);
+  const userEmail = user?.email || '';
   const { settings, loading: settingsLoading, error: settingsFailure } = useSystemControl();
   const [role, setRole] = useState(null);
   const [roleLoading, setRoleLoading] = useState(Boolean(user));
@@ -35,13 +36,10 @@ export function MobileModulesProvider({ children }) {
     error: Boolean(settingsFailure),
     settings,
     role,
-    canUse: id => {
-      if (settingsFailure || !canUseModule(settings, role, id)) return false;
-      const requiredApi = { tvCamara: 'youtube', notificacoes: 'notifications', mensagens: 'notifications' }[id];
-      return !requiredApi || settings?.apiFeatures?.[requiredApi] !== false;
-    },
-    canUseAdminApp: id => !settingsFailure && canUseAdminAppModule(settings, role, id),
-  }), [settingsLoading, roleLoading, settingsFailure, settings, role]);
+    userEmail,
+    canUse: id => !settingsFailure && canUseModule(settings, role, id, userEmail),
+    canUseAdminApp: id => !settingsFailure && canUseAdminAppModule(settings, role, id, userEmail),
+  }), [settingsLoading, roleLoading, settingsFailure, settings, role, userEmail]);
 
   return <MobileModulesContext.Provider value={value}>{children}</MobileModulesContext.Provider>;
 }

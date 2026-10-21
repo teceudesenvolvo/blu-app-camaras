@@ -6,8 +6,8 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import * as QuickActions from 'expo-quick-actions';
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 import { useTheme } from 'styled-components/native';
 import Animated, {
@@ -89,8 +89,7 @@ import AdminOuvidoriaScreen from '../screens/AdminOuvidoriaScreen';
 import AdminProconScreen from '../screens/AdminProconScreen';
 import AdminRecepcaoScreen from '../screens/AdminRecepcaoScreen';
 import AdminRecepcaoConfirmacaoScreen from '../screens/AdminRecepcaoConfirmacaoScreen';
-import { useSystemControl } from '../context/SystemControlContext';
-import { chamberLogo } from '../config/branding';
+import AdminTvCamaraScreen from '../screens/AdminTvCamaraScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -103,54 +102,6 @@ const UnavailableText = styled.Text`
   line-height: 22px;
   margin: 20px;
 `;
-
-function LoginOpeningOverlay({ visible }) {
-    const { settings } = useSystemControl();
-    const opacity = useSharedValue(0);
-    const scale = useSharedValue(0.94);
-    const translateY = useSharedValue(10);
-    const primary = settings.design?.primaryColor || '#025AA1';
-    const secondary = settings.design?.secondaryColor || '#0284C7';
-    const logo = settings.branding?.logoUrl ? { uri: settings.branding.logoUrl } : chamberLogo;
-    const name = settings.tenant?.shortName || settings.tenant?.name || 'Câmara Municipal';
-
-    useEffect(() => {
-        if (!visible) return;
-        opacity.set(withTiming(1, { duration: 220 }));
-        scale.set(withSpring(1, { duration: 420, dampingRatio: 0.9 }));
-        translateY.set(withTiming(0, { duration: 360 }));
-    }, [opacity, scale, translateY, visible]);
-
-    const contentStyle = useAnimatedStyle(() => ({
-        opacity: opacity.get(),
-        transform: [{ translateY: translateY.get() }, { scale: scale.get() }],
-    }));
-
-    if (!visible) return null;
-    return (
-        <View style={styles.loginOpeningOverlay} pointerEvents="none">
-            <LinearGradient colors={[primary, secondary]} style={StyleSheet.absoluteFill} />
-            <Animated.View style={[styles.loginOpeningContent, contentStyle]}>
-                <Image source={logo} resizeMode="contain" style={styles.loginOpeningLogo} />
-                <Text style={styles.loginOpeningName}>{name}</Text>
-                <View style={styles.loginOpeningLine} />
-            </Animated.View>
-        </View>
-    );
-}
-
-function ModulePreloader() {
-    const theme = useTheme();
-    const { settings } = useSystemControl();
-    const name = settings.tenant?.shortName || settings.tenant?.name || 'Câmara Municipal';
-
-    return (
-        <View style={[styles.modulePreloader, { backgroundColor: theme.portal.page }]}>
-            <ActivityIndicator size="large" color={theme.portal.primary} />
-            <Text style={[styles.modulePreloaderText, { color: theme.portal.muted }]}>Carregando {name}...</Text>
-        </View>
-    );
-}
 
 const guardScreen = (Screen, moduleId) => function GuardedScreen(props) {
     const { loading, canUse } = useMobileModules();
@@ -446,13 +397,14 @@ function MensagensTabScreen(props) {
 
 // 4. TAB NAVIGATOR (Telas principais com a barra visível)
 function BottomTabNavigator() {
-    const { canUse, settings, role } = useMobileModules();
+    const { canUse, canUseAdminApp, settings, role } = useMobileModules();
+    const { user } = React.useContext(AuthContext);
     const routes = {
         servicos: { name: 'Servicos', component: AtendimentosScreen, icon: 'view-grid-plus-outline', label: 'Serviços' },
                 licitacoes: { name: 'Licitacoes', component: LicitacoesScreen, icon: 'gavel', label: 'Licitações' },
         mensagens: { name: 'Mensagens', component: MensagensTabScreen, icon: 'message-text-outline', label: 'Mensagens', module: 'mensagens' },
         balcao: { name: 'BalcaoCidadao', component: guardedScreens.BalcaoCidadao, icon: 'account-check-outline', label: 'Balcão', module: 'balcao' },
-        legislativo: { name: 'Legislativo', component: guardedScreens.Protocolo, icon: 'scale-balance', label: 'Legislativo', module: 'legislativo' },
+        legislativo: { name: 'Legislativo', component: AdminLegislativoScreen, icon: 'scale-balance', label: 'Legislativo', module: 'legislativo', adminOnly: true },
         protocolo: { name: 'Protocolo', component: guardedScreens.Protocolo, icon: 'folder-text-outline', label: 'Protocolo', module: 'protocolo' },
         ouvidoria: { name: 'Ouvidoria', component: guardedScreens.OuvidoriaMunicipal, icon: 'message-alert-outline', label: 'Ouvidoria', module: 'ouvidoria' },
         esic: { name: 'Esic', component: guardedScreens.Esic, icon: 'file-lock-outline', label: 'e-SIC', module: 'esic' },
@@ -467,7 +419,10 @@ function BottomTabNavigator() {
         avaliacoes: { name: 'Avaliacoes', component: guardedScreens.Avaliacoes, icon: 'star-outline', label: 'Avaliações', module: 'avaliacoes' },
     };
     const configured = Array.isArray(settings?.appBottomBarModules) ? settings.appBottomBarModules : ['servicos', 'licitacoes', 'mensagens'];
-    const middleRoutes = configured.map(id => routes[id]).filter(Boolean).filter(route => !route.module || canUse(route.module));
+    const middleRoutes = configured.map(id => routes[id]).filter(Boolean).filter(route => {
+        if (!route.module) return true;
+        return route.adminOnly ? canUseAdminApp(route.module) : canUse(route.module);
+    });
     return (
         <Tab.Navigator
             tabBar={props => <LiquidTabBar {...props} />}
@@ -477,7 +432,7 @@ function BottomTabNavigator() {
             {middleRoutes.map(route => <Tab.Screen key={route.name} name={route.name} component={route.component} options={{
                 tabBarIconName: route.icon,
                 tabBarLabel: route.label,
-                routeTarget: route.module === 'mensagens' ? route.name : routeForModule(settings, role, route.module || route.name, route.name),
+                routeTarget: route.module === 'mensagens' ? route.name : routeForModule(settings, role, route.module || route.name, route.name, user?.email),
             }} />)}
             <Tab.Screen name="Perfil" component={PerfilScreen} options={{ tabBarIconName: 'account-outline', tabBarLabel: 'Perfil' }} />
         </Tab.Navigator>
@@ -488,20 +443,7 @@ function BottomTabNavigator() {
 function NavigationContent() {
     const { user, loading } = React.useContext(AuthContext);
     const { loading: modulesLoading, canUse } = useMobileModules();
-    const { loading: settingsLoading } = useSystemControl();
     const navigation = useNavigation();
-    const previousUserRef = useRef(null);
-    const [showLoginOpening, setShowLoginOpening] = useState(false);
-
-    useEffect(() => {
-        const justAuthenticated = Boolean(user && !previousUserRef.current);
-        previousUserRef.current = user;
-        if (!justAuthenticated) return undefined;
-
-        setShowLoginOpening(true);
-        const timeout = setTimeout(() => setShowLoginOpening(false), 900);
-        return () => clearTimeout(timeout);
-    }, [user]);
 
     useEffect(() => {
         // Listener para quando o usuário CLICA na notificação
@@ -566,8 +508,8 @@ function NavigationContent() {
         return () => subscription?.remove?.();
     }, [navigation, user, canUse]);
 
-    if (loading || settingsLoading || modulesLoading) {
-        return <ModulePreloader />;
+    if (loading || modulesLoading) {
+        return null;
     }
 
     return (
@@ -615,12 +557,11 @@ function NavigationContent() {
                     <Stack.Screen name="AdminRecepcaoConfirmacao" component={AdminRecepcaoConfirmacaoScreen} />
                     <Stack.Screen name="PanicLocation" component={guardedScreens.PanicLocation} />
                     {Object.entries(ADMIN_ROUTE_MODULES).map(([name, moduleId]) => (
-                        <Stack.Screen key={name} name={name} component={name === 'AdminBalcao' ? AdminBalcaoScreen : name === 'AdminVereadores' ? AdminVereadoresScreen : name === 'AdminPiel' ? AdminPielScreen : name === 'AdminProcuradoria' ? AdminProcuradoriaScreen : name === 'AdminGabinete' ? AdminGabineteScreen : name === 'AdminAvaliacoes' ? AdminAvaliacoesScreen : name === 'AdminOuvidoria' ? AdminOuvidoriaScreen : name === 'AdminProcon' ? AdminProconScreen : name === 'AdminRecepcao' ? AdminRecepcaoScreen : name === 'AdminNoticias' ? AdminNoticiasScreen : name === 'AdminProtocolo' ? AdminProtocoloScreen : name === 'AdminContratos' ? AdminContratosScreen : name === 'AdminAlmoxarifado' ? AdminAlmoxarifadoScreen : name === 'AdminPatrimonio' ? AdminPatrimonioScreen : name === 'AdminManutencao' ? AdminManutencaoScreen : name === 'AdminFrotas' ? AdminFrotasScreen : name === 'AdminLegislativo' ? AdminLegislativoScreen : name === 'AdminEsic' ? AdminEsicScreen : name === 'AdminJuridico' ? AdminJuridicoScreen : name === 'AdminMicroempreendedor' ? AdminMicroempreendedorScreen : name === 'AdminMensagens' ? AdminMensagensScreen : name === 'AdminTvCamara' ? TvCamaraScreen : AdminModuleScreen} initialParams={{ moduleId }} />
+                        <Stack.Screen key={name} name={name} component={name === 'AdminBalcao' ? AdminBalcaoScreen : name === 'AdminVereadores' ? AdminVereadoresScreen : name === 'AdminPiel' ? AdminPielScreen : name === 'AdminProcuradoria' ? AdminProcuradoriaScreen : name === 'AdminGabinete' ? AdminGabineteScreen : name === 'AdminAvaliacoes' ? AdminAvaliacoesScreen : name === 'AdminOuvidoria' ? AdminOuvidoriaScreen : name === 'AdminProcon' ? AdminProconScreen : name === 'AdminRecepcao' ? AdminRecepcaoScreen : name === 'AdminTvCamara' ? AdminTvCamaraScreen : name === 'AdminNoticias' ? AdminNoticiasScreen : name === 'AdminProtocolo' ? AdminProtocoloScreen : name === 'AdminContratos' ? AdminContratosScreen : name === 'AdminAlmoxarifado' ? AdminAlmoxarifadoScreen : name === 'AdminPatrimonio' ? AdminPatrimonioScreen : name === 'AdminManutencao' ? AdminManutencaoScreen : name === 'AdminFrotas' ? AdminFrotasScreen : name === 'AdminLegislativo' ? AdminLegislativoScreen : name === 'AdminEsic' ? AdminEsicScreen : name === 'AdminJuridico' ? AdminJuridicoScreen : name === 'AdminMicroempreendedor' ? AdminMicroempreendedorScreen : name === 'AdminMensagens' ? AdminMensagensScreen : AdminModuleScreen} initialParams={{ moduleId }} />
                     ))}
                 </>
             )}
             </Stack.Navigator>
-            <LoginOpeningOverlay visible={showLoginOpening} />
         </View>
     );
 }
@@ -636,19 +577,7 @@ export default function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
-    modulePreloader: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-    modulePreloaderText: { marginTop: 14, fontSize: 14, fontWeight: '700', textAlign: 'center' },
     navigationRoot: { flex: 1 },
-    loginOpeningOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        zIndex: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    loginOpeningContent: { alignItems: 'center', paddingHorizontal: 28 },
-    loginOpeningLogo: { width: 112, height: 112, marginBottom: 22 },
-    loginOpeningName: { color: '#fff', fontSize: 22, fontWeight: '800', textAlign: 'center' },
-    loginOpeningLine: { width: 48, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.8)', marginTop: 26 },
     navContainer: {
         position: 'absolute',
         bottom: 28,

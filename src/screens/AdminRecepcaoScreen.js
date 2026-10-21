@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Alert, Modal, StyleSheet, View } from 'react-native';
 import styled from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
+import { uploadFileToStorage } from '../../services/storageService';
+import chamberConfig from '../config';
 import { PortalBackground, PortalCard, PortalScreenHeader } from '../components/PortalScaffold';
 import { useMobileModules } from '../context/MobileModulesContext';
 
@@ -84,7 +86,12 @@ export default function AdminRecepcaoScreen({ navigation }) {
     if (!requestForm.nome.trim() || !requestForm.assunto.trim()) { setError('Informe o nome do cidadão e o assunto.'); return; }
     setCreating(true); setError('');
     try {
-      const requestRef = await addDoc(collection(firestore, 'balcao-cidadao'), { userId: 'recepcao', origem: 'recepcao', status: 'Recebida', prioridade: priority, setorAtendimento: requestForm.setor, protocolo: `REC-${Date.now()}`, dadosUsuario: { identificacao: 'Recepção', name: requestForm.nome.trim(), cpf: requestForm.cpf.trim(), telefone: requestForm.telefone.trim(), phone: requestForm.telefone.trim(), email: requestForm.email.trim() }, dadosSolicitacao: { assunto: requestForm.assunto.trim(), descricao: requestForm.descricao.trim(), anexos: attachments.map(item => ({ uri: item.uri, name: item.fileName || 'anexo' })) }, dataSolicitacao: serverTimestamp(), ultimaAtualizacao: serverTimestamp() });
+      const uploadedAttachments = await Promise.all(attachments.map(async (item, index) => ({
+        name: item.fileName || item.name || `Anexo-${index + 1}`,
+        type: item.mimeType || item.type || 'application/octet-stream',
+        url: await uploadFileToStorage(item.uri, `${chamberConfig.flavorId}/balcao-cidadao/recepcao/anexos`),
+      })));
+      const requestRef = await addDoc(collection(firestore, 'balcao-cidadao'), { flavorId: chamberConfig.flavorId, userId: 'recepcao', origem: 'recepcao', status: 'Recebida', prioridade: priority, setorAtendimento: requestForm.setor, protocolo: `REC-${Date.now()}`, dadosUsuario: { identificacao: 'Recepção', name: requestForm.nome.trim(), cpf: requestForm.cpf.trim(), telefone: requestForm.telefone.trim(), phone: requestForm.telefone.trim(), email: requestForm.email.trim() }, dadosSolicitacao: { assunto: requestForm.assunto.trim(), descricao: requestForm.descricao.trim(), anexos: uploadedAttachments }, dataSolicitacao: serverTimestamp(), ultimaAtualizacao: serverTimestamp() });
       if (asWalkIn) await addDoc(collection(firestore, 'atendimento-fila'), { protocolo: requestRef.id, nome: requestForm.nome.trim(), cpf: requestForm.cpf.trim(), telefone: requestForm.telefone.trim(), email: requestForm.email.trim(), assunto: requestForm.assunto.trim(), setor: requestForm.setor, prioridade: priority, status: 'Aguardando', origem: 'recepcao', criadoEm: serverTimestamp() });
       setRequestForm({ nome: '', cpf: '', telefone: '', email: '', setor: 'Balcão do Cidadão', assunto: '', descricao: '' }); setAttachments([]); setPriority(false); setShouldQueue(false); setFlowStep(6); setTab('novo'); Alert.alert('Atendimento registrado', asWalkIn ? 'Solicitação criada e adicionada à fila.' : 'Solicitação criada com sucesso.');
     } catch (failure) { setError(failure.message || 'Não foi possível criar a solicitação.'); } finally { setCreating(false); }

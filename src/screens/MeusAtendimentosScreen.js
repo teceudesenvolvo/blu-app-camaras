@@ -3,7 +3,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { collection, deleteDoc, doc, getDoc, onSnapshot, query, runTransaction, where } from 'firebase/firestore';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import styled, { useTheme } from 'styled-components/native';
 import { firestore } from '../../services/firebaseConfig';
@@ -443,6 +443,7 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
   const [deletingId, setDeletingId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('todos');
   const { source, solicitacaoId } = route.params || {};
+  const autoOpenedRequestId = useRef(null);
 
   useEffect(() => {
     if (!user) return;
@@ -496,7 +497,7 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
   }, [user, source]);
 
   useEffect(() => {
-    if (loading || !solicitacaoId || requests.length === 0) return;
+    if (loading || !solicitacaoId || requests.length === 0 || autoOpenedRequestId.current === solicitacaoId) return;
 
     const selectedRequest = requests.find((request) => request.id === solicitacaoId);
     if (!selectedRequest) return;
@@ -505,7 +506,8 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
     if (selectedRequest.originCollection === 'ouvidoria') destination = 'OuvidoriaDetalhe';
     if (selectedRequest.originCollection === 'procuradoria-mulher') destination = 'ProcuradoriaDetalhe';
 
-    navigation.navigate(destination, { item: selectedRequest });
+    autoOpenedRequestId.current = solicitacaoId;
+    navigation.push(destination, { item: selectedRequest });
   }, [loading, navigation, requests, solicitacaoId]);
 
     const getStatusInfo = (status) => {
@@ -565,7 +567,7 @@ export default function MeusAtendimentosScreen({ navigation, route }) {
       if (item.originCollection === 'ouvidoria') destination = 'OuvidoriaDetalhe';
       if (item.originCollection === 'procuradoria-mulher') destination = 'ProcuradoriaDetalhe';
       
-      navigation.navigate(destination, { item });
+      navigation.push(destination, { item });
     };
 
     return (

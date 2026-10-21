@@ -4,7 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useContext, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -97,6 +96,30 @@ const Label = styled.Text`
   font-size: 13px;
   font-weight: 900;
   margin-bottom: 8px;
+`;
+
+const FieldError = styled.Text`
+  color: #b42318;
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 700;
+  margin-top: 6px;
+`;
+
+const FormError = styled.View`
+  border-width: 1px;
+  border-color: #fda29b;
+  border-radius: 12px;
+  background-color: #fff1f0;
+  padding: 12px 14px;
+  margin-top: 12px;
+`;
+
+const FormErrorText = styled.Text`
+  color: #912018;
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 700;
 `;
 
 const InputShell = styled.View`
@@ -232,28 +255,72 @@ export default function CadastroScreen({ navigation }) {
   const [showConfSenha, setShowConfSenha] = useState(false);
   const [loading, setLoading] = useState(false);
   const [modalSexoVisible, setModalSexoVisible] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
 
   const { register } = useContext(AuthContext);
 
+  const updateField = (setter, field) => value => {
+    setter(value);
+    setFieldErrors(current => ({ ...current, [field]: '' }));
+    setSubmitError('');
+  };
+
+  const authErrorMessage = error => {
+    const rawCode = error?.code || error?.message?.match(/(?:auth|functions)\/[a-z-]+/)?.[0];
+    switch (rawCode) {
+      case 'auth/email-already-in-use':
+        return 'Este e-mail já possui uma conta. Entre com ele ou use “Esqueci minha senha”.';
+      case 'auth/invalid-email':
+        return 'Informe um endereço de e-mail válido.';
+      case 'auth/weak-password':
+        return 'Escolha uma senha com pelo menos 6 caracteres.';
+      case 'auth/missing-password':
+        return 'Informe uma senha para continuar.';
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        return 'Não foi possível validar esses dados. Confira o e-mail e a senha ou tente recuperar sua senha.';
+      case 'auth/network-request-failed':
+        return 'Sem conexão com o serviço de cadastro. Verifique sua internet e tente novamente. Se esta conta já tiver sido criada, entre em vez de cadastrar de novo.';
+      case 'auth/too-many-requests':
+        return 'Foram feitas muitas tentativas. Aguarde alguns minutos e tente novamente.';
+      case 'auth/operation-not-allowed':
+        return 'O cadastro por e-mail está indisponível no momento. Tente novamente mais tarde ou fale com o suporte.';
+      case 'functions/already-exists':
+      case 'already-exists':
+        return 'Já existe um cadastro com esses dados. Entre na sua conta ou fale com o suporte para verificar seu acesso.';
+      default:
+        return 'Não foi possível concluir o cadastro. Confira os dados e sua conexão; se o problema continuar, fale com o suporte da Câmara.';
+    }
+  };
+
   const handleRegister = async () => {
-    if (!nome || !email || !senha || !telefone || !cpf || !cep) {
-      Alert.alert('Atenção', 'Preencha nome, CPF, telefone, CEP, email e senha.');
-      return;
-    }
+    const nextErrors = {};
+    if (!nome.trim()) nextErrors.nome = 'Informe seu nome.';
+    if (!telefone.trim()) nextErrors.telefone = 'Informe seu telefone.';
+    if (!cpf.trim()) nextErrors.cpf = 'Informe seu CPF.';
+    if (!cep.trim()) nextErrors.cep = 'Informe seu CEP.';
+    if (!email.trim()) nextErrors.email = 'Informe seu e-mail.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) nextErrors.email = 'Informe um endereço de e-mail válido.';
+    if (!senha) nextErrors.senha = 'Informe uma senha.';
+    else if (senha.length < 6) nextErrors.senha = 'Use uma senha com pelo menos 6 caracteres.';
+    if (!confSenha) nextErrors.confSenha = 'Confirme sua senha.';
     if (!isValidCpf(cpf)) {
-      Alert.alert('Atenção', 'Informe um CPF válido.');
-      return;
+      if (cpf.trim()) nextErrors.cpf = 'Informe um CPF válido.';
     }
-    if (senha !== confSenha) {
-      Alert.alert('Erro', 'As senhas não coincidem.');
+    if (senha && confSenha && senha !== confSenha) nextErrors.confSenha = 'As senhas não coincidem.';
+    setFieldErrors(nextErrors);
+    setSubmitError('');
+    if (Object.keys(nextErrors).length) {
       return;
     }
 
     setLoading(true);
     try {
-      await register(email, senha, {
-        name: nome,
-        nome,
+      await register(email.trim(), senha, {
+        name: nome.trim(),
+        nome: nome.trim(),
         sexo,
         phone: onlyDigits(telefone),
         cpf: onlyDigits(cpf),
@@ -267,7 +334,8 @@ export default function CadastroScreen({ navigation }) {
         });
       }, 350);
     } catch (error) {
-      Alert.alert('Erro no Cadastro', error.message);
+      console.warn('Falha no cadastro:', error?.code || error?.message || 'erro desconhecido');
+      setSubmitError(authErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -320,7 +388,8 @@ export default function CadastroScreen({ navigation }) {
 
             <FieldBlock>
               <Label>Nome</Label>
-              <Input value={nome} onChangeText={setNome} placeholder="Nome Sobrenome" placeholderTextColor={theme.portal.subtle} />
+              <Input value={nome} onChangeText={updateField(setNome, 'nome')} placeholder="Nome Sobrenome" placeholderTextColor={theme.portal.subtle} />
+              {fieldErrors.nome ? <FieldError>{fieldErrors.nome}</FieldError> : null}
             </FieldBlock>
 
             <FieldBlock>
@@ -335,70 +404,77 @@ export default function CadastroScreen({ navigation }) {
               <Label>Telefone</Label>
               <Input
                 value={telefone}
-                onChangeText={value => setTelefone(formatPhone(value))}
+                onChangeText={value => updateField(setTelefone, 'telefone')(formatPhone(value))}
                 placeholder="(XX) X XXXX-XXXX"
                 placeholderTextColor={theme.portal.subtle}
                 keyboardType="phone-pad"
               />
+              {fieldErrors.telefone ? <FieldError>{fieldErrors.telefone}</FieldError> : null}
             </FieldBlock>
 
             <FieldBlock>
               <Label>CPF</Label>
               <Input
                 value={cpf}
-                onChangeText={value => setCpf(formatCpf(value))}
+                onChangeText={value => updateField(setCpf, 'cpf')(formatCpf(value))}
                 placeholder="000.000.000-00"
                 placeholderTextColor={theme.portal.subtle}
                 keyboardType="number-pad"
               />
+              {fieldErrors.cpf ? <FieldError>{fieldErrors.cpf}</FieldError> : null}
             </FieldBlock>
 
             <FieldBlock>
               <Label>CEP</Label>
               <Input
                 value={cep}
-                onChangeText={value => setCep(formatCep(value))}
+                onChangeText={value => updateField(setCep, 'cep')(formatCep(value))}
                 placeholder="00000-000"
                 placeholderTextColor={theme.portal.subtle}
                 keyboardType="number-pad"
               />
+              {fieldErrors.cep ? <FieldError>{fieldErrors.cep}</FieldError> : null}
             </FieldBlock>
 
             <FieldBlock>
               <Label>Email</Label>
               <Input
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={updateField(setEmail, 'email')}
                 placeholder="email@dominio.com"
                 placeholderTextColor={theme.portal.subtle}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
+              {fieldErrors.email ? <FieldError>{fieldErrors.email}</FieldError> : null}
             </FieldBlock>
 
             {renderPasswordField({
               label: 'Senha',
               value: senha,
-              onChangeText: setSenha,
+              onChangeText: updateField(setSenha, 'senha'),
               visible: showSenha,
               setVisible: setShowSenha,
               placeholder: 'Mín. 6 caracteres',
             })}
+            {fieldErrors.senha ? <FieldError style={{ marginTop: -8, marginBottom: 12 }}>{fieldErrors.senha}</FieldError> : null}
 
             {renderPasswordField({
               label: 'Confirmar senha',
               value: confSenha,
-              onChangeText: setConfSenha,
+              onChangeText: updateField(setConfSenha, 'confSenha'),
               visible: showConfSenha,
               setVisible: setShowConfSenha,
               placeholder: 'Repita a senha',
             })}
+            {fieldErrors.confSenha ? <FieldError style={{ marginTop: -8, marginBottom: 12 }}>{fieldErrors.confSenha}</FieldError> : null}
 
             <PrimaryButton activeOpacity={0.86} onPress={handleRegister} disabled={loading}>
               <PrimaryGradient>
                 {loading ? <ActivityIndicator color="#fff" /> : <PrimaryButtonText>Cadastrar</PrimaryButtonText>}
               </PrimaryGradient>
             </PrimaryButton>
+            {submitError ? <FormError accessibilityRole="alert"><FormErrorText>{submitError}</FormErrorText></FormError> : null}
 
             <LoginContainer>
               <LoginText>Já possui uma conta?</LoginText>

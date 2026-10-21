@@ -425,7 +425,7 @@ const HomeScreen = ({ navigation }) => {
         {homeActions.map(id => <MenuAction
           key={id}
           {...HOME_ACTIONS[id]}
-          onPress={() => navigation.navigate(routeForModule(settings, role, id, HOME_ACTIONS[id].screen))}
+          onPress={() => navigation.navigate(routeForModule(settings, role, id, HOME_ACTIONS[id].screen, user?.email))}
         />)}
       </QuickMenu>
 

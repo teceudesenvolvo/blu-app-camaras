@@ -7,6 +7,7 @@ import styled from 'styled-components/native';
 import { PortalBackground, PortalCard, PortalScreenHeader } from '../components/PortalScaffold';
 import { useMobileModules } from '../context/MobileModulesContext';
 import { functions } from '../../services/firebaseConfig';
+import { useInternalDetailNavigation } from '../hooks/useInternalDetailNavigation';
 
 const api = httpsCallable(functions, 'esic');
 const Bar = styled.View`padding: 14px 18px 6px;`; const Horizontal = styled(ScrollView).attrs({ horizontal: true, showsHorizontalScrollIndicator: false })`margin-bottom: 8px;`;
@@ -19,6 +20,7 @@ const STATUSES = ['Todos', 'Recebido', 'Em análise', 'Respondido', 'Em recurso'
 
 export default function AdminEsicScreen({ navigation }) {
   const { canUseAdminApp } = useMobileModules(); const [items, setItems] = useState([]); const [status, setStatus] = useState('Todos'); const [search, setSearch] = useState(''); const [selected, setSelected] = useState(null); const [action, setAction] = useState(''); const [text, setText] = useState(''); const [responsavel, setResponsavel] = useState(''); const [setor, setSetor] = useState('SIC'); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  useInternalDetailNavigation(navigation, Boolean(selected), () => setSelected(null));
   const load = useCallback(async () => { setBusy(true); setError(''); try { const result = await api({ action: 'list', admin: true, status: status === 'Todos' ? '' : status, protocolo: search }); setItems(result.data?.items || []); } catch (failure) { setError(failure.message || 'Não foi possível carregar os pedidos e-SIC.'); } finally { setBusy(false); } }, [search, status]);
   useEffect(() => { if (canUseAdminApp('esic')) load(); }, [canUseAdminApp, load]);
   if (!canUseAdminApp('esic')) return <PortalBackground><PortalScreenHeader navigation={navigation} title="Acesso indisponível" /></PortalBackground>;
