@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "1049859854022",
+    "project_id": "cm-acarape",
+    "storage_bucket": "cm-acarape.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1049859854022:android:a6b032c3a99e3d251211c7",
+        "android_client_info": {
+          "package_name": "com.cmacarape.blu"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1049859854022-so317nbkjlq359d5ov6esvlp1a1cqp8m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBrbOJ6TVmLa8-MpgD4JHnzb2rZ_JFtzrs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1049859854022-so317nbkjlq359d5ov6esvlp1a1cqp8m.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1049859854022-r0872krlde4dq8rj5gs9o2m74mbqghqn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.cmacarape.blu"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

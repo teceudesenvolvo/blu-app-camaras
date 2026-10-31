@@ -63,7 +63,20 @@ module.exports = ({ config }) => {
     },
     android: { ...config.android, ...tenant.android },
     web: { ...config.web, favicon: tenant.assets.icon },
-    plugins: [...(config.plugins || []), 'expo-asset'],
+    plugins: [
+      ...(config.plugins || []),
+      [
+        'expo-splash-screen',
+        {
+          image: tenant.assets.splash,
+          imageWidth: 220,
+          resizeMode: config.splash?.resizeMode || 'contain',
+          backgroundColor: config.splash?.backgroundColor || '#ECECEC',
+        },
+      ],
+      './plugins/withQuotedReactNativeBundleScript',
+      'expo-asset',
+    ],
     updates: { ...config.updates, url: 'https://u.expo.dev/' + tenant.easProjectId },
     extra: {
       ...tenant,

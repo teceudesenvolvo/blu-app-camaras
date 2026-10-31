@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>1049859854022-r0872krlde4dq8rj5gs9o2m74mbqghqn.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.1049859854022-r0872krlde4dq8rj5gs9o2m74mbqghqn</string>
+	<key>API_KEY</key>
+	<string>AIzaSyAW0KbnU1q8kA_p_5BFkeeZ9s9DhzJmsxU</string>
+	<key>GCM_SENDER_ID</key>
+	<string>1049859854022</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.cmacarape.blu</string>
+	<key>PROJECT_ID</key>
+	<string>cm-acarape</string>
+	<key>STORAGE_BUCKET</key>
+	<string>cm-acarape.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:1049859854022:ios:94f1dbb1d31bd47d1211c7</string>
+</dict>
+</plist>

@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "CM Paraipaba",
+    "name": "CM Acarape",
     "slug": "cm-paraipaba",
-    "version": "2.0.5",
+    "version": "2.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./flavors/paraipaba/assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ECECEC"
     },
@@ -17,8 +17,8 @@
     "ios": {
       "supportsTablet": true,
       "deploymentTarget": "16.4",
-      "bundleIdentifier": "com.bluappcmparaipaba",
-      "googleServicesFile": "./services/firebase/paraipaba/GoogleService-Info.plist",
+      "bundleIdentifier": "com.cmacarape.blu",
+      "googleServicesFile": "./services/firebase/acarape/GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "A Câmara usa a câmera para tirar a selfie de cadastro de visitante e registrar imagens anexadas às demandas.",
         "NSPhotoLibraryUsageDescription": "A Câmara acessa suas fotos somente quando você escolhe imagens para anexar a uma demanda ou solicitação.",
@@ -31,9 +31,9 @@
       }
     },
     "android": {
-      "package": "com.blutecnologias.appcamara",
+      "package": "com.cmacarape.blu",
       "versionCode": 1,
-      "googleServicesFile": "./services/firebase/paraipaba/google-services.json",
+      "googleServicesFile": "./services/firebase/acarape/google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#ECECEC",
         "foregroundImage": "./assets/icon.png",
@@ -74,9 +74,9 @@
       "eas": {
         "projectId": "a4515ae1-c9e6-4aa1-a5f9-ae420ea3d93c"
       },
-      "name": "CM Paraipaba",
+      "name": "CM Acarape",
       "slug": "cm-paraipaba",
-      "bundleIdentifier": "com.blutecnoligias.appcamara",
+      "bundleIdentifier": "com.cmacarape.blu",
       "flavorId": "paraipaba",
       "theme": {
         "primary": "#025AA1",

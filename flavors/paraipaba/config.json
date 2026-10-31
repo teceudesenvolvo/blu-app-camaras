@@ -1,5 +1,5 @@
 {
-  "name": "CM Paraipaba",
+  "name": "CM Acarape",
   "slug": "cm-paraipaba",
   "flavorId": "paraipaba",
   "theme": {
@@ -23,8 +23,8 @@
   },
   "ios": {
     "supportsTablet": true,
-    "bundleIdentifier": "com.bluappcmparaipaba",
-    "googleServicesFile": "./services/firebase/paraipaba/GoogleService-Info.plist",
+    "bundleIdentifier": "com.cmacarape.blu",
+    "googleServicesFile": "./services/firebase/acarape/GoogleService-Info.plist",
     "infoPlist": {
       "NSCameraUsageDescription": "A Câmara usa a câmera para tirar a selfie de cadastro de visitante e anexar imagens às demandas.",
       "NSPhotoLibraryUsageDescription": "A Câmara acessa suas fotos somente quando você escolhe imagens para anexar a uma demanda.",
@@ -37,9 +37,9 @@
     }
   },
   "android": {
-    "package": "com.blutecnologias.appcamara",
+    "package": "com.cmacarape.blu",
     "versionCode": 1,
-    "googleServicesFile": "./services/firebase/paraipaba/google-services.json",
+    "googleServicesFile": "./services/firebase/acarape/google-services.json",
     "adaptiveIcon": {
       "backgroundColor": "#ECECEC",
       "foregroundImage": "./assets/icon.png",
@@ -49,19 +49,18 @@
   },
   "assets": {
     "icon": "./assets/icon.png",
-    "splash": "./assets/splash.png",
+    "splash": "./flavors/paraipaba/assets/splash.png",
     "logo": "./assets/logo-camara-paraipaba.png"
   },
   "easProjectId": "a4515ae1-c9e6-4aa1-a5f9-ae420ea3d93c",
   "firebase": {
-    "apiKey": "AIzaSyDc1N9npL8gvdaR1s2vXZlEk29pG8hLYTA",
-    "authDomain": "blu-app-camara.firebaseapp.com",
-    "databaseURL": "https://blu-app-camara-default-rtdb.firebaseio.com",
-    "projectId": "blu-app-camara",
-    "storageBucket": "blu-app-camara.firebasestorage.app",
-    "messagingSenderId": "1070248841383",
-    "appId": "1:1070248841383:web:1df6b381187a6f296bcb82",
-    "measurementId": "G-2Y562TKJW3"
+    "apiKey": "AIzaSyDGmy-8qOJ83KeNo3wGjUSYa4avhLyV5RE",
+    "authDomain": "cm-acarape.firebaseapp.com",
+    "projectId": "cm-acarape",
+    "storageBucket": "cm-acarape.firebasestorage.app",
+    "messagingSenderId": "1049859854022",
+    "appId": "1:1049859854022:web:a69f7f46d3d4e0211211c7",
+    "measurementId": "G-727G1X8NP0"
   },
   "functionsRegion": "us-central1",
   "youtubeRegion": "southamerica-east1"
